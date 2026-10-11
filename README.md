@@ -77,3 +77,10 @@ functions cannot hold one, so the voice server must run on a WebSocket-capable h
 
 Voice loop, tools, and data layer are written and type-check. A full live call has not
 been tested yet: it needs a Gemini key, a Twilio number, and a public URL.
+
+## Teaching agent
+
+The teaching agent lives in [teacher/](teacher/). It grades every finished call and writes new
+config versions (author `teacher`) that the next call loads. It runs as a separate process next to
+this server, against the same MongoDB database: `cd teacher && npm install && npm run watch`.
+Team status, data shapes for the dashboard, and known issues: [docs/TEAM_HANDOFF.md](docs/TEAM_HANDOFF.md).
