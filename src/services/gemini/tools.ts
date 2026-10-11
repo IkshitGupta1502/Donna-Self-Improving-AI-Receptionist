@@ -414,6 +414,14 @@ export async function executeTool(
       if (["ready for pickup", "delivered", "cancelled", "picked up", "complete", "completed"].includes(existing.stage.trim().toLowerCase())) {
         return { error: `Order ${existing.orderId} is ${existing.stage}, so its speed cannot be changed.` };
       }
+      // Switching a rushed order back to regular is only safe before any work has started: after that the ready date
+      // and the cleaning slot are already committed, so the agent must not agree. Staff decide.
+      const startedWork = !CANCELLABLE_STAGES.some((s) => s.toLowerCase() === existing.stage.trim().toLowerCase());
+      if (existing.orderType === "Expedited" && speed === "Regular" && startedWork) {
+        return {
+          error: `Order ${existing.orderId} is already ${existing.stage} as Expedited, so it cannot be switched back to Regular. Do not agree to the change: explain that work has started, and take a message for staff to review.`,
+        };
+      }
       const order = await store.setOrderType(orderId, speed);
       if (!order) return { error: `No order ${orderId}.` };
       return {

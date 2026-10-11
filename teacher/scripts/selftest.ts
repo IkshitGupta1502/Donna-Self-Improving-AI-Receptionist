@@ -378,4 +378,44 @@ const withProfile = judgeInput(call, configV1, { profile: prof });
 assert.match(withProfile, /CALLER PROFILE/);
 assert.match(withProfile, /Aayush Gandhi/);
 assert.match(judgeInput(call, configV1), /CALLER PROFILE[^\n]*\n\(not available\)/);
+// ---- Judgment (critical thinking) ----
+import { JUDGMENT_ISSUE_TYPES } from "../src/services/teacher/plan.js";
+const allTen = { accuracy: 10, tool_use: 10, task_completion: 10, tone: 10, brevity: 10 };
+assert.equal(overallScore({ ...allTen, judgment: 10 }), 10);
+assert.equal(overallScore({ ...allTen, judgment: 0 }), 8.5, "a judgment of 0 costs 1.5 points of the overall grade");
+assert.equal(overallScore({ accuracy: 2, tool_use: 10, task_completion: 5, tone: 9, brevity: 9 }), 5.7, "original weights unchanged when judgment is absent");
+assert.ok(JUDGMENT_ISSUE_TYPES.has("blind_agreement") && JUDGMENT_ISSUE_TYPES.has("knowledge_gap") && !JUDGMENT_ISSUE_TYPES.has("tone"));
+const jQuote = call.transcript[1]!.text;
+const jOut = (issues: Record<string, unknown>[], improvements: Record<string, unknown>[] = []) =>
+  JudgeOutput.parse({ ...out, scores: { ...out.scores, judgment: 2 }, issues, improvements, tool_proposal: null });
+const jIssue = (type: string, owner_question: string | undefined, quote = jQuote) =>
+  ({ type, turn: 2, quote, explanation: "The agent agreed without checking.", ...(owner_question ? { owner_question } : {}) });
+const jPlan = (o: ReturnType<typeof jOut>, existing: string[] = []) =>
+  buildPlan(o, call, configV1, "mock", new Date(), undefined, { existingQuestions: existing });
+const ctxOf = (p: ReturnType<typeof jPlan>) => p.improvements.filter((i) => i.type === "context");
+// A judgment issue with an owner question becomes an owner question, with the issue as evidence
+const p1 = jPlan(jOut([jIssue("blind_agreement", "Can an order already in cleaning be switched back from expedited to regular?")]));
+assert.equal(ctxOf(p1).length, 1);
+assert.equal(ctxOf(p1)[0]!.status, "proposed");
+assert.match(ctxOf(p1)[0]!.payload.question!, /already in cleaning/);
+assert.deepEqual(ctxOf(p1)[0]!.evidence_turns, [2]);
+assert.equal(p1.grade.scores.judgment, 2);
+assert.equal(p1.grade.overall, overallScore({ ...out.scores, judgment: 2 }));
+// A fabricated quote drops the issue, so no question is made up from it
+assert.equal(ctxOf(jPlan(jOut([jIssue("knowledge_gap", "What do you charge to hem pants?", "this was never said")]))).length, 0);
+// Other issue types never create questions, even if the model adds one
+assert.equal(ctxOf(jPlan(jOut([jIssue("tone", "What do you charge to hem pants?")]))).length, 0);
+// If the judge already asked the same thing, there is no duplicate
+const p2 = jPlan(jOut([jIssue("knowledge_gap", "What do you charge to hem pants?")], [{ type: "context", question: "What do you charge to hem pants?", evidence_turns: [2], reason: "x" }]));
+assert.equal(ctxOf(p2).length, 1);
+// Already asked or answered earlier: rejected as a repeat
+const p3 = jPlan(jOut([jIssue("knowledge_gap", "What do you charge to hem pants?")]), ["What do you charge to hem pants?"]);
+assert.equal(ctxOf(p3)[0]!.status, "rejected");
+// At most 2 owner questions per call, however many issues there are
+const p4 = jPlan(jOut([
+  jIssue("knowledge_gap", "What do you charge to hem pants?"),
+  jIssue("blind_agreement", "Can an order in cleaning be switched back to regular?"),
+  jIssue("unflagged_risk", "Do you ever waive the rush fee for regular customers?"),
+]));
+assert.deepEqual(ctxOf(p4).map((i) => i.status), ["proposed", "proposed", "rejected"]);
 console.log("selftest passed");

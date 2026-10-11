@@ -31,7 +31,11 @@ export function toUiGrade(g: Doc, ctx: UiContext) {
     outcome: g.outcome,
     score: Math.round(Number(g.overall) * 10),
     frustration: Math.max(0, Math.min(1, Number(g.frustration) / 10)),
-    dims: { accuracy: dim(s.accuracy), tools: dim(s.tool_use), completion: dim(s.task_completion), tone: dim(s.tone), brevity: dim(s.brevity) },
+    dims: {
+      accuracy: dim(s.accuracy), tools: dim(s.tool_use), completion: dim(s.task_completion), tone: dim(s.tone), brevity: dim(s.brevity),
+      // Grades written before the judgment score existed have none: leave it out so the page does not show a zero
+      ...(s.judgment != null ? { judgment: dim(s.judgment) } : {}),
+    },
     summary: g.rationale ?? "",
     createdAt: iso(g.created_at),
   };
