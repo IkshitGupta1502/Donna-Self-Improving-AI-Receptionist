@@ -1,6 +1,6 @@
 # Snoopy AI: Voice Receptionist with Recursive Self-Improvement (RSI)
 
-Status: DRAFT for brainstorming. Open decisions are listed at the end.
+Status: DRAFT, decisions made, scoped to a 3-hour build. English only. Callers are customers.
 
 ## 1. Summary
 
@@ -94,48 +94,43 @@ RSI needs an objective signal. Proposed outcome labels:
 Success = one of the first three, plus no tool errors. The teaching agent's grade is then a
 quality score on top of the outcome (tone, efficiency, accuracy), not the success test itself.
 
-## 7. Phased plan
+## 7. Structure (adapted from gandhiaayush/dry-cleaning-voice-agent)
 
-**Phase 0: Setup (hour 0 to 1)**
-- Repo scaffold: `bridge/` (Node or Python server), `teacher/`, `dashboard/`, `docs/`
-- Twilio number, Atlas cluster, Gemini API key, secrets in env (never committed)
+Reuse its layout and the working Twilio to Gemini Live bridge. Swap Notion and Supabase for Atlas.
 
-**Phase 1: Thin voice loop**
-- Call the Twilio number, speak to Gemini Live, hear the reply. No tools, no RSI.
-- Verify audio transcoding and barge-in (caller interrupting) work.
+- `src/config.ts`: zod-validated env (copied pattern)
+- `src/routes/voice.ts`, `src/routes/mediaStream.ts`: Twilio webhook and media WebSocket (copied pattern)
+- `src/services/gemini/liveSession.ts`, `audioConverter.ts`, `tools.ts`, `systemPrompt.ts`: Gemini Live session, mu-law to PCM16 conversion, tool declarations, prompt built from the active config version
+- `src/services/mongo/`: Atlas client, collections, config versions
+- `src/services/teacher/`: Claude grading pass and improvement application
+- `public/index.html`: dashboard with score timeline and improvement log
 
-**Phase 2: Context and tools**
-- Seed a demo workspace (business hours, services, FAQ docs) into Atlas
-- Add `search_knowledge` (vector search), `lookup_contact`, `take_message`, `book_appointment`
-- Log every call with transcript and tool trace
+## 8. 3-hour plan
 
-**Phase 3: Teaching agent (offline first)**
-- Run grading on logged calls: rubric scores plus typed improvements
-- Show results in a simple dashboard table. No auto-apply yet.
+| Time | Work |
+|---|---|
+| 0:00 to 0:20 | Scaffold from reference repo, Twilio number, Atlas cluster, env keys |
+| 0:20 to 0:50 | Voice loop working end to end with Gemini Live, one tool (`take_message`) |
+| 0:50 to 1:30 | Atlas: seeded workspace knowledge, `calls` log, `book_appointment` and `check_hours` tools |
+| 1:30 to 2:15 | Teacher: at call end, Claude grades the call and proposes changes. Changes are written to `config_versions` and the next call loads them |
+| 2:15 to 2:45 | Dashboard: score and frustration timeline, improvement log with one-click rollback |
+| 2:45 to 3:00 | Scripted demo: call 1 scores low, the teacher applies a fix, call 2 succeeds. Record the demo |
 
-**Phase 4: Closed loop**
-- Versioned `config_versions`, auto-apply for `context` and `data`
-- Eval set built from the first ~20 calls, with the regression gate
-- Approve/reject for prompt and tool changes
+Cut for time: eval gate, vector search (the knowledge base is small enough to load into the prompt), change streams (the bridge calls the teacher directly at call end), and any teacher-created tools (proposal only, shown in the dashboard).
 
-**Phase 5: Demo**
-- Scripted demo: call 1 scores low, teacher proposes a fix, fix is applied, call 2 succeeds.
-  Show the score trend. This is the core story for judges.
+## 9. Decisions
 
-## 8. Risks
+1. **Callers are customers.** The rubric and tools are customer-facing: booking, messages, hours, and FAQs.
+2. **Success and frustration.** Success stays deterministic: booked, message taken, or answered from the knowledge base, with no escalation and no tool errors. Frustration is a separate signal scored by the teacher. It uses transcript cues (repeated questions, "this isn't working", requests for a human), interruption count, and loudness or speech rate if they are cheap to compute from the audio. Frustration is an estimate on 8 kHz phone audio, so the dashboard shows it as a trend, not a verdict. Audio-based emotion scoring is a stretch goal.
+3. **Auto-apply.** `context` and `data` changes apply automatically. `prompt` changes also apply for the demo, each with a one-click rollback. `tool` and `schema` proposals stay as proposals. Every applied change records its source call and is visible on the timeline.
+4. **Teacher model.** Use a different model from the voice agent. Proposed: `claude-sonnet-5-5` for grading. The reference repo already uses the Anthropic SDK.
+5. **Atlas.** Use Atlas as the document store with direct writes from the bridge. The teacher is called directly at call end. Change streams and vector search are stretch goals.
+6. **Timeline.** 3 hours. English only.
 
-- **Latency:** realtime audio through a bridge adds delay. Keep the bridge thin, and avoid blocking tool calls on slow retrieval.
-- **Audio format mismatch:** Twilio uses mu-law 8 kHz, Gemini Live uses PCM 16 kHz in and 24 kHz out. Resampling must be correct, or the audio will be garbled.
-- **Self-improvement drift:** mitigated by the eval gate, the rate cap, and the rule that the teacher cannot change its own rubric.
-- **Scope creep:** the Notion-style editor is not needed for the demo. The workspace can be seeded through a script or a simple form.
-- **Model names:** confirm exact Gemini Live model IDs and availability in the Gemini API before wiring them in.
+## 10. Risks
 
-## 9. Open decisions (for brainstorming)
-
-1. **Who calls?** Snoopy's end customers calling a business, or internal staff calling the workspace? This changes the rubric and tools.
-2. **Success metric:** do the four outcome labels in §6 match what you want to show judges?
-3. **Auto-apply scope:** is auto-applying `context` and `data` changes acceptable, or should everything require approval for the demo?
-4. **Teacher model:** Gemini (same vendor, simpler), or a different model for independence? I lean toward a separate model so it is not grading its own output.
-5. **Atlas features:** confirm which Atlas features we will use: vector search only, or also change streams for triggering the teacher, which would make the loop event-driven.
-6. **Timeline:** how long is the hackathon build window? This decides how much of Phase 4 is realistic.
-7. **Language and voice:** English only? Which voice?
+- **Latency:** realtime audio through the bridge. Keep tool calls simple and fast.
+- **Audio format mismatch:** Twilio mu-law 8 kHz vs Gemini PCM16 16 kHz in and 24 kHz out. The reference `audioConverter.ts` already handles this.
+- **Self-improvement drift:** with auto-apply, rollback and the change log are the main protection. The teacher cannot change its own rubric.
+- **Scope:** if the voice loop is not working by 0:50, drop the teacher and show the timeline with scripted scores.
+- **Model names:** confirm the exact Gemini Live and Claude model IDs before wiring them in.
