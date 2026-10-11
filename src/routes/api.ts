@@ -71,10 +71,11 @@ apiRouter.get(
   "/stats",
   wrap(async (_req, res) => {
     const store = await getStore();
-    const [calls, orders, messages] = await Promise.all([
+    const [calls, orders, messages, activePlaybook] = await Promise.all([
       allCalls(100000),
       store.listOrders(),
       store.listMessages(),
+      store.listPlaybook().then((l) => l.filter((e) => e.status === "active").length),
     ]);
     res.json({
       calls: calls.length,
@@ -82,6 +83,7 @@ apiRouter.get(
       orders: orders.length,
       openOrders: orders.filter((o) => !CLOSED_STAGES.has(o.stage.trim().toLowerCase())).length,
       messages: messages.length,
+      playbook: activePlaybook,
     });
   })
 );
@@ -164,6 +166,57 @@ for (const [action, status] of [
     })
   );
 }
+
+const playbookSchema = z.object({
+  title: z.string().trim().min(1).max(80),
+  when: z.string().trim().min(1).max(200),
+  handling: z.string().trim().min(1).max(300),
+});
+
+apiRouter.get(
+  "/playbook",
+  wrap(async (_req, res) => {
+    res.json(await (await getStore()).listPlaybook());
+  })
+);
+
+apiRouter.post(
+  "/playbook",
+  wrap(async (req, res) => {
+    const parsed = playbookSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return badRequest(res, parsed.error);
+    res.status(201).json(await (await getStore()).addOwnerPlaybookEntry(parsed.data));
+  })
+);
+
+for (const [action, status] of [
+  ["enable", "active"],
+  ["disable", "disabled"],
+] as const) {
+  apiRouter.post(
+    `/playbook/:id/${action}`,
+    wrap(async (req, res) => {
+      const updated = await (await getStore()).setPlaybookStatus(String(req.params.id), status);
+      if (!updated) {
+        res.status(404).json({ error: "playbook entry not found" });
+        return;
+      }
+      res.json(updated);
+    })
+  );
+}
+
+apiRouter.post(
+  "/playbook/:id/delete",
+  wrap(async (req, res) => {
+    const ok = await (await getStore()).deletePlaybookEntry(String(req.params.id));
+    if (!ok) {
+      res.status(404).json({ error: "playbook entry not found" });
+      return;
+    }
+    res.json({ ok: true });
+  })
+);
 
 apiRouter.get(
   "/records",
