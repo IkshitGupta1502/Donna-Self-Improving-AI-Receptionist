@@ -23,7 +23,7 @@ npm install
 npm run live
 ```
 
-This starts ngrok, sets `PUBLIC_HOST`, points the Twilio number's voice webhook at the tunnel, and
+This also serves both dashboards at `http://localhost:8080` (Ops at `/`, Snoopy at `/snoopy/`; change the port with `DASHBOARD_PORT`, turn it off with `DASHBOARD=off`) and prints the links to open. It starts ngrok, sets `PUBLIC_HOST`, points the Twilio number's voice webhook at the tunnel, and
 starts the server. Then call the number from a verified phone.
 
 ## Run locally

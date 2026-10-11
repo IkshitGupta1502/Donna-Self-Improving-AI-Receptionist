@@ -2,6 +2,7 @@
 import { spawn } from "child_process";
 import { existsSync } from "fs";
 import readline from "readline";
+import { startDashboard } from "./dashboardServer";
 import dotenv from "dotenv";
 import twilio from "twilio";
 
@@ -86,7 +87,8 @@ async function main(): Promise<void> {
   await import("../src/server");
   startTeacher();
   console.log(`\n✓ Ready. Call ${process.env.TWILIO_PHONE_NUMBER ?? "your Twilio number"} from a verified phone.`);
-  const dashboard = process.env.DASHBOARD_URL ?? "http://localhost:8080";
+  const local = process.env.DASHBOARD === "off" ? "" : await startDashboard(Number(process.env.DASHBOARD_PORT ?? 8080));
+  const dashboard = process.env.DASHBOARD_URL ?? (local || "http://localhost:8080");
   console.log(`  Dashboard API:  ${url}${process.env.DASHBOARD_TOKEN ? "   (token: your DASHBOARD_TOKEN)" : ""}`);
   console.log(`  Ops dashboard:    ${dashboard}/?api=${url}   (tools, playbook, owner answers, company context)`);
   console.log(`  Snoopy dashboard: ${dashboard}/snoopy/?api=${url}   (live line, calls, learning, knowledge, customers)\n`);
