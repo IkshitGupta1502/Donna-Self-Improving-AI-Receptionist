@@ -1009,7 +1009,7 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
         const saved = await self.saveConfigVersion({
           companyName: cfg.companyName,
           greeting: cfg.greeting,
-          context: `${cfg.context}\n${question} ${answer.trim()}`.trim(),
+          context: `${cfg.context}\nOwner answer: ${question} ${answer.trim()}`.trim(),
           author: "manager",
           note: `Owner answered: ${question}`.slice(0, 300),
         });
