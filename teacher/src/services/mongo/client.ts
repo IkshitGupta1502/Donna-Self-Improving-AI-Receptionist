@@ -34,6 +34,9 @@ export async function cols() {
     // Owned by the teacher.
     grades: db.collection<GradeDoc>("grades"),
     improvements: db.collection<ImprovementDoc>("improvements"),
+    // Read only, so the judge can see the caller profile the receptionist was given
+    customers: db.collection<Record<string, any>>("customers"),
+    orders: db.collection<Record<string, any>>("orders"),
     toolProposals: db.collection<ToolProposalDoc>("tool_proposals"), // read by the bridge/dashboard; the owner enables
     playbook: db.collection<PlaybookDoc>("playbook"), // edge-case entries; the bridge prompts every active one, the owner changes status
   };

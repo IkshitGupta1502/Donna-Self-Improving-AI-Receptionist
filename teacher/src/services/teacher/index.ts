@@ -2,6 +2,7 @@ import { fromConfig, renderContext, toCall, versionOf } from "../mongo/bridge.js
 import { cols, getActiveConfig, getConfig } from "../mongo/client.js";
 import type { BridgeCall, CallDoc, ConfigVersionDoc, GradeDoc, ImprovementDoc, PlaybookDoc, PlaybookEntry, ToolProposal, ToolProposalDoc } from "../mongo/types.js";
 import { geminiJudge, teacherModel, type Judge } from "./judge.js";
+import { callerProfileText } from "./profile.js";
 import {
   buildPlan, decidePlaybookStatus, decideToolStatus, describeRecipe, LIMITS, mergePlaybookEntry, mergeToolProposal, ownerAnswerLine,
   playbookImprovement, regression, validatePlaybookEntry, verifyToolRecipe, type PlaybookDecision, type ToolDecision,
@@ -59,7 +60,11 @@ export async function teach(callId: string, judge: Judge = geminiJudge): Promise
 
   // Changes are always built on the ACTIVE config, so two calls never overwrite each other's rules.
   const cfg = await getActiveConfig();
-  const out = await judge(call, cfg);
+  // Judge the call against the config it actually ran with (the active one may be newer, or even renamed), and show
+  // the judge the caller profile the receptionist was given, otherwise correct behaviour looks like an error.
+  const ranWith = rec.configVersion != null ? await getConfig(rec.configVersion) : null;
+  const profile = await callerProfileText(c, rec.from);
+  const out = await judge(call, ranWith ?? cfg, { profile });
   const now = new Date();
   // Owner questions already open or answered (a repeat is rejected), and the async self-check of a proposed recipe.
   const existingQuestions = (await c.improvements.find({ type: "context", status: { $in: ["proposed", "applied"] } }).toArray())
@@ -261,13 +266,26 @@ export async function scoreTrend() {
  * Runs next to the bridge: teaches every finished call that has no grade yet.
  * Needs no change on the bridge side. A call that fails 3 times is skipped until restart.
  */
+/** Which calls watch() may grade: finished, with a real caller turn (a dropped call has none), and ended after `since`. */
+export function watchFilter(since: string, failedIds: string[]) {
+  return {
+    status: "completed",
+    "transcript.role": "caller",
+    ...(since ? { endedAt: { $gte: since } } : {}),
+    callSid: { $nin: failedIds },
+  };
+}
+
 export async function watch(intervalMs = 3000, judge: Judge = geminiJudge) {
   const c = await cols();
   const failures = new Map<string, number>();
-  console.log("teacher watching for finished calls...");
+  // Only calls that END after the teacher starts are graded. Older calls (earlier tests, before a rename or a new
+  // feature) would teach it lessons about a system that no longer exists. TEACHER_GRADE_BACKLOG=1 grades them too.
+  const since = process.env.TEACHER_GRADE_BACKLOG === "1" ? "" : new Date().toISOString();
+  console.log(since ? "teacher watching for calls that finish from now on (TEACHER_GRADE_BACKLOG=1 grades older ones)..." : "teacher watching for finished calls (including older ones)...");
   for (;;) {
     const [next] = await c.calls.aggregate<BridgeCall>([
-      { $match: { status: "completed", "transcript.0": { $exists: true }, callSid: { $nin: [...failures].filter(([, n]) => n >= 3).map(([id]) => id) } } },
+      { $match: watchFilter(since, [...failures].filter(([, n]) => n >= 3).map(([id]) => id)) },
       { $lookup: { from: "grades", localField: "callSid", foreignField: "_id", as: "grade" } },
       { $match: { grade: { $size: 0 } } },
       { $sort: { startedAt: 1 } }, { $limit: 1 },

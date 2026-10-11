@@ -59,7 +59,8 @@ export const JudgeOutput = z.object({
 });
 export type JudgeOutput = z.infer<typeof JudgeOutput>;
 
-export type Judge = (call: CallDoc, cfg: ConfigVersionDoc) => Promise<JudgeOutput>;
+export interface JudgeContext { profile?: string }
+export type Judge = (call: CallDoc, cfg: ConfigVersionDoc, ctx?: JudgeContext) => Promise<JudgeOutput>;
 
 // The shared recipe validator only accepts snake_case names in a call's args. The built-ins' own argument names include
 // camelCase ones (orderId, customerName), so a recipe cannot pass them until ../src/services/tools/recipe.ts (and the
@@ -128,6 +129,11 @@ Three worked examples (shortened):
 {"steps":[{"do":"require","when":{"ref":"confirmed"},"else":"Please confirm the details with the caller first."},{"do":"require","when":{"op":"lte","args":[{"ref":"amount"},200]},"else":"Claims over $200 need the owner; offer to take a message."},{"do":"save","fields":{"order_id":{"ref":"order_id"},"description":{"ref":"description"},"amount":{"ref":"amount"}}}],"response":{"filed":true,"claim_id":{"ref":"record_id"}}}
 ${EXAMPLE3}
 
+GROUNDING (read before judging):
+- The RULES and BUSINESS KNOWLEDGE you are shown are the version the call actually ran with. Judge the call against them, not against any newer wording or a different business name.
+- The receptionist is given the CALLER PROFILE before it picks up, from the caller's phone number. Greeting a caller by the name in the profile, and stating order details listed in the profile, is CORRECT and is NOT an invented fact or a tone problem. Never write a rule that tells the receptionist to ignore or avoid using its caller profile. If the profile says the number was not recognised, then using a name the caller never gave IS a problem.
+- A call that was cut off by a technical failure (a very short call, a turn that stops mid-sentence, no real exchange) teaches nothing about the receptionist's behaviour. Grade what happened, but propose NO improvements, tool or playbook entry for it.
+
 PLAYBOOK_ENTRY (optional, at most ONE per call, null when nothing is worth recording): a short "when this specific situation happens, do this" note for an EDGE CASE the transcript shows. Record one only when the caller's situation was unusual and repeatable, or the agent handled it badly or only took a message because it had no guidance.
 It is NOT a rule (a rule is an always-on principle that applies to every call), NOT a context question (a missing business fact) and NOT a tool proposal (a missing capability). Do not record routine calls that went well.
 Fields: title (max 80 chars), when (the situation, max 200 chars), handling (what the receptionist should do or say, max 300 chars), evidence [{turn, quote}] with at least one quote copied EXACTLY from the transcript.
@@ -146,7 +152,7 @@ or, when there is a capability gap, "tool_proposal":{"name":"","description":"",
  "evidence":[{"turn":0,"quote":""}],"recipe":null}  (recipe: omit or null for a plain save/look-up tool, otherwise the recipe object described above)
 and, when there is an edge case worth recording, "playbook_entry":{"title":"","when":"","handling":"","evidence":[{"turn":0,"quote":""}]}`;
 
-export function buildJudgeInput(call: CallDoc, cfg: ConfigVersionDoc): string {
+export function buildJudgeInput(call: CallDoc, cfg: ConfigVersionDoc, ctx: JudgeContext = {}): string {
   const rules = cfg.rules.map((r) => `${r.id} [${r.kind}${r.locked ? ", locked" : ""}]: ${r.text}`).join("\n");
   const transcript = call.transcript.map((t) => `[${t.turn}] ${t.role}: ${t.text}`).join("\n");
   const tools = call.tool_trace.length ? JSON.stringify(call.tool_trace, null, 1) : "(no tool calls)";
@@ -155,6 +161,9 @@ ${rules || "(none)"}
 
 BUSINESS KNOWLEDGE (${cfg.company_name}):
 ${cfg.context || "(none)"}
+
+CALLER PROFILE (what the receptionist was given from the caller's phone number before it picked up):
+${ctx.profile ?? "(not available)"}
 
 OUTCOME LABEL: ${call.outcome}
 (from tool results only: "message_taken" = a message was saved, "failed" = a tool returned an error, "answered" = neither, which does not mean the caller was satisfied)
@@ -171,7 +180,7 @@ export function teacherModel() {
 }
 
 /** Real judge: one Gemini call, JSON out, validated with zod, one retry. */
-export const geminiJudge: Judge = async (call, cfg) => {
+export const geminiJudge: Judge = async (call, cfg, ctx) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set (set it in .env, see README)");
   const ai = new GoogleGenAI({ apiKey });
@@ -180,7 +189,7 @@ export const geminiJudge: Judge = async (call, cfg) => {
     try {
       const res = await ai.models.generateContent({
         model: teacherModel(),
-        contents: buildJudgeInput(call, cfg),
+        contents: buildJudgeInput(call, cfg, ctx),
         config: { systemInstruction: SYSTEM, temperature: 0.1, responseMimeType: "application/json" },
       });
       const raw = (res.text ?? "").replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
