@@ -178,3 +178,7 @@ The grader now scores **judgment** (0-10) alongside accuracy, tool use, completi
 - **Judgment problems become owner questions in code.** Each such issue carries an `owner_question`; the code turns it into a question for the owner (max 2 per call, repeats dropped), so a gap does not depend on the model remembering to ask.
 - Agent side: the prompt now has a "use judgment, do not just agree" section, and `set_order_type` refuses to switch an Expedited order back to Regular once work has started (only before: stage Received or Sorting).
 - Shown as a Judgment column in the Ops dashboard's grades table, and as a dimension in the Snoopy dashboard only for grades that have it.
+
+### Server hardening and removing a line from the company context
+- The voice server no longer dies from a stray error: audio frames that arrive after the Gemini session closed, a tool result that finishes after the caller hung up, and any other unhandled error are logged (`[gemini] could not send...`, `[server] unhandled rejection (still running)`) instead of exiting Node. Before this, any of them ended the process (and under `npm run live`, ngrok and the teacher with it).
+- `npm run forget -- "text of the line"` shows which lines of the active company context contain that text (dry run); add `--apply` to save a new Knowledge version without them. The learned-rules block is never searched; the old text stays in the version history. Needs `MONGODB_URI` in `.env` to act on Atlas. You can also edit the text in the dashboard (Company Context / Knowledge) and save.
