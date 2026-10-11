@@ -13,6 +13,19 @@ Caller -> Twilio -> POST /voice (TwiML <Connect><Stream>) -> wss /media-stream
        -> tool calls (src/services/gemini/tools.ts) -> DataStore (Atlas or in-memory)
 ```
 
+## Quick start (one command)
+
+With `GEMINI_API_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and `TWILIO_PHONE_NUMBER` in `.env`
+and ngrok installed and authenticated (`brew install ngrok`, `ngrok config add-authtoken <token>`):
+
+```bash
+npm install
+npm run live
+```
+
+This starts ngrok, sets `PUBLIC_HOST`, points the Twilio number's voice webhook at the tunnel, and
+starts the server. Then call the number from a verified phone.
+
 ## Run locally
 
 ```bash
