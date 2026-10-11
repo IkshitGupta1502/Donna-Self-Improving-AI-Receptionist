@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hanger Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%230D0D0D%27/%3E%3C/svg%3E" />
+<script src="config.js"></script>
+<style>
+/* ─── Tokens ─────────────────────────────────────────────────────────── */
+:root{
+  --bg:#F5F4F0;--ink:#0D0D0D;--surface:#FFFFFF;--border:#D8D5CC;--muted:#777;
+  --hover:#F0EFE8;--active-row:#EDECEA;--inv-bg:#0D0D0D;--inv-fg:#FFFFFF;
+  --good:#1f7a4d;--bad:#b3261e;--live:#c0392b;
+  --bubble-caller:#EDECEA;--bubble-agent:#0D0D0D;--bubble-agent-fg:#FFFFFF;
+  --shadow:0 1px 3px rgba(0,0,0,.07);--shadow-lg:0 4px 16px rgba(0,0,0,.1);
+  --r:2px;
+  --fh:"Times New Roman",Georgia,serif;--fb:"Inter",system-ui,-apple-system,sans-serif;--fm:"JetBrains Mono","Courier New",monospace;
+  --gutter:28px;--tab-h:44px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#111110;--ink:#EDEBE4;--surface:#1A1A18;--border:#34332F;--muted:#9A978E;
+    --hover:#242421;--active-row:#2C2B27;--inv-bg:#EDEBE4;--inv-fg:#111110;
+    --good:#4cc38a;--bad:#ff7a70;--live:#ff6b5e;
+    --bubble-caller:#2C2B27;--bubble-agent:#EDEBE4;--bubble-agent-fg:#111110;
+    --shadow:0 1px 3px rgba(0,0,0,.4);--shadow-lg:0 4px 16px rgba(0,0,0,.5);
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--fb);min-height:100vh;overflow-x:hidden}
+button,input{font:inherit;color:inherit}
+.hidden{display:none!important}
+
+/* ─── Header ─────────────────────────────────────────────────────────── */
+.hdr{background:var(--surface);border-bottom:2px solid var(--ink);padding:0 var(--gutter);min-height:54px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:50}
+.hdr-brand{font-family:var(--fh);font-weight:700;font-size:1.25rem;letter-spacing:-.5px;white-space:nowrap}
+.hdr-brand small{font-family:var(--fb);font-weight:400;font-size:.72rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-left:8px}
+.hdr-right{display:flex;align-items:center;gap:10px;min-width:0}
+.status{display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--muted);font-family:var(--fm);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.dot.ok{background:var(--good);box-shadow:0 0 0 3px rgba(31,122,77,.2)}
+.dot.bad{background:var(--bad)}
+.dot.demo{background:var(--ink)}
+.icon-btn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:var(--r);
+  font-size:.78rem;cursor:pointer;transition:border-color .15s,color .15s}
+.icon-btn:hover{border-color:var(--ink);color:var(--ink)}
+
+/* ─── Tabs ───────────────────────────────────────────────────────────── */
+.tab-bar{background:var(--surface);border-bottom:1.5px solid var(--border);padding:0 var(--gutter);display:flex;
+  height:var(--tab-h);overflow-x:auto;scrollbar-width:none}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab{padding:0 20px;height:var(--tab-h);display:flex;align-items:center;gap:7px;font-family:var(--fh);font-size:.95rem;
+  cursor:pointer;border:0;border-bottom:2px solid transparent;background:none;color:var(--muted);white-space:nowrap;letter-spacing:.01em}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--ink);border-bottom-color:var(--ink)}
+.tab-badge{background:var(--live);color:#fff;font-size:.65rem;font-weight:700;padding:2px 6px;border-radius:var(--r);font-family:var(--fb);min-width:18px;text-align:center}
+
+/* ─── Content ────────────────────────────────────────────────────────── */
+main{padding:24px var(--gutter) 48px;max-width:1400px;margin:0 auto}
+.panel{display:none}.panel.active{display:block}
+
+.stats-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px}
+.sc{background:var(--surface);padding:16px 20px;border:1px solid var(--border);box-shadow:var(--shadow);min-width:0}
+.sc-val{font-family:var(--fh);font-size:2rem;font-weight:700;line-height:1}
+.sc-lbl{font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+.sc.live .sc-val{color:var(--live)}
+
+.banner{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--bad);padding:12px 16px;margin-bottom:18px;font-size:.85rem;box-shadow:var(--shadow)}
+.empty{background:var(--surface);border:1px dashed var(--border);padding:44px 24px;text-align:center;color:var(--muted)}
+.empty h3{font-family:var(--fh);font-size:1.25rem;color:var(--ink);margin-bottom:8px}
+.empty p{font-size:.88rem;line-height:1.6;max-width:460px;margin:0 auto 16px}
+code,.mono{font-family:var(--fm);font-size:.8em}
+
+/* buttons / inputs */
+.btn{padding:7px 16px;border-radius:var(--r);font-size:.85rem;font-weight:500;cursor:pointer;border:1px solid var(--ink);background:var(--inv-bg);color:var(--inv-fg)}
+.btn:hover{opacity:.85}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.ghost:hover{background:var(--ink);color:var(--inv-fg);opacity:1}
+.fi{padding:8px 11px;border:1.5px solid var(--border);border-radius:var(--r);font-size:.85rem;background:var(--bg);outline:none;width:100%;font-family:var(--fm)}
+.fi:focus{border-color:var(--ink)}
+.fl{font-size:.7rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:5px}
+
+/* ─── Tables ─────────────────────────────────────────────────────────── */
+.table-wrap{background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden}
+.tw-hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 18px;border-bottom:1.5px solid var(--border)}
+.tw-title{font-family:var(--fh);font-weight:700;font-size:1rem}
+.tw-meta{font-size:.78rem;color:var(--muted)}
+.tscroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{text-align:left;padding:9px 13px;font-size:.68rem;font-weight:400;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--ink);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border)}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--hover)}
+tbody td{padding:11px 13px;font-size:.85rem;vertical-align:top}
+td.nowrap{white-space:nowrap}
+td.wrapcell{min-width:200px;max-width:420px}
+.td-mono{font-family:var(--fm);font-size:.78rem;color:var(--muted)}
+.td-name{font-weight:600}.td-name .td-mono{font-weight:400}
+
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:var(--r);font-size:.7rem;font-weight:700;letter-spacing:.04em;white-space:nowrap;border:1px solid var(--ink)}
+.b-solid{background:var(--ink);color:var(--inv-bg)}
+.b-line{background:transparent;color:var(--ink)}
+.b-mute{background:transparent;color:var(--muted);border-color:var(--border)}
+.b-live{background:var(--live);border-color:var(--live);color:#fff}
+.b-live::before{content:"";width:6px;height:6px;border-radius:50%;background:#fff;margin-right:6px;animation:pulse 1.4s infinite}
+@keyframes pulse{50%{opacity:.25}}
+
+/* ─── Calls split view ───────────────────────────────────────────────── */
+.split{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:18px;align-items:start}
+.call-list{background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);max-height:calc(100vh - 230px);overflow-y:auto}
+.call-item{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--border);padding:12px 16px;cursor:pointer}
+.call-item:hover{background:var(--hover)}
+.call-item.sel{background:var(--active-row);box-shadow:inset 3px 0 0 var(--ink)}
+.ci-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ci-from{font-weight:600;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ci-meta{font-size:.74rem;color:var(--muted);margin-top:4px;display:flex;gap:10px;flex-wrap:wrap}
+.ci-snip{font-size:.8rem;color:var(--muted);margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:italic}
+
+.detail{background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);display:flex;flex-direction:column;max-height:calc(100vh - 230px);min-height:320px}
+.dt-hdr{padding:14px 18px;border-bottom:1.5px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.dt-hdr .back{display:none}
+.dt-title{font-family:var(--fh);font-weight:700;font-size:1.15rem}
+.dt-sub{font-family:var(--fm);font-size:.72rem;color:var(--muted);margin-top:2px;word-break:break-all}
+.dt-body{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:10px;overflow-x:hidden}
+.dt-empty{margin:auto;color:var(--muted);font-size:.9rem;text-align:center;padding:30px}
+.msg{max-width:78%;display:flex;flex-direction:column;gap:3px}
+.msg.caller{align-self:flex-start}
+.msg.agent{align-self:flex-end;align-items:flex-end}
+.bubble{padding:10px 14px;font-size:.88rem;line-height:1.5;border-radius:14px;overflow-wrap:anywhere;white-space:pre-wrap}
+.msg.caller .bubble{background:var(--bubble-caller);border-bottom-left-radius:3px}
+.msg.agent .bubble{background:var(--bubble-agent);color:var(--bubble-agent-fg);border-bottom-right-radius:3px}
+.msg-meta{font-size:.66rem;color:var(--muted);font-family:var(--fm)}
+.evt{align-self:center;width:min(560px,100%);border:1px solid var(--border);background:var(--bg);font-size:.78rem}
+.evt summary{cursor:pointer;padding:6px 12px;display:flex;align-items:center;gap:8px;list-style:none;min-width:0}
+.evt summary::-webkit-details-marker{display:none}
+.evt summary::before{content:"\25B8";color:var(--muted);font-size:.7rem}
+.evt[open] summary::before{content:"\25BE"}
+.evt .en{font-family:var(--fm);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.evt .et{margin-left:auto;color:var(--muted);font-family:var(--fm);font-size:.66rem;white-space:nowrap}
+.evt .eb{padding:4px 12px 10px;border-top:1px solid var(--border)}
+.evt .el{font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:8px 0 3px}
+.evt pre{font-family:var(--fm);font-size:.72rem;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--surface);border:1px solid var(--border);padding:8px;max-height:220px;overflow:auto}
+
+/* settings */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:70px 16px 16px;overflow-y:auto}
+.modal{background:var(--surface);border:2px solid var(--ink);box-shadow:var(--shadow-lg);width:520px;max-width:100%}
+.modal-hdr{background:var(--inv-bg);color:var(--inv-fg);padding:14px 20px;display:flex;justify-content:space-between;align-items:center}
+.modal-title{font-family:var(--fh);font-weight:700;font-size:1.05rem}
+.modal-x{background:none;border:1.5px solid currentColor;color:inherit;width:26px;height:26px;border-radius:50%;cursor:pointer;opacity:.7}
+.modal-body{padding:20px;display:flex;flex-direction:column;gap:16px}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:.85rem;cursor:pointer}
+.check input{margin-top:3px;accent-color:var(--ink)}
+.hint{font-size:.76rem;color:var(--muted);line-height:1.5;margin-top:5px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.test-res{font-size:.8rem;font-family:var(--fm)}
+
+.coming{max-width:560px;margin:30px auto;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);padding:40px 28px;text-align:center}
+.coming h3{font-family:var(--fh);font-size:1.3rem;margin-bottom:10px}
+.coming p{color:var(--muted);line-height:1.6;font-size:.9rem}
+
+/* ─── Responsive ─────────────────────────────────────────────────────── */
+@media (max-width:900px){
+  .stats-bar{grid-template-columns:repeat(3,1fr)}
+}
+@media (max-width:760px){
+  :root{--gutter:16px}
+  .hdr-brand small,.status .st-text-long{display:none}
+  .split{grid-template-columns:1fr}
+  .call-list{max-height:none}
+  .detail{max-height:none;min-height:0}
+  .split.has-sel .call-list{display:none}
+  .split:not(.has-sel) .detail{display:none}
+  .dt-hdr .back{display:inline-block}
+  .dt-body{max-height:calc(100vh - 260px);min-height:240px}
+  .msg{max-width:92%}
+  .tab{padding:0 14px}
+  main{padding-top:18px}
+}
+@media (max-width:520px){
+  .stats-bar{grid-template-columns:repeat(2,1fr);gap:10px}
+  .sc{padding:12px 14px}
+  .sc:last-child{grid-column:span 2}
+}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-brand"><span class="brand-name">Hanger</span><small>Owner dashboard</small></div>
+  <div class="hdr-right">
+    <div class="status" id="status"><span class="dot" id="status-dot"></span><span id="status-text">Not connected</span></div>
+    <button class="icon-btn" id="btn-settings" type="button">Settings</button>
+  </div>
+</header>
+
+<nav class="tab-bar" role="tablist" id="tabs">
+  <button class="tab active" role="tab" data-tab="overview" type="button">Overview</button>
+  <button class="tab" role="tab" data-tab="calls" type="button">Live Calls <span class="tab-badge hidden" id="live-badge">0</span></button>
+  <button class="tab" role="tab" data-tab="orders" type="button">Orders</button>
+  <button class="tab" role="tab" data-tab="messages" type="button">Messages</button>
+  <button class="tab" role="tab" data-tab="improvements" type="button">Improvements</button>
+</nav>
+
+<main>
+  <div id="banner" class="banner hidden"></div>
+
+  <section class="panel active" id="panel-overview">
+    <div class="stats-bar" id="stats"></div>
+    <div id="overview-empty"></div>
+    <div class="table-wrap" id="overview-recent"></div>
+  </section>
+
+  <section class="panel" id="panel-calls">
+    <div id="calls-empty"></div>
+    <div class="split" id="split">
+      <div class="call-list" id="call-list"></div>
+      <div class="detail" id="detail"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-orders">
+    <div id="orders-wrap"></div>
+  </section>
+
+  <section class="panel" id="panel-messages">
+    <div id="messages-wrap"></div>
+  </section>
+
+  <section class="panel" id="panel-improvements">
+    <div class="coming">
+      <h3>Improvements</h3>
+      <p>Coming soon: the teaching agent's grades and changes will appear here.</p>
+    </div>
+  </section>
+</main>
+
+<div class="ov hidden" id="settings-ov">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Settings">
+    <div class="modal-hdr"><div class="modal-title">Connection settings</div><button class="modal-x" id="settings-close" type="button" aria-label="Close">&times;</button></div>
+    <div class="modal-body">
+      <div>
+        <label class="fl" for="in-api">API base (ngrok URL)</label>
+        <input class="fi" id="in-api" type="url" placeholder="https://abcd-12-34.ngrok-free.app" autocomplete="off" spellcheck="false" />
+        <div class="hint">The backend runs on your laptop behind ngrok. Paste the https URL ngrok prints.</div>
+      </div>
+      <div>
+        <label class="fl" for="in-token">Dashboard token (optional)</label>
+        <input class="fi" id="in-token" type="password" placeholder="Leave empty if none" autocomplete="off" />
+      </div>
+      <label class="check"><input type="checkbox" id="in-demo" /><span><strong>Demo mode</strong><br /><span class="hint">Show realistic fake data without a backend.</span></span></label>
+      <div class="row">
+        <button class="btn" id="btn-save" type="button">Save &amp; connect</button>
+        <button class="btn ghost" id="btn-test" type="button">Test connection</button>
+      </div>
+      <div class="test-res" id="test-res"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+var BRAND = window.HANGER_BRAND || "Hanger";   // brand name: change in config.js
+var POLL_MS = 3000;
+
+/* ── storage (always guarded) ─────────────────────────────────────────── */
+function sget(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function sset(k,v){ try{ if(v===null||v===""){ localStorage.removeItem(k); } else { localStorage.setItem(k,v); } }catch(e){} }
+
+var params = new URLSearchParams(location.search);
+var qApi = params.get("api");
+if(qApi){ sset("hanger_api", qApi.trim()); }
+if(params.get("demo")==="1"){ sset("hanger_demo","1"); }
+
+var S = {
+  api: (sget("hanger_api") || window.HANGER_API_BASE || "").trim().replace(/\/+$/,""),
+  token: sget("hanger_token") || "",
+  demo: sget("hanger_demo")==="1" || params.get("demo")==="1",
+  tab: "overview", sel: null,
+  health: null, // true | false | null
+  stats: null, calls: null, orders: null, messages: null,
+  sig: {}
+};
+
+document.title = BRAND + " Dashboard";
+document.querySelector(".brand-name").textContent = BRAND;
+
+/* ── helpers ──────────────────────────────────────────────────────────── */
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+function pj(v){ if(v===undefined) return ""; if(typeof v==="string"){ try{ return JSON.stringify(JSON.parse(v),null,2);}catch(e){ return v; } } try{ return JSON.stringify(v,null,2);}catch(e){ return String(v); } }
+function tms(t){ if(t==null||t==="") return null; var d=new Date(t); return isNaN(d)?null:d; }
+function fmtTime(t){ var d=tms(t); return d? d.toLocaleTimeString([], {hour:"numeric",minute:"2-digit",second:"2-digit"}) : ""; }
+function fmtDT(t){ var d=tms(t); return d? d.toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) : "—"; }
+function fmtDur(s){ if(s==null||isNaN(s)) return ""; s=Math.round(s); var m=Math.floor(s/60); return m+":"+String(s%60).padStart(2,"0"); }
+function val(v,d){ return (v===undefined||v===null||v==="")?(d===undefined?"—":d):v; }
+function money(p){ if(p==null||p==="") return "—"; if(typeof p==="number") return "$"+p.toFixed(2); var s=String(p); return /^\d+(\.\d+)?$/.test(s)?"$"+Number(s).toFixed(2):s; }
+function sig(o){ try{ return JSON.stringify(o); }catch(e){ return String(Math.random()); } }
+function changed(key,o){ var s=sig(o); if(S.sig[key]===s) return false; S.sig[key]=s; return true; }
+function stageBadge(st){
+  var s=String(val(st,"unknown")), l=s.toLowerCase();
+  var cls = /pick|done|complete|deliver/.test(l)?"b-mute":/ready/.test(l)?"b-solid":"b-line";
+  return '<span class="badge '+cls+'">'+esc(s)+'</span>';
+}
+
+/* ── API ──────────────────────────────────────────────────────────────── */
+function api(path){
+  if(S.demo) return Demo.get(path);
+  if(!S.api) return Promise.reject(new Error("no-api"));
+  var h = {"ngrok-skip-browser-warning":"1"};
+  if(S.token) h["x-dashboard-token"] = S.token;
+  var ctl = new AbortController(), t = setTimeout(function(){ctl.abort();},8000);
+  return fetch(S.api+path,{headers:h,signal:ctl.signal}).then(function(r){
+    clearTimeout(t);
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    return r.json();
+  },function(e){clearTimeout(t);throw e;});
+}
+
+/* ── demo data ────────────────────────────────────────────────────────── */
+var Demo = (function(){
+  var now = Date.now();
+  function ts(minAgo, secOff){ return new Date(now - minAgo*60000 + (secOff||0)*1000).toISOString(); }
+  var calls = [
+    { callSid:"CA9f3c1d0a77b2e4", from:"+14155550142", startedAt:ts(2), status:"active",
+      transcript:[
+        {role:"agent",text:"Thanks for calling Bright Press Cleaners, this is the virtual receptionist. How can I help?",ts:ts(2,0)},
+        {role:"caller",text:"Hi, I'd like to check on my order. The name is Maria Lopez.",ts:ts(2,9)},
+        {role:"agent",text:"Sure, one moment while I look that up.",ts:ts(2,13)}
+      ],
+      toolCalls:[{name:"lookup_order",args:{customerName:"Maria Lopez"},result:{orderId:"ORD-1042",stage:"Ready",garment:"Wool coat"},ts:ts(2,15)}] },
+    { callSid:"CA41be90c2d813aa", from:"+14155550199", startedAt:ts(26), endedAt:ts(23), durationSec:174, status:"completed",
+      transcript:[
+        {role:"agent",text:"Thanks for calling, how can I help?",ts:ts(26,0)},
+        {role:"caller",text:"What are your hours on Saturday?",ts:ts(26,6)},
+        {role:"agent",text:"We are open 8am to 4pm on Saturdays. Anything else?",ts:ts(26,10)},
+        {role:"caller",text:"Can I drop off a wedding dress, and how much would it be?",ts:ts(26,20)},
+        {role:"agent",text:"Wedding dress cleaning starts at $145 with a five to seven day turnaround. Want me to book a drop-off?",ts:ts(26,26)},
+        {role:"caller",text:"Yes please, tomorrow around 10. Name is Priya Shah.",ts:ts(25,40)},
+        {role:"agent",text:"Done. I created an order for Priya Shah, a drop-off tomorrow at 10am.",ts:ts(25,50)}
+      ],
+      toolCalls:[
+        {name:"get_prices",args:{item:"wedding dress"},result:{price:145,turnaroundDays:"5-7"},ts:ts(26,24)},
+        {name:"create_order",args:{customerName:"Priya Shah",phone:"+14155550199",garment:"Wedding dress",orderType:"regular"},result:{orderId:"ORD-1043",ok:true},ts:ts(25,48)}
+      ] },
+    { callSid:"CA0cd2e77f19a604", from:"+14155550111", startedAt:ts(70), endedAt:ts(69), durationSec:58, status:"completed",
+      transcript:[
+        {role:"agent",text:"Thanks for calling, how can I help?",ts:ts(70,0)},
+        {role:"caller",text:"Can I talk to someone about a stain? Please have them call me back, it's Devon.",ts:ts(69,50)},
+        {role:"agent",text:"Of course, I'll leave a message for the owner.",ts:ts(69,40)}
+      ],
+      toolCalls:[{name:"take_message",args:{name:"Devon",phone:"+14155550111",message:"Wants a callback about a stain on a silk shirt."},result:{ok:true},ts:ts(69,35)}] },
+    { callSid:"CAe5a8801b2c93f7", from:"+14155550177", startedAt:ts(190), endedAt:ts(188), durationSec:96, status:"completed",
+      transcript:[
+        {role:"caller",text:"Is my suit ready yet?",ts:ts(190,0)},
+        {role:"agent",text:"Let me check. Your suit is still in pressing and should be ready tomorrow afternoon.",ts:ts(189,50)}
+      ], toolCalls:[] }
+  ];
+  var orders = [
+    {orderId:"ORD-1043",customerName:"Priya Shah",phone:"+14155550199",garment:"Wedding dress",stage:"Received",orderType:"regular",price:145,payment:"unpaid",notes:"Beading, handle with care",expectedDate:"2026-10-18"},
+    {orderId:"ORD-1042",customerName:"Maria Lopez",phone:"+14155550142",garment:"Wool coat",stage:"Ready",orderType:"regular",price:38.5,payment:"paid",notes:"",expectedDate:"2026-10-11"},
+    {orderId:"ORD-1041",customerName:"James O'Neil",phone:"+14155550177",garment:"Navy suit (2pc)",stage:"Pressing",orderType:"express",price:42,payment:"unpaid",notes:"Rush for Friday",expectedDate:"2026-10-12"},
+    {orderId:"ORD-1040",customerName:"Aiko Tanaka",phone:"+14155550163",garment:"Silk blouse x3",stage:"Cleaning",orderType:"regular",price:27,payment:"unpaid",expectedDate:"2026-10-14"},
+    {orderId:"ORD-1038",customerName:"Sam Rivera",phone:"+14155550120",garment:"Comforter",stage:"Picked up",orderType:"regular",price:35,payment:"paid",notes:"Picked up Tuesday"}
+  ];
+  var messages = [
+    {name:"Devon",phone:"+14155550111",message:"Wants a callback about a stain on a silk shirt.",createdAt:ts(69)},
+    {name:"Hannah Cole",phone:"+14155550188",message:"Asked if you do leather jacket repair.",createdAt:ts(300)},
+    {name:"Unknown caller",phone:"+14155550104",message:"Left a message about an invoice.",createdAt:ts(1500)}
+  ];
+  var tick = 0;
+  var script = [
+    ["caller","It's the wool coat I dropped off last week."],
+    ["agent","Found it. Your wool coat is ready for pickup, and the total is $38.50."],
+    ["caller","Great, what time do you close today?"],
+    ["agent","We close at 6pm today. See you soon!"]
+  ];
+  function advance(){
+    var c = calls[0]; if(c.status!=="active") return;
+    tick++;
+    if(tick%2===0 && script.length){
+      var l = script.shift();
+      c.transcript.push({role:l[0],text:l[1],ts:new Date().toISOString()});
+    }
+    if(!script.length && tick>10){ c.status="completed"; c.endedAt=new Date().toISOString(); c.durationSec=Math.round((Date.now()-new Date(c.startedAt))/1000); }
+  }
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+  function get(path){
+    advance();
+    var p = path.split("?")[0], out;
+    if(p==="/api/health") out = {status:"ok"};
+    else if(p==="/api/stats") out = {calls:calls.length,activeCalls:calls.filter(function(c){return c.status==="active";}).length,orders:orders.length,openOrders:orders.filter(function(o){return o.stage!=="Picked up";}).length,messages:messages.length};
+    else if(p==="/api/calls") out = calls;
+    else if(p.indexOf("/api/calls/")===0) out = calls.filter(function(c){return c.callSid===decodeURIComponent(p.slice(11));})[0];
+    else if(p==="/api/orders") out = orders;
+    else if(p==="/api/messages") out = messages;
+    return new Promise(function(res){ setTimeout(function(){res(clone(out));},40); });
+  }
+  return {get:get};
+})();
+
+/* ── rendering ────────────────────────────────────────────────────────── */
+function configured(){ return S.demo || !!S.api; }
+
+function renderStatus(){
+  var d=$("status-dot"), t=$("status-text");
+  d.className="dot";
+  if(S.demo){ d.classList.add("demo"); t.textContent="Demo data"; return; }
+  if(!S.api){ t.textContent="Not connected"; return; }
+  if(S.health===true){ d.classList.add("ok"); t.textContent="Connected"; }
+  else if(S.health===false){ d.classList.add("bad"); t.textContent="Unreachable"; }
+  else t.textContent="Connecting…";
+}
+
+function setupEmpty(extra){
+  return '<div class="empty"><h3>Connect to your '+esc(BRAND)+' backend</h3>'+
+    '<p>'+esc(extra||"Paste the ngrok URL of your laptop backend in Settings to see live calls, orders and messages.")+'</p>'+
+    '<button class="btn" type="button" data-open-settings>Open settings</button> '+
+    '<button class="btn ghost" type="button" data-demo>Try demo data</button></div>';
+}
+
+function renderBanner(){
+  var b=$("banner");
+  if(!configured() || S.health!==false){ b.classList.add("hidden"); return; }
+  b.classList.remove("hidden");
+  b.innerHTML='Cannot reach the backend at <code>'+esc(S.api)+'</code>. Check that the server and ngrok are running, and that the URL and token are correct. Retrying every 3 seconds.';
+}
+
+function renderStats(){
+  var st=S.stats||{};
+  var items=[["Calls","calls"],["Active calls","activeCalls","live"],["Orders","orders"],["Open orders","openOrders"],["Messages","messages"]];
+  var html=items.map(function(i){
+    var v=st[i[1]]; var cls=(i[2]==="live"&&v>0)?" live":"";
+    return '<div class="sc'+cls+'"><div class="sc-val">'+esc(v==null?"–":v)+'</div><div class="sc-lbl">'+i[0]+'</div></div>';
+  }).join("");
+  if(changed("stats",st)||!$("stats").innerHTML) $("stats").innerHTML=html;
+  var n=(S.stats&&S.stats.activeCalls)|0;
+  if(S.calls) n=S.calls.filter(function(c){return c.status==="active";}).length;
+  var lb=$("live-badge"); lb.textContent=n; lb.classList.toggle("hidden",!n);
+}
+
+function snippet(c){
+  var t=(c.transcript||[]); if(!t.length) return "";
+  return t[t.length-1].text||"";
+}
+
+function renderOverview(){
+  $("overview-empty").innerHTML = configured()?"":setupEmpty();
+  $("overview-recent").classList.toggle("hidden",!configured()||!S.calls);
+  if(!S.calls) return;
+  if(!changed("ov-recent",[S.calls.slice(0,5).map(function(c){return [c.callSid,c.status,(c.transcript||[]).length];})])) return;
+  var rows=S.calls.slice(0,5).map(function(c){
+    return '<tr><td class="td-name">'+esc(val(c.from,"Unknown caller"))+'</td><td class="nowrap td-mono">'+esc(fmtDT(c.startedAt))+'</td><td>'+callBadge(c)+'</td><td class="wrapcell">'+esc(snippet(c))+'</td></tr>';
+  }).join("");
+  $("overview-recent").innerHTML='<div class="tw-hdr"><div class="tw-title">Recent calls</div><div class="tw-meta">latest 5</div></div><div class="tscroll"><table><thead><tr><th>Caller</th><th>Started</th><th>Status</th><th>Last line</th></tr></thead><tbody>'+(rows||'<tr><td colspan="4" class="td-mono">No calls yet.</td></tr>')+'</tbody></table></div>';
+}
+
+function callBadge(c){ return c.status==="active"?'<span class="badge b-live">LIVE</span>':'<span class="badge b-mute">Completed</span>'; }
+
+function sortedCalls(){
+  return (S.calls||[]).slice().sort(function(a,b){ return (tms(b.startedAt)||0)-(tms(a.startedAt)||0); });
+}
+
+function renderCalls(){
+  var empty=$("calls-empty"), split=$("split");
+  if(!configured()){ empty.innerHTML=setupEmpty(); split.classList.add("hidden"); return; }
+  empty.innerHTML=""; split.classList.remove("hidden");
+  var calls=sortedCalls();
+  split.classList.toggle("has-sel",!!S.sel);
+  if(S.calls && changed("call-list",[calls.map(function(c){return [c.callSid,c.from,c.status,c.durationSec,(c.transcript||[]).length,snippet(c)];}),S.sel])){
+    var list=$("call-list"), keep=list.scrollTop;
+    list.innerHTML = calls.length ? calls.map(function(c){
+      var n=(c.transcript||[]).length, tc=(c.toolCalls||[]).length;
+      return '<button type="button" class="call-item'+(c.callSid===S.sel?" sel":"")+'" data-sid="'+esc(c.callSid)+'">'+
+        '<div class="ci-top"><span class="ci-from">'+esc(val(c.from,"Unknown caller"))+'</span>'+callBadge(c)+'</div>'+
+        '<div class="ci-meta"><span>'+esc(fmtDT(c.startedAt))+'</span>'+(c.durationSec!=null?'<span>'+fmtDur(c.durationSec)+'</span>':'')+'<span>'+n+' lines</span>'+(tc?'<span>'+tc+' tools</span>':'')+'</div>'+
+        (snippet(c)?'<div class="ci-snip">'+esc(snippet(c))+'</div>':'')+'</button>';
+    }).join("") : '<div class="dt-empty">No calls yet. They will show up here as they happen.</div>';
+    list.scrollTop=keep;
+  }
+  renderDetail();
+}
+
+function renderDetail(){
+  var el=$("detail");
+  var c=S.sel && (S.calls||[]).filter(function(x){return x.callSid===S.sel;})[0];
+  if(!c){
+    if(changed("detail","none")||!el.innerHTML) el.innerHTML='<div class="dt-empty">Select a call to see the transcript and tool activity.</div>';
+    return;
+  }
+  if(!changed("detail",c)) return;  // unchanged: leave DOM, scroll and open chips alone
+  var body=el.querySelector(".dt-body"), prev=null;
+  var sameCall=el.getAttribute("data-sid")===c.callSid && body;
+  var openSet={}, stick=true, top=0;
+  if(sameCall){
+    top=body.scrollTop; stick=body.scrollHeight-body.scrollTop-body.clientHeight<60;
+    body.querySelectorAll("details.evt").forEach(function(d){ if(d.open) openSet[d.getAttribute("data-k")]=1; });
+  }
+  var events=[];
+  (c.transcript||[]).forEach(function(m,i){ events.push({t:tms(m.ts)||0,i:i,k:0,m:m}); });
+  (c.toolCalls||[]).forEach(function(tc,i){ events.push({t:tms(tc.ts)||0,i:i,k:1,tc:tc}); });
+  events.sort(function(a,b){ return (a.t-b.t)||(a.k-b.k)||(a.i-b.i); });
+  var items=events.map(function(e){
+    if(e.m){
+      var who=e.m.role==="agent"?"agent":"caller";
+      return '<div class="msg '+who+'"><div class="bubble">'+esc(e.m.text)+'</div><div class="msg-meta">'+(who==="agent"?BRAND+" agent":"Caller")+(e.m.ts?" · "+esc(fmtTime(e.m.ts)):"")+'</div></div>';
+    }
+    var tc=e.tc, k="t"+e.i+tc.name;
+    return '<details class="evt" data-k="'+esc(k)+'"'+(openSet[k]?" open":"")+'><summary><span class="en">&#9881; '+esc(val(tc.name,"tool"))+'</span><span class="et">'+esc(fmtTime(tc.ts))+'</span></summary><div class="eb">'+
+      '<div class="el">Arguments</div><pre>'+esc(pj(tc.args)||"—")+'</pre><div class="el">Result</div><pre>'+esc(pj(tc.result)||"—")+'</pre></div></details>';
+  }).join("");
+  el.setAttribute("data-sid",c.callSid);
+  el.innerHTML='<div class="dt-hdr"><button class="icon-btn back" type="button" data-back>&larr; Calls</button><div><div class="dt-title">'+esc(val(c.from,"Unknown caller"))+'</div><div class="dt-sub">'+esc(c.callSid)+' · '+esc(fmtDT(c.startedAt))+(c.durationSec!=null?' · '+fmtDur(c.durationSec):'')+'</div></div><div style="margin-left:auto">'+callBadge(c)+'</div></div>'+
+    '<div class="dt-body">'+(items||'<div class="dt-empty">No transcript yet.</div>')+'</div>';
+  var nb=el.querySelector(".dt-body");
+  nb.scrollTop = sameCall ? (stick?nb.scrollHeight:top) : nb.scrollHeight;
+}
+
+function renderOrders(){
+  var w=$("orders-wrap");
+  if(!configured()){ w.innerHTML=setupEmpty(); S.sig.orders=null; return; }
+  if(!S.orders) return;
+  if(!changed("orders",S.orders)&&w.innerHTML) return;
+  var rows=S.orders.map(function(o){
+    var type=String(val(o.orderType,"")).toLowerCase();
+    return '<tr><td class="td-mono nowrap">'+esc(val(o.orderId))+'</td><td class="td-name nowrap">'+esc(val(o.customerName))+'<div class="td-mono">'+esc(val(o.phone,""))+'</div></td>'+
+      '<td class="wrapcell">'+esc(val(o.garment))+(o.notes?'<div class="td-mono">'+esc(o.notes)+'</div>':'')+'</td><td>'+stageBadge(o.stage)+'</td>'+
+      '<td>'+(type?'<span class="badge '+(type==="express"?"b-solid":"b-line")+'">'+esc(type)+'</span>':'—')+'</td>'+
+      '<td class="nowrap">'+esc(money(o.price))+'</td><td>'+(o.payment?'<span class="badge '+(String(o.payment).toLowerCase()==="paid"?"b-mute":"b-line")+'">'+esc(o.payment)+'</span>':'—')+'</td>'+
+      '<td class="td-mono nowrap">'+esc(val(o.expectedDate))+'</td></tr>';
+  }).join("");
+  w.innerHTML='<div class="table-wrap"><div class="tw-hdr"><div class="tw-title">Orders</div><div class="tw-meta">'+S.orders.length+' total</div></div><div class="tscroll"><table><thead><tr><th>Order</th><th>Customer</th><th>Garment</th><th>Stage</th><th>Type</th><th>Price</th><th>Payment</th><th>Expected</th></tr></thead><tbody>'+
+    (rows||'<tr><td colspan="8" class="td-mono">No orders yet.</td></tr>')+'</tbody></table></div></div>';
+}
+
+function renderMessages(){
+  var w=$("messages-wrap");
+  if(!configured()){ w.innerHTML=setupEmpty(); S.sig.messages=null; return; }
+  if(!S.messages) return;
+  if(!changed("messages",S.messages)&&w.innerHTML) return;
+  var rows=S.messages.map(function(m){
+    return '<tr><td class="td-name nowrap">'+esc(val(m.name))+'</td><td class="td-mono nowrap">'+esc(val(m.phone))+'</td><td class="wrapcell">'+esc(val(m.message))+'</td><td class="td-mono nowrap">'+esc(fmtDT(m.createdAt))+'</td></tr>';
+  }).join("");
+  w.innerHTML='<div class="table-wrap"><div class="tw-hdr"><div class="tw-title">Messages</div><div class="tw-meta">'+S.messages.length+' total</div></div><div class="tscroll"><table><thead><tr><th>Name</th><th>Phone</th><th>Message</th><th>Received</th></tr></thead><tbody>'+
+    (rows||'<tr><td colspan="4" class="td-mono">No messages yet.</td></tr>')+'</tbody></table></div></div>';
+}
+
+function renderAll(){
+  renderStatus(); renderBanner(); renderStats(); renderOverview(); renderCalls(); renderOrders(); renderMessages();
+}
+
+/* ── polling ──────────────────────────────────────────────────────────── */
+var busy=false, timer=null;
+function arr(x){ return Array.isArray(x)?x:[]; }
+function refresh(){
+  if(busy) return Promise.resolve();
+  if(!configured()){ renderAll(); return Promise.resolve(); }
+  busy=true;
+  return api("/api/health").then(function(h){
+    S.health = !!(h && h.status==="ok") || S.demo;
+    if(!S.health) throw new Error("bad health");
+    return Promise.all([
+      api("/api/stats").catch(function(){return S.stats;}),
+      api("/api/calls?limit=50").catch(function(){return S.calls;}),
+      api("/api/orders").catch(function(){return S.orders;}),
+      api("/api/messages").catch(function(){return S.messages;})
+    ]);
+  }).then(function(r){
+    S.stats=r[0]; S.calls=r[1]?arr(r[1]):S.calls; S.orders=r[2]?arr(r[2]):S.orders; S.messages=r[3]?arr(r[3]):S.messages;
+  }).catch(function(){ S.health=false; }).then(function(){ busy=false; renderAll(); });
+}
+function schedule(){
+  clearInterval(timer);
+  timer=setInterval(function(){ if(!document.hidden) refresh(); },POLL_MS);
+}
+document.addEventListener("visibilitychange",function(){ if(!document.hidden) refresh(); });
+
+/* ── UI wiring ────────────────────────────────────────────────────────── */
+function setTab(t){
+  S.tab=t;
+  document.querySelectorAll(".tab").forEach(function(b){ var on=b.getAttribute("data-tab")===t; b.classList.toggle("active",on); b.setAttribute("aria-selected",on); });
+  document.querySelectorAll(".panel").forEach(function(p){ p.classList.toggle("active",p.id==="panel-"+t); });
+  if(t==="calls") renderCalls();
+}
+$("tabs").addEventListener("click",function(e){ var b=e.target.closest(".tab"); if(b) setTab(b.getAttribute("data-tab")); });
+
+function openSettings(){
+  $("in-api").value=S.api; $("in-token").value=S.token; $("in-demo").checked=S.demo; $("test-res").textContent="";
+  $("settings-ov").classList.remove("hidden"); $("in-api").focus();
+}
+function closeSettings(){ $("settings-ov").classList.add("hidden"); }
+function resetData(){ S.health=null; S.stats=S.calls=S.orders=S.messages=null; S.sel=null; S.sig={}; ["call-list","detail","orders-wrap","messages-wrap","overview-recent","stats"].forEach(function(i){$(i).innerHTML="";}); }
+function applySettings(){
+  S.api=$("in-api").value.trim().replace(/\/+$/,""); S.token=$("in-token").value.trim(); S.demo=$("in-demo").checked;
+  sset("hanger_api",S.api); sset("hanger_token",S.token); sset("hanger_demo",S.demo?"1":"0");
+  if(!S.demo) sset("hanger_demo","");
+  resetData(); closeSettings(); renderAll(); refresh();
+}
+$("btn-settings").addEventListener("click",openSettings);
+$("settings-close").addEventListener("click",closeSettings);
+$("settings-ov").addEventListener("click",function(e){ if(e.target===this) closeSettings(); });
+document.addEventListener("keydown",function(e){ if(e.key==="Escape") closeSettings(); });
+$("btn-save").addEventListener("click",applySettings);
+$("btn-test").addEventListener("click",function(){
+  var base=$("in-api").value.trim().replace(/\/+$/,""), tok=$("in-token").value.trim(), out=$("test-res");
+  if(!base){ out.textContent="Enter an API base URL first."; return; }
+  out.textContent="Testing…";
+  var h={"ngrok-skip-browser-warning":"1"}; if(tok) h["x-dashboard-token"]=tok;
+  fetch(base+"/api/health",{headers:h}).then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+    .then(function(j){ out.textContent = j&&j.status==="ok" ? "Connected: backend is healthy." : "Reached the server but health check failed."; })
+    .catch(function(e){ out.textContent="Unreachable: "+(e.message||"network error"); });
+});
+
+document.addEventListener("click",function(e){
+  var t=e.target;
+  if(t.closest("[data-open-settings]")){ openSettings(); return; }
+  if(t.closest("[data-demo]")){ S.demo=true; sset("hanger_demo","1"); resetData(); renderAll(); refresh(); return; }
+  if(t.closest("[data-back]")){ S.sel=null; S.sig["call-list"]=null; S.sig.detail=null; $("detail").removeAttribute("data-sid"); renderCalls(); return; }
+  var ci=t.closest(".call-item");
+  if(ci){ S.sel=ci.getAttribute("data-sid"); S.sig.detail=null; S.sig["call-list"]=null; renderCalls(); if(window.matchMedia("(max-width:760px)").matches) window.scrollTo(0,0); }
+});
+
+renderAll();
+refresh();
+schedule();
+})();
+</script>
+</body>
+</html>
