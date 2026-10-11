@@ -73,6 +73,26 @@ OPTIONS). `ALLOWED_ORIGINS` (comma-separated, default `*`) controls CORS. When t
 behind a free ngrok URL, browser fetches must send `ngrok-skip-browser-warning: 1` or ngrok
 returns an HTML interstitial; the CORS config allows this header.
 
+## Dashboard UI (`web/`)
+
+Static, no build. Views: Line (live call as it happens), Calls, Learning (teacher grades and edits),
+Knowledge (company config with history, diff and rollback), Orders, Messages. With no backend URL set
+it opens in demo mode: a scripted live call plus calls, grades and edits shaped like the real API.
+`?demo=1` forces demo mode; `?api=https://…` sets the backend URL.
+
+### Teacher endpoints the Learning view expects (not built yet)
+
+Until these exist the Learning view shows a "teacher isn't connected" state (a 404 is treated as not built).
+
+- `GET /api/grades` -> `[{callSid, configVersion, outcome, score, frustration, dims, summary, createdAt}]`
+  - `outcome`: `answered | message_taken | booked | escalated | failed` (the first three count as resolved)
+  - `score`: 0-100 quality; `frustration`: 0-1; `dims`: `{accuracy, tools, completion, tone, brevity}`, each 1-5
+- `GET /api/improvements` -> `[{id, type, status, title, rationale, change, evidence, fromVersion, toVersion, createdAt}]`
+  - `type`: `context | prompt | data | tool | schema`; `status`: `proposed | applied | approved | dismissed | rolled_back`
+  - `evidence`: `[{callSid, quote}]`; `fromVersion`/`toVersion`: the config versions before and after an applied change
+- `POST /api/improvements/:id` `{action}` with `approve | dismiss | rolled_back`. Undo first calls
+  `POST /api/config/activate` with `fromVersion`, then reports `rolled_back` here.
+
 ## Deployment note
 
 Twilio Media Streams needs a long-lived WebSocket (`/media-stream`). Vercel serverless
