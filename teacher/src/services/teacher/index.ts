@@ -2,7 +2,9 @@ import { fromConfig, renderContext, toCall, versionOf } from "../mongo/bridge.js
 import { cols, getActiveConfig, getConfig } from "../mongo/client.js";
 import type { BridgeCall, ConfigVersionDoc, GradeDoc, ImprovementDoc, ToolProposal, ToolProposalDoc } from "../mongo/types.js";
 import { geminiJudge, teacherModel, type Judge } from "./judge.js";
-import { buildPlan, decideToolStatus, LIMITS, mergeToolProposal, regression, type ToolDecision } from "./plan.js";
+import {
+  buildPlan, decideToolStatus, describeRecipe, LIMITS, mergeToolProposal, ownerAnswerLine, regression, verifyToolRecipe, type ToolDecision,
+} from "./plan.js";
 
 export interface TeachResult {
   grade: GradeDoc;
@@ -56,7 +58,12 @@ export async function teach(callId: string, judge: Judge = geminiJudge): Promise
   const cfg = await getActiveConfig();
   const out = await judge(call, cfg);
   const now = new Date();
-  const { grade } = buildPlan(out, call, cfg, teacherModel(), now);
+  // Owner questions already open or answered (a repeat is rejected), and the async self-check of a proposed recipe.
+  const existingQuestions = (await c.improvements.find({ type: "context", status: { $in: ["proposed", "applied"] } }).toArray())
+    .map((i) => i.payload.question ?? "").filter(Boolean);
+  const recipeCheck = out.tool_proposal ? await verifyToolRecipe(out.tool_proposal) : undefined;
+  const extra = { existingQuestions, recipeCheck };
+  const { grade } = buildPlan(out, call, cfg, teacherModel(), now, undefined, extra);
   await c.grades.insertOne(grade);
 
   // If the active version has regressed, go back to its parent first and build this call's
@@ -65,7 +72,7 @@ export async function teach(callId: string, judge: Judge = geminiJudge): Promise
   const base = rolledBack?.parent ?? cfg;
 
   const plan = await insertVersion(
-    (version) => buildPlan(out, call, base, teacherModel(), now, version), (p) => p.nextConfig);
+    (version) => buildPlan(out, call, base, teacherModel(), now, version, extra), (p) => p.nextConfig);
   const toolProposal = plan.toolProposal ? await saveToolProposal(plan.toolProposal, grade.overall, plan.improvements) : null;
   if (plan.improvements.length) await c.improvements.insertMany(plan.improvements);
   if (plan.nextConfig) await setActive(plan.nextConfig.version);
@@ -167,7 +174,7 @@ export async function answerOwnerQuestion(improvementId: string, answer: string)
   const question = imp.payload.question ?? "";
   const next = await insertVersion<ConfigVersionDoc>((version) => ({
     ...cfg, _id: `v${version}`, version,
-    context: `${cfg.context}\n${question} ${answer.trim()}`.trim(),
+    context: `${cfg.context}\n${ownerAnswerLine(question, answer)}`.trim(),
     parent_id: cfg._id, created_by: "manager", source_call_id: imp.source_call_ids[0] ?? null,
     note: `Owner answered: ${question}`.slice(0, 300), created_at: new Date(),
   }), (n) => n);
@@ -239,6 +246,8 @@ export function printResult(r: TeachResult) {
       ? (t.promoted ? `TOOL CREATED (auto-enabled, grade ${g.overall} < ${t.threshold})` : "TOOL REQUESTED AGAIN (already enabled)")
       : `TOOL PROPOSED (waiting for owner, grade ${g.overall})`;
     console.log(`  ${head}: ${p.name} [${p.write ? "write" : "read"}] ${p.description}`);
+    console.log(`    recipe: ${p.recipe ? `yes, verified: ${p.recipeVerified ? "yes" : "no"}` : "no (plain save/look-up tool)"}`);
+    if (p.recipe) for (const line of describeRecipe(p.recipe)) console.log(`      - ${line}`);
     console.log(`    params: ${p.params.map((q) => `${q.name}:${q.type}${q.required ? "*" : ""}`).join(", ") || "(none)"}`);
     for (const d of p.mockup.sampleDialogue) console.log(`    ${d.role.padEnd(6)} ${d.text}`);
     console.log(`    example args ${JSON.stringify(p.mockup.exampleArgs)} -> ${JSON.stringify(p.mockup.exampleResult)}`);

@@ -59,6 +59,8 @@ const OPS: Record<string, number | "n"> = {
 };
 
 const SNAKE = /^[a-z][a-z0-9_]{0,39}$/;
+// Arguments passed to built-in tools use the built-ins' own names, which can be camelCase (orderId)
+const ARG_NAME = /^[a-z][A-Za-z0-9_]{0,39}$/;
 
 function isRef(e: Expr): e is { ref: string } {
   return typeof e === "object" && e !== null && "ref" in e;
@@ -104,6 +106,7 @@ export function validateRecipe(recipe: unknown, paramNames: string[], write: boo
   let lookups = 0;
   let calls = 0;
   let writeCalls = 0;
+  let confirmedGate = false; // set once a `require` step checks the caller's `confirmed` answer
   for (const s of r.steps) {
     if (!s || typeof s !== "object") return "invalid step";
     switch (s.do) {
@@ -118,6 +121,7 @@ export function validateRecipe(recipe: unknown, paramNames: string[], write: boo
         const err = checkExpr(s.when, known, 0, count);
         if (err) return `require: ${err}`;
         if (typeof s.else !== "string" || !s.else.trim() || s.else.length > 200) return "require needs a short message";
+        if (JSON.stringify(s.when).includes('"ref":"confirmed"')) confirmedGate = true;
         break;
       }
       case "save": {
@@ -150,11 +154,15 @@ export function validateRecipe(recipe: unknown, paramNames: string[], write: boo
         if (++calls > 3) return "at most 3 call steps";
         if (WRITE_CALLS.includes(s.tool) && ++writeCalls > 2) return "at most 2 call steps may change data";
         if (WRITE_CALLS.includes(s.tool) && !write) return `a read tool cannot call ${s.tool}`;
+        // Steps are not atomic, so nothing that changes data may run before the caller has confirmed
+        if (WRITE_CALLS.includes(s.tool) && !confirmedGate) {
+          return `put a require step on "confirmed" before ${s.tool}, so nothing changes until the caller says yes`;
+        }
         if (!SNAKE.test(s.as ?? "")) return "call needs a snake_case name";
         const keys = Object.keys(s.args ?? {});
         if (keys.length > 8) return "call takes at most 8 arguments";
         for (const k of keys) {
-          if (!SNAKE.test(k)) return `invalid argument name "${k}"`;
+          if (!ARG_NAME.test(k)) return `invalid argument name "${k}"`;
           const err = checkExpr(s.args[k], known, 0, count);
           if (err) return `call ${s.tool} ${k}: ${err}`;
         }

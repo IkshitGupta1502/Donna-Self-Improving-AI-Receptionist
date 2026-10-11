@@ -77,4 +77,22 @@ export const demoCalls: BridgeCall[] = [
     name: "take_message", args: { name: "Dana", phone: "415-555-0134", message: "Delivery Thursday: gate code 4471, leave the bag with the doorman" },
     result: { saved: true, message: { name: "Dana", phone: "+14155550134", message: "Delivery Thursday: gate code 4471, leave the bag with the doorman" } },
   }]),
+  // 5. Dry cleaner: the caller wants to rush an order AND book a pickup in one go. The agent cannot do both in one step,
+  //    asks for the phone number twice (frustration) and does not know the price of a hem. Should give an owner question
+  //    about hemming prices and a tool proposal with a recipe (rush + pickup booking).
+  call("fake_call_5", [
+    ["caller", "Hi, it's Marcus. I need to rush order ORD-0042 and also book a pickup for it."],
+    ["agent", "Hi Marcus. Sure, can I get your phone number first?"],
+    ["caller", "It's 415-555-0188. Can you rush the order and book the pickup for when it's ready?"],
+    ["agent", "I can look at the order, but I can only do one thing at a time. What is your phone number?"],
+    ["caller", "I just gave it to you, 415-555-0188. Why do I have to repeat myself?"],
+    ["agent", "I'm sorry about that. I can mark the order as rush, but I can't book the pickup in the same step."],
+    ["caller", "Fine. Also, how much to hem a pair of pants?"],
+    ["agent", "I don't have the price for hemming on file. I can take a message for the team."],
+    ["caller", "Yes, please. Tell them to rush ORD-0042, pick it up when ready, and call me with the hem price."],
+    ["agent", "Done. I've left a message for the team about the rush, the pickup and the hem price."],
+  ], [{
+    name: "take_message", args: { name: "Marcus", phone: "415-555-0188", message: "Rush ORD-0042, book pickup when ready, call with the price to hem pants" },
+    result: { saved: true, message: { name: "Marcus", phone: "+14155550188", message: "Rush ORD-0042, book pickup when ready, call with the price to hem pants" } },
+  }]),
 ];

@@ -3,6 +3,8 @@
 //     src/services/data/store.ts). Do not change them here without telling the partner.
 //  2. Everything else = the teacher's own view. src/services/mongo/bridge.ts converts between the two.
 
+import type { Recipe } from "../teacher/recipe.js";
+
 /** `calls` collection, written by the bridge's CallRecorder. Keyed by callSid. */
 export interface BridgeCall {
   callSid: string;
@@ -140,6 +142,8 @@ export interface ToolProposal {
     exampleArgs: Record<string, unknown>;
     exampleResult: Record<string, unknown>;
   };
+  recipe?: Recipe; // optional: how the tool really behaves (shared safe recipe language, see teacher/recipe.ts)
+  recipeVerified?: boolean; // true when the teacher ran the recipe on exampleArgs against a mock io and it passed
   status: "proposed" | "enabled" | "disabled" | "declined";
   requestCount: number;
   sourceCallSids: string[];

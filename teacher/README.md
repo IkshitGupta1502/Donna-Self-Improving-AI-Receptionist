@@ -54,3 +54,16 @@ Tools are declarative: the bridge saves the args as a record (write) or lists th
 - Auto-enable (default ON): if `TEACHER_AUTO_ENABLE_TOOLS` is not `0` and the call's overall grade is below `TOOL_GRADE_THRESHOLD` (default `7`), the tool is stored as `enabled` with `enabledAt` and `enabledBy: "teacher"`
   (a still-`proposed` tool is promoted the same way). Otherwise it is `proposed` and the owner enables it from the dashboard. The `improvements.reason` says which happened.
 - `npm run tools` lists proposals (name, status, requestCount, why). `npm run demo` includes a dry cleaner call (`fake_call_4`) that should produce a proposal (needs `GEMINI_API_KEY`).
+
+## Tool recipes (tools that really do something)
+A `tool_proposal` may carry a `recipe`: JSON in the safe recipe language (`src/services/teacher/recipe.ts`: expressions, `compute` / `require` / `save` / `lookup` / `call` steps, a `response` map; no code is run).
+Use it for calculations (price quote with a rush fee), rules and limits (damage claim up to a limit) and the calendar/rush features (`call` the built-ins `get_order`, `lookup_price`, `quote_turnaround`, `schedule_appointment`, `set_order_type`, `create_order`).
+`plan.ts` checks it in code: `validateRecipe`, then every data-changing call (`schedule_appointment`, `set_order_type`, `create_order`) needs a boolean param `confirmed` passed through (`{"ref":"confirmed"}`) in its args,
+then a self-check (`selfCheckRecipe`) runs the recipe on the proposal's own `exampleArgs` against a mock io and must succeed. A passing proposal is stored with `recipe` and `recipeVerified: true`; a failing one is rejected with the reason.
+`printResult` lists whether a recipe exists, `recipeVerified`, and one plain-English line per step (`describeRecipe`).
+`recipe.ts` is a synced copy of `../src/services/tools/recipe.ts` (shared with the bridge): never edit one copy alone.
+
+## Owner questions
+When the receptionist lacked business knowledge (pricing, hours/scheduling, delivery area, policies), the judge asks the owner at most 2 short questions per call (`context` improvements, status `proposed`).
+`plan.ts` enforces max 2 per call, under 160 characters, and rejects a question that repeats one already open or answered (same text after normalisation, or word overlap above 0.8; `buildPlan` takes the existing questions as `extra.existingQuestions`).
+The owner's answer is appended to the company text as `Owner answer: <question> <answer>` by `answerOwnerQuestion`.

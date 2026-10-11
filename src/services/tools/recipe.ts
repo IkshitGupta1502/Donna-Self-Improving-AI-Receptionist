@@ -59,6 +59,8 @@ const OPS: Record<string, number | "n"> = {
 };
 
 const SNAKE = /^[a-z][a-z0-9_]{0,39}$/;
+// Arguments passed to built-in tools use the built-ins' own names, which can be camelCase (orderId)
+const ARG_NAME = /^[a-z][A-Za-z0-9_]{0,39}$/;
 
 function isRef(e: Expr): e is { ref: string } {
   return typeof e === "object" && e !== null && "ref" in e;
@@ -160,7 +162,7 @@ export function validateRecipe(recipe: unknown, paramNames: string[], write: boo
         const keys = Object.keys(s.args ?? {});
         if (keys.length > 8) return "call takes at most 8 arguments";
         for (const k of keys) {
-          if (!SNAKE.test(k)) return `invalid argument name "${k}"`;
+          if (!ARG_NAME.test(k)) return `invalid argument name "${k}"`;
           const err = checkExpr(s.args[k], known, 0, count);
           if (err) return `call ${s.tool} ${k}: ${err}`;
         }
