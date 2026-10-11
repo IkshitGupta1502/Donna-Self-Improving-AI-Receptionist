@@ -320,6 +320,21 @@ button.cu-item:hover{background:var(--hover)}
 .im-rs.bad{color:var(--bad)}
 .im-ans{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--bg);border:1px solid var(--border);padding:7px 10px;font-size:.8rem}
 .im-ans code{overflow-wrap:anywhere;min-width:0;flex:1 1 220px}
+.im-form{display:flex;flex-direction:column;gap:8px;background:var(--bg);border:1px solid var(--border);padding:10px 12px}
+.im-form label{font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.im-form textarea.fi{min-height:84px;width:100%}
+.im-form-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.im-form-bar .cnt{margin-left:auto;font-family:var(--fm);font-size:.72rem;color:var(--muted)}
+.im-form-bar .cnt.over{color:var(--bad)}
+.im-form .err{color:var(--bad);font-size:.8rem;overflow-wrap:anywhere}
+.im-answer{border-left:3px solid var(--good);padding:2px 0 2px 12px}
+.imt-tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tag{font-size:.68rem;font-family:var(--fm);border:1px solid var(--border);color:var(--muted);padding:1px 7px;border-radius:999px;white-space:nowrap}
+.rc-list{margin:0;padding-left:1.6em;display:flex;flex-direction:column;gap:7px;font-size:.86rem;line-height:1.5}
+.rc-list li{overflow-wrap:anywhere;padding-left:2px}
+.rc-list li.rc-end{list-style:none;margin-left:-1.6em;padding-left:0;color:var(--muted);border-top:1px solid var(--border);padding-top:7px}
+.rc-list code{font-size:.8rem}
+.rc-wr{font-size:.66rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--warn);border:1px solid var(--warn);padding:0 5px;margin-left:6px;white-space:nowrap}
 .im-lk{background:none;border:0;border-bottom:1px dotted var(--muted);cursor:pointer;font-family:var(--fm);font-size:.74rem;padding:0;color:var(--ink)}
 .im-lk:hover{border-bottom-style:solid}
 .gr tbody tr.gr-row{cursor:pointer}
@@ -727,7 +742,9 @@ var Demo = (function(){
     return {_id:"g"+(i+1),call_id:gSid[i],config_version_id:i<5?"v1":i<10?"v2":"v3",outcome:gOut[i],scores:sc,overall:gOv[i],frustration:gFr[i],rationale:gRat[i],issues:gIss[i],model:"claude-sonnet-5-5",created_at:ts(m)};
   });
   var improvements = [
-    {_id:"imp6",source_call_ids:[gSid[6]],type:"context",status:"proposed",payload:{question:"Callers keep asking to leave pickup or delivery notes (gate codes, where to leave items). Should the receptionist accept and pass these on, and is there anything it must never write down?"},evidence_turns:[3,4],reason:"Two callers tried to leave access instructions and the agent had nowhere to put them.",created_at:ts(35)},
+    {_id:"imp8",source_call_ids:[gSid[8]],type:"context",status:"proposed",payload:{question:"Do you offer same-day pickup on Saturdays?"},evidence_turns:[2],reason:"A caller wanted a Saturday pickup the same day and the agent could not say if that is possible.",created_at:ts(12)},
+    {_id:"imp7",source_call_ids:[gSid[10]],type:"context",status:"proposed",payload:{question:"What do you charge to hem pants?"},evidence_turns:[3],reason:"A caller asked about alterations pricing and the context has no hemming price.",created_at:ts(22)},
+    {_id:"imp6",source_call_ids:[gSid[6]],type:"context",status:"applied",payload:{question:"Callers keep asking to leave pickup or delivery notes (gate codes, where to leave items). Should the receptionist accept and pass these on, and is there anything it must never write down?",answer:"Yes, accept them and pass them on. Never write down payment card numbers."},evidence_turns:[3,4],reason:"Two callers tried to leave access instructions and the agent had nowhere to put them.",applied_in_config_id:"v3",created_at:ts(35)},
     {_id:"imp5",source_call_ids:[gSid[10]],type:"context",status:"applied",payload:{question:"What time do you close today?",answer:"Answer with today's closing time from the posted hours."},evidence_turns:[2],reason:"Callers ask for closing time and the agent hesitated.",applied_in_config_id:"v3",created_at:ts(40)},
     {_id:"imp4",source_call_ids:[gSid[2]],type:"prompt",status:"rejected",payload:{op:"add",rule_id:"refund-policy",rule_kind:"policy",text:"Promise a full refund when a customer is unhappy with any cleaning."},evidence_turns:[6],reason:"Caller was upset about a stain and the agent had no guidance.",rejected_reason:"Guardrail: the rule commits the business to refunds the owner never authorized.",created_at:ts(1300)},
     {_id:"imp3",source_call_ids:[gSid[3],gSid[4]],type:"prompt",status:"rolled_back",payload:{op:"add",rule_id:"always-upsell",rule_kind:"style",text:"After every answer, offer express service for an extra fee."},evidence_turns:[3,4],reason:"Try to raise revenue per call.",applied_in_config_id:"v2",rolled_back_reason:"Frustration rose 1.1 points over the next two calls; reverted in v3.",created_at:ts(1350)},
@@ -737,6 +754,10 @@ var Demo = (function(){
   var tools = [
     {name:"record_delivery_instructions",description:"Save delivery or pickup instructions (gate codes, where to leave items) for a customer's order.",
       params:[{name:"gate_code",type:"string",description:"Gate or door code the driver needs",required:false},{name:"instructions",type:"string",description:"Where to leave the items or how to reach the caller",required:true},{name:"order_id",type:"string",description:"Order the note belongs to, if the caller gave one",required:false}],
+      recipeVerified:true,recipe:{steps:[
+        {do:"require",when:{ref:"instructions"},else:"Ask where the driver should leave the items first."},
+        {do:"save",fields:{gate_code:{ref:"gate_code"},instructions:{ref:"instructions"},order_id:{ref:"order_id"}}}],
+        response:{saved:true,instructions:{ref:"instructions"}}},
       write:true,why:"Two callers tried to leave a gate code or drop-off spot for their pickup and the receptionist could only take a general message that nobody would see in time.",
       mockup:{sampleDialogue:[
         {role:"caller",text:"I'm having my coat picked up tomorrow. The gate code is 4471, and please leave it with the doorman."},
@@ -750,6 +771,11 @@ var Demo = (function(){
       evidence:[{turn:4,quote:"Can you write down the gate code, it's 4471?"},{turn:3,quote:"Please note I'll leave the key under the mat."}],createdAt:ts(120),updatedAt:ts(120)},
     {name:"file_damage_claim",description:"Open a damage claim for a garment, with a description, and notify the owner.",
       params:[{name:"item",type:"string",description:"Garment that was damaged",required:true},{name:"description",type:"string",description:"What happened, in the caller's words",required:true},{name:"order_id",type:"string",description:"Order number if known",required:false}],
+      recipeVerified:true,recipe:{steps:[
+        {do:"compute",as:"filed_on",expr:{op:"today",args:[]}},
+        {do:"compute",as:"follow_up",expr:{op:"addDays",args:[{ref:"filed_on"},2]}},
+        {do:"save",fields:{item:{ref:"item"},description:{ref:"description"},order_id:{ref:"order_id"},filed_on:{ref:"filed_on"}}}],
+        response:{ok:true,filed_on:{ref:"filed_on"},owner_calls_by:{ref:"follow_up"}}},
       write:true,why:"The call scored 4.8 because a caller reporting a torn button got an apology and no way to file a claim.",
       mockup:{sampleDialogue:[
         {role:"caller",text:"A button came off my wool coat after cleaning."},
@@ -757,7 +783,25 @@ var Demo = (function(){
         {role:"tool",text:"file_damage_claim(item: \"Wool coat\", description: \"Button torn off\")"},
         {role:"agent",text:"Done. The owner will call you back about it."}],
         exampleArgs:{item:"Wool coat",description:"Button torn off during cleaning",order_id:"ORD-1042"},exampleResult:{ok:true,claimId:"CLM-17"}},
-      status:"enabled",enabledBy:"teacher",requestCount:3,sourceCallSids:[gSid[0]],evidence:[{turn:5,quote:"The button came off after you cleaned it, what can you do?"}],createdAt:ts(1380),updatedAt:ts(1380),enabledAt:ts(1380)}
+      status:"enabled",enabledBy:"teacher",requestCount:3,sourceCallSids:[gSid[0]],evidence:[{turn:5,quote:"The button came off after you cleaned it, what can you do?"}],createdAt:ts(1380),updatedAt:ts(1380),enabledAt:ts(1380)},
+    {name:"rush_booking",description:"Upgrade an existing order to expedited service and book a pickup for it in one step.",
+      params:[{name:"order_id",type:"string",description:"Order to rush",required:true},{name:"window",type:"string",description:"Pickup time window, e.g. 4-6pm",required:true},{name:"address",type:"string",description:"Where the driver should collect the order",required:true},{name:"confirmed",type:"boolean",description:"True only after the caller agreed to the price and date",required:true}],
+      write:true,recipeVerified:true,
+      recipe:{steps:[
+        {do:"require",when:{ref:"confirmed"},else:"Read the price and ready date back and get a yes first."},
+        {do:"call",tool:"set_order_type",args:{order_id:{ref:"order_id"},speed:"Expedited"},as:"rush"},
+        {do:"call",tool:"schedule_appointment",args:{kind:"pickup",date:{op:"get",args:[{ref:"rush"},"expected_date"]},window:{ref:"window"},address:{ref:"address"},order_id:{ref:"order_id"},confirmed:true},as:"booking"}],
+        response:{upgraded:true,new_price:{op:"get",args:[{ref:"rush"},"price"]},appointment:{op:"get",args:[{ref:"booking"},"id"]}}},
+      why:"A caller wanted an order sped up and picked up the same week, and the receptionist could only take a message for two separate changes.",
+      mockup:{sampleDialogue:[
+        {role:"caller",text:"Can you rush my order ORD-1041? I need it by Friday, and someone has to pick it up from my office."},
+        {role:"agent",text:"Rushing it costs $52 instead of $42 and it would be ready Friday. Shall I do that?"},
+        {role:"caller",text:"Yes. Pickup between 4 and 6pm at 220 Mission Street."},
+        {role:"tool",text:"rush_booking(order_id: \"ORD-1041\", window: \"4-6pm\", address: \"220 Mission Street\", confirmed: true)"},
+        {role:"tool",text:"result: upgraded, new price 52, appointment apt_5521"},
+        {role:"agent",text:"Done. Your order is now expedited at $52 and a driver will pick it up between 4 and 6pm."}],
+        exampleArgs:{order_id:"ORD-1041",window:"4-6pm",address:"220 Mission Street",confirmed:true},exampleResult:{upgraded:true,new_price:52,appointment:"apt_5521"}},
+      status:"proposed",requestCount:1,sourceCallSids:[gSid[8]],evidence:[{turn:2,quote:"Is my suit ready yet?"}],createdAt:ts(30),updatedAt:ts(30)}
   ];
   var records = [
     {id:"rec_c1",tool:"file_damage_claim",phone:"+14155550142",callSid:gSid[8],fields:{item:"Wool coat",description:"Button torn off during cleaning",order_id:"ORD-1042"},createdAt:ts(600)},
@@ -800,6 +844,21 @@ var Demo = (function(){
           if(!f) return fail(404,"Unknown version");
           cfgActive = f.version;
           return res(clone(f));
+        }
+        var am=p.match(/^\/api\/improvements\/([^\/]+)\/answer$/);
+        if(method==="POST" && am){
+          var iid=decodeURIComponent(am[1]);
+          var im=improvements.filter(function(x){return x._id===iid;})[0];
+          if(!im) return fail(404,"Unknown improvement: "+iid);
+          if(im.type!=="context"||im.status!=="proposed") return fail(400,"This question is not open");
+          var an=typeof body.answer==="string"?body.answer.trim():"";
+          if(!an) return fail(400,"answer must not be empty");
+          if(an.length>600) return fail(400,"answer must be at most 600 characters");
+          var cur=cfgV.filter(function(x){return x.version===cfgActive;})[0]||cfgV[cfgV.length-1];
+          var nv={version:Math.max.apply(null,cfgV.map(function(x){return x.version;}))+1,companyName:cur.companyName,greeting:cur.greeting,context:cur.context+"\nOwner answer: "+(im.payload.question||"")+" "+an,author:"teacher",note:"Owner answered: "+String(im.payload.question||"").slice(0,120),createdAt:new Date().toISOString()};
+          cfgV.push(nv); cfgActive=nv.version;
+          im.status="applied"; im.payload.answer=an; im.applied_in_config_id="v"+nv.version;
+          return res({ok:true,version:nv.version,improvementId:iid});
         }
         if(method==="POST" && toolWrite(p,fail,res)) return;
         fail(404,"Not found");
@@ -1321,7 +1380,7 @@ window.addEventListener("beforeunload",function(e){
 
 /* ── Improvements (teacher: grades, changes, tool proposals) ─────────── */
 var IM = { grades:null, impr:null, tools:null, rec:{}, missing:{}, err:{}, loaded:false,
-  gen:0, busy:false, pending:{}, msg:{}, open:{}, gopen:{}, h:{}, asc:[], geo:null, toastT:null, cw:0 };
+  gen:0, busy:false, pending:{}, msg:{}, draft:{}, ans:{}, open:{}, gopen:{}, h:{}, asc:[], geo:null, toastT:null, cw:0 };
 var OUT_CLS = {answered:"b-good", message_taken:"b-warn", failed:"b-bad"};
 var OUT_LBL = {answered:"answered", message_taken:"message taken", failed:"failed"};
 var IM_ICON = {prompt:"Aa", context:"?", tool:"fx", schema:"{}"};
@@ -1364,6 +1423,31 @@ function imFetch(){
       pairs.forEach(function(p){ if(p[1]) IM.rec[p[0]]=p[1]; });
     });
   }).catch(function(){}).then(function(){ IM.busy=false; IM.loaded=true; imRender(); });
+}
+
+/* owner answers */
+var AN_MAX=600;
+function imAnswer(id){
+  var d=IM.draft[id]||"", a=d.trim(), st=IM.ans[id]||{};
+  if(st.sending || !a || d.length>AN_MAX) return;
+  IM.gen++; IM.ans[id]={sending:true}; imRender();
+  api("/api/improvements/"+encodeURIComponent(id)+"/answer",{method:"POST",body:{answer:a}}).then(function(r){
+    IM.gen++; delete IM.ans[id]; delete IM.draft[id];
+    var v=r&&r.version;
+    IM.impr=arr(IM.impr).map(function(x){
+      if(x._id!==id) return x;
+      var c=JSON.parse(JSON.stringify(x)); c.status="applied"; c.payload=c.payload||{}; c.payload.answer=a; if(v!=null) c.applied_in_config_id="v"+v; return c;
+    });
+    imToast("Added to what the receptionist knows"+(v!=null?" (v"+v+")":""),true);
+    imRender();
+    CO.gen++; CO.busy=false;                      // Company Context re-reads on its next poll
+    IM.busy=false; imFetch();
+  }).catch(function(e){
+    IM.gen++;
+    var unsup=e && e.status===404 && (!e.message || /^(HTTP 404|not found|cannot (post|get))/i.test(e.message));
+    IM.ans[id]=unsup?{unsupported:true}:{err:coErrText(e)};
+    imRender();
+  });
 }
 
 /* tool actions */
@@ -1479,6 +1563,62 @@ function toolBadge(s){
 }
 function imOpen(k,def){ return IM.open.hasOwnProperty(k)?IM.open[k]:def; }
 function jsonBlock(label,v){ return '<div><div class="fl">'+label+'</div><pre class="im-pre">'+esc(pj(v)||"—")+'</pre></div>'; }
+/* recipe -> plain English */
+var RC_WRITE={schedule_appointment:1,set_order_type:1,create_order:1};
+function xw(e,d){
+  d=d||0;
+  if(d>4) return pj(e).replace(/\s+/g," ");
+  if(e===null||e===undefined) return "nothing";
+  if(typeof e==="string") return '"'+e+'"';
+  if(typeof e==="number"||typeof e==="boolean") return String(e);
+  if(typeof e!=="object"||Array.isArray(e)) return JSON.stringify(e);
+  if(typeof e.ref==="string") return e.ref;
+  if(typeof e.op==="string"){
+    var a=arr(e.args), w=function(i){ return xw(a[i],d+1); }, op=e.op;
+    var bin={add:"plus",sub:"minus",mul:"times",div:"divided by",gt:"is more than",gte:"is at least",lt:"is less than",lte:"is at most",eq:"is",neq:"is not",and:"and",or:"or"};
+    if(bin[op] && a.length===2){ var inner=(a[0]&&a[0].op)||(a[1]&&a[1].op); var t=w(0)+" "+bin[op]+" "+w(1); return inner&&d>0?"("+t+")":t; }
+    if(op==="not" && a.length===1) return "not "+w(0);
+    if(op==="if" && a.length===3) return "if "+w(0)+" then "+w(1)+" otherwise "+w(2);
+    if(op==="get" && a.length===2) return (typeof a[1]==="string"?a[1]:w(1))+" from "+w(0);
+    if(op==="today") return "today's date";
+    if(op==="addDays" && a.length===2) return w(1)+" days after "+w(0);
+    if(op==="concat" && a.length) return a.map(function(x){ return xw(x,d+1); }).join(" joined with ");
+    if(op==="round" && a.length===1) return w(0)+" rounded";
+    if(op==="min"||op==="max") return "the "+(op==="min"?"smaller":"larger")+" of "+a.map(function(x){ return xw(x,d+1); }).join(" and ");
+    return op+"("+a.map(function(x){ return xw(x,d+1); }).join(", ")+")";
+  }
+  return JSON.stringify(e);
+}
+function rcKeys(o){ return o&&typeof o==="object"&&!Array.isArray(o)?Object.keys(o):[]; }
+function rcList(list){ return list.length?list.join(", "):"nothing"; }
+function recipeSteps(r){
+  var li=arr(r.steps).map(function(s){
+    s=s||{};
+    switch(s.do){
+      case "require": return "Stop unless "+esc(xw(s.when))+(s["else"]!=null?" (otherwise says: <em>"+esc(String(s["else"]))+"</em>)":"");
+      case "compute": return "Work out <code>"+esc(s.as)+"</code> = "+esc(xw(s.expr));
+      case "save": return "Save a record with "+esc(rcList(rcKeys(s.fields)));
+      case "lookup": return "Look up this caller's saved records"+(s.as?" as <code>"+esc(s.as)+"</code>":"");
+      case "call": return "Use the built-in <code>"+esc(s.tool)+"</code> with "+esc(rcList(rcKeys(s.args)))+(RC_WRITE[s.tool]?'<span class="rc-wr">changes data</span>':"")+(s.as?" (call the result <code>"+esc(s.as)+"</code>)":"");
+      default: return esc(JSON.stringify(s));
+    }
+  }).map(function(x){ return "<li>"+x+"</li>"; });
+  li.push('<li class="rc-end">Then reply with '+esc(rcList(rcKeys(r.response)))+'</li>');
+  return '<ol class="rc-list">'+li.join("")+'</ol>';
+}
+function recipeTags(t){
+  var r=t.recipe, tags={};
+  if(r&&typeof r==="object"){
+    arr(r.steps).forEach(function(s){
+      if(!s) return;
+      if(s.do==="save") tags.save=1;
+      else if(s.do==="lookup") tags.read=1;
+      else if(s.do==="call"){ if(s.tool==="schedule_appointment") tags.cal=1; if(s.tool==="set_order_type"||s.tool==="create_order") tags.ord=1; }
+    });
+  } else { if(t.write) tags.save=1; else tags.read=1; }
+  var out=[]; if(tags.save) out.push("Saves records"); if(tags.read) out.push("Reads records"); if(tags.cal) out.push("Uses calendar"); if(tags.ord) out.push("Changes orders");
+  return out;
+}
 function toolCard(t){
   var n=t.name, pend=IM.pending[n], st=t.status, mk=t.mockup||{}, params=arr(t.params), ev=arr(t.evidence), msg=IM.msg[n];
   var enabled=st==="enabled", teacher=enabled&&t.enabledBy==="teacher", owner=enabled&&t.enabledBy==="owner";
@@ -1490,6 +1630,9 @@ function toolCard(t){
   if(t.description && t.why) h+='<div class="hint" style="margin:0">'+esc(t.description)+'</div>';
   h+='<details class="im-d" data-k="p:'+esc(n)+'"'+(imOpen("p:"+n,st==="proposed")?" open":"")+'><summary>Parameters ('+params.length+')</summary><div class="im-d-body"><div class="tscroll"><table><thead><tr><th>Name</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>'+
     (params.map(function(p){ return '<tr><td class="td-mono nowrap">'+esc(p.name)+'</td><td class="td-mono">'+esc(p.type)+'</td><td>'+(p.required?'<span class="badge b-line">required</span>':'<span class="td-mono">optional</span>')+'</td><td>'+esc(p.description)+'</td></tr>'; }).join("")||'<tr><td colspan="4" class="td-mono">No parameters.</td></tr>')+'</tbody></table></div></div></details>';
+  var hasR=t.recipe&&typeof t.recipe==="object";
+  h+='<div class="imt-tags">'+(hasR?(t.recipeVerified?'<span class="badge b-good">Tested by the teacher before enabling</span>':''):'<span class="tag">Simple tool: saves or looks up fields</span>')+recipeTags(t).map(function(x){ return '<span class="tag">'+x+'</span>'; }).join("")+'</div>';
+  if(hasR) h+='<details class="im-d" data-k="h:'+esc(n)+'"'+(imOpen("h:"+n,false)?" open":"")+'><summary>How it works</summary><div class="im-d-body">'+recipeSteps(t.recipe)+'</div></details>';
   h+='<details class="im-d" data-k="m:'+esc(n)+'"'+(imOpen("m:"+n,st==="proposed")?" open":"")+'><summary>Mockup: how it would sound</summary><div class="im-d-body"><div class="mk">'+
     arr(mk.sampleDialogue).map(function(m){
       var r=m.role==="agent"?"agent":m.role==="tool"?"tool":"caller";
@@ -1515,6 +1658,15 @@ function toolCard(t){
 }
 
 /* teacher changes */
+function answerForm(id){
+  var st=IM.ans[id]||{}, d=IM.draft[id]||"", n=d.length, bad=n>AN_MAX, sending=!!st.sending;
+  if(st.unsupported) return '<div class="im-form"><div class="err" role="alert">Answering from the dashboard is not available on this server yet. Use:</div><div class="im-ans"><code>npm run answer '+esc(id)+' &lt;your answer&gt;</code><button type="button" class="btn ghost sm" data-im-copy="'+esc(id)+'">Copy id</button></div></div>';
+  return '<div class="im-form" data-ans="'+esc(id)+'"><label for="ans-'+esc(id)+'">Your answer</label>'+
+    '<textarea class="fi" id="ans-'+esc(id)+'" data-im-draft="'+esc(id)+'" maxlength="'+(AN_MAX+200)+'" rows="3" placeholder="Type the answer the receptionist should give callers"'+(sending?' readonly':'')+'>'+esc(d)+'</textarea>'+
+    '<div class="im-form-bar"><button type="button" class="btn" data-im-send="'+esc(id)+'"'+(sending||!d.trim()||bad?' disabled':'')+'>'+(sending?"Sending…":"Send answer")+'</button>'+
+    '<span class="cnt'+(bad?' over':'')+'" data-cnt>'+n+' / '+AN_MAX+'</span></div>'+
+    (st.err?'<div class="err" role="alert">'+esc(st.err)+'</div>':'')+'</div>';
+}
 function changeItem(i,pinned){
   var p=i.payload||{}, st=i.status, ty=i.type, txt="";
   if(ty==="context"){
@@ -1533,7 +1685,7 @@ function changeItem(i,pinned){
     (i.reason?'<div class="im-rs">'+esc(i.reason)+'</div>':'')+
     (i.rejected_reason?'<div class="im-rs bad">Rejected: '+esc(i.rejected_reason)+'</div>':'')+
     (i.rolled_back_reason?'<div class="im-rs bad">Rolled back: '+esc(i.rolled_back_reason)+'</div>':'');
-  if(pinned) h+='<div class="im-ans"><span>Answer with:</span> <code>npm run answer '+esc(i._id)+' &lt;your answer&gt;</code><button type="button" class="btn ghost sm" data-im-copy="'+esc(i._id)+'">Copy id</button></div>';
+  if(pinned) h+=answerForm(i._id);
   var src=arr(i.source_call_ids), tr=arr(i.evidence_turns);
   if(src.length||tr.length) h+='<div class="imt-meta">'+(src.length?'<span>from call '+src.map(imCallLink).join(" ")+'</span>':'')+(tr.length?'<span>turn'+(tr.length>1?'s':'')+' '+esc(tr.join(", "))+'</span>':'')+'</div>';
   return h+'</div></div>';
@@ -1599,7 +1751,8 @@ function imRender(){
   var rest=imps.filter(function(i){ return pins.indexOf(i)<0; });
   var ch=IM.missing.impr?imNoteMissing("Teacher changes"):!imps.length?'<div class="empty"><p>The teacher has not changed anything yet.</p></div>':
     '<div class="im-tl">'+pins.map(function(i){ return changeItem(i,true); }).join("")+rest.slice(0,40).map(function(i){ return changeItem(i,false); }).join("")+'</div>';
-  setI("im-changes",ch);
+  var af=document.activeElement, afid=af&&af.getAttribute&&af.getAttribute("data-im-draft"), ss=afid?af.selectionStart:0, se=afid?af.selectionEnd:0;
+  if(setI("im-changes",ch) && afid){ var nt=$("im-changes").querySelector('textarea[data-im-draft="'+afid.replace(/"/g,"")+'"]'); if(nt && !nt.readOnly){ nt.focus(); try{ nt.setSelectionRange(ss,se); }catch(x){} } }
   /* grades */
   var sc=$("im-grades").querySelector(".tscroll"), sl=sc?sc.scrollLeft:0;
   var gh=!g.length?(IM.missing.grades?imNoteMissing("Grades"):emptyG):gradesTable();
@@ -1607,9 +1760,11 @@ function imRender(){
   $("im-grades-meta").textContent=g.length>25?"latest 25 of "+g.length:g.length+" total";
 }
 function imReset(){
-  IM.gen++; IM.grades=IM.impr=IM.tools=null; IM.rec={}; IM.missing={}; IM.err={}; IM.loaded=false; IM.busy=false; IM.pending={}; IM.msg={}; IM.h={}; IM.asc=[];
+  IM.gen++; IM.grades=IM.impr=IM.tools=null; IM.rec={}; IM.missing={}; IM.err={}; IM.loaded=false; IM.busy=false; IM.pending={}; IM.msg={}; IM.draft={}; IM.ans={}; IM.h={}; IM.asc=[];
 }
 $("panel-improvements").addEventListener("click",function(e){
+  var sb=e.target.closest("[data-im-send]");
+  if(sb){ imAnswer(sb.getAttribute("data-im-send")); return; }
   var a=e.target.closest("[data-im-act]");
   if(a){ imAct(a.getAttribute("data-name"),a.getAttribute("data-im-act")); return; }
   var c=e.target.closest("[data-im-copy]");
@@ -1622,6 +1777,14 @@ $("panel-improvements").addEventListener("click",function(e){
   }
   var r=e.target.closest("tr[data-gid]");
   if(r){ var id2=r.getAttribute("data-gid"); IM.gopen[id2]=!IM.gopen[id2]; imRender(); var nr=$("im-grades").querySelector('tr[data-gid="'+id2+'"]'); if(nr) nr.focus(); }
+});
+$("panel-improvements").addEventListener("input",function(e){
+  var t=e.target, id=t.getAttribute&&t.getAttribute("data-im-draft"); if(!id) return;
+  IM.draft[id]=t.value;
+  var f=t.closest(".im-form"), n=t.value.length, bad=n>AN_MAX;
+  var c=f.querySelector("[data-cnt]"); c.textContent=n+" / "+AN_MAX; c.classList.toggle("over",bad);
+  f.querySelector("[data-im-send]").disabled=!t.value.trim()||bad||!!(IM.ans[id]&&IM.ans[id].sending);
+  if(IM.ans[id]&&IM.ans[id].err){ delete IM.ans[id]; var er=f.querySelector(".err"); if(er) er.remove(); IM.h["im-changes"]=null; }
 });
 $("panel-improvements").addEventListener("keydown",function(e){
   var r=e.target.closest&&e.target.closest("tr[data-gid]");
