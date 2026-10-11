@@ -28,6 +28,12 @@ export class CallRecorder {
     activeCalls.set(callSid, this.record);
   }
 
+  setConfigVersion(version: number): void {
+    if (this.ended) return;
+    this.record.configVersion = version;
+    this.scheduleSave();
+  }
+
   async start(): Promise<void> {
     await this.flush();
   }

@@ -1,4 +1,4 @@
-import type { Order, PriceRow } from "./store";
+import type { ConfigVersion, Order, PriceRow } from "./store";
 
 export const SEED_ORDERS: Order[] = [
   {
@@ -94,3 +94,24 @@ export const SEED_PRICING: PriceRow[] = [
   },
   { category: "Household", item: "Comforter (queen)", regularPrice: 30.0, expeditedPrice: 45.0, notes: "" },
 ];
+
+export const SEED_CONFIG: ConfigVersion = {
+  version: 1,
+  companyName: "Charlie's Cleaners",
+  greeting: "Hey, this is Charlie's Cleaners.",
+  context: [
+    "Charlie's Cleaners is a friendly neighborhood dry cleaner.",
+    "Services: dry cleaning, laundry and press, alterations and repairs, wedding gown and leather care, and household items like comforters and curtains.",
+    "Turnaround: regular service takes 3 days. Expedited service is ready the next day for an extra fee.",
+    "Pickup hours: Monday to Saturday, 8am to 6pm. Closed on Sunday.",
+    "Payment: we accept cash, credit and debit cards, and Apple Pay. Payment is due at pickup.",
+    "Special items such as leather, suede, beaded or vintage garments need staff to inspect them. Take a message and staff will call back with a quote.",
+    "Stains: tell us about stains at drop-off so we can treat them, but we cannot guarantee every stain will come out.",
+    "Unclaimed items are held for 30 days.",
+    "Tone: warm, neighborly, and brief. Be patient with callers and never pushy.",
+    "For anything not listed here, take a message and let the caller know staff will call back.",
+  ].join("\n"),
+  author: "system",
+  note: "Default",
+  createdAt: new Date(0).toISOString(),
+};

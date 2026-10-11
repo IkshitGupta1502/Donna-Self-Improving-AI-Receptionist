@@ -5,7 +5,7 @@ import {
   EndSensitivity,
   type LiveServerMessage,
 } from "@google/genai";
-import { createDataStore, type DataStore } from "../data/store";
+import { createDataStore, type ConfigVersion, type DataStore } from "../data/store";
 import type { CallRecorder } from "../calls/recorder";
 import { TOOLS, executeTool } from "./tools";
 import { buildSystemPrompt } from "./systemPrompt";
@@ -33,11 +33,14 @@ export interface GeminiSessionOptions {
 export interface GeminiSessionHandle {
   sendAudio(base64Mulaw: string): void;
   close(): void;
+  configVersion: number;
 }
 
 export async function openGeminiSession(opts: GeminiSessionOptions): Promise<GeminiSessionHandle> {
   const { onAudio, onError, onClose, callerPhone, recorder } = opts;
   const store = await getStore();
+  const activeConfig: ConfigVersion = await store.getActiveConfig();
+  recorder?.setConfigVersion(activeConfig.version);
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -52,7 +55,7 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
     model: MODEL,
     config: {
       responseModalities: [Modality.AUDIO],
-      systemInstruction: { parts: [{ text: buildSystemPrompt(today, callerPhone) }] },
+      systemInstruction: { parts: [{ text: buildSystemPrompt(today, callerPhone, activeConfig) }] },
       temperature: 0,
       speechConfig: {
         voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
@@ -117,10 +120,11 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
   });
 
   liveSession.sendRealtimeInput({
-    text: 'Say exactly: "Hey, this is Charlie\'s Cleaners." Then wait for the caller.',
+    text: `Say exactly: "${activeConfig.greeting.replace(/"/g, "'")}" Then wait for the caller.`,
   });
 
   return {
+    configVersion: activeConfig.version,
     sendAudio: (base64Mulaw: string) => {
       liveSession.sendRealtimeInput({
         audio: { data: twilioToGemini(base64Mulaw), mimeType: "audio/pcm;rate=16000" },

@@ -1,5 +1,5 @@
 import { MongoClient, type Collection, type OptionalUnlessRequiredId } from "mongodb";
-import { SEED_ORDERS, SEED_PRICING } from "./seed";
+import { SEED_CONFIG, SEED_ORDERS, SEED_PRICING } from "./seed";
 
 export type Speed = "Regular" | "Expedited";
 
@@ -62,9 +62,32 @@ export interface CallRecord {
   transcript: CallTranscriptEntry[];
   toolCalls: CallToolCall[];
   status: "active" | "completed";
+  configVersion?: number;
+}
+
+export interface ConfigVersion {
+  version: number;
+  companyName: string;
+  greeting: string;
+  context: string;
+  author: "manager" | "teacher" | "system";
+  note?: string;
+  createdAt: string;
+}
+
+export interface ConfigInput {
+  companyName: string;
+  greeting: string;
+  context: string;
+  author: ConfigVersion["author"];
+  note?: string;
 }
 
 export interface DataStore {
+  getActiveConfig(): Promise<ConfigVersion>;
+  listConfigVersions(): Promise<ConfigVersion[]>;
+  saveConfigVersion(input: ConfigInput): Promise<ConfigVersion>;
+  activateConfigVersion(version: number): Promise<ConfigVersion | null>;
   getOrderById(orderId: string): Promise<Order | null>;
   searchOrdersByName(name: string): Promise<Order[]>;
   getOrdersByPhone(phone: string): Promise<Order[]>;
@@ -92,6 +115,18 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function newVersion(version: number, input: ConfigInput): ConfigVersion {
+  return {
+    version,
+    companyName: input.companyName,
+    greeting: input.greeting,
+    context: input.context,
+    author: input.author,
+    ...(input.note ? { note: input.note } : {}),
+    createdAt: new Date().toISOString(),
+  };
+}
+
 function toLookup(item: string, speed: Speed, row: PriceRow | undefined): PriceLookup {
   return {
     found: !!row,
@@ -108,12 +143,32 @@ export function createMemoryStore(): DataStore {
   const pricing: PriceRow[] = structuredClone(SEED_PRICING);
   const messages: Message[] = [];
   const calls = new Map<string, CallRecord>();
+  const configs: ConfigVersion[] = [structuredClone(SEED_CONFIG)];
+  let activeVersion = SEED_CONFIG.version;
   const findOrder = (orderId: string) => {
     const id = orderId.trim().toUpperCase();
     return orders.find((o) => o.orderId.toUpperCase() === id) ?? null;
   };
 
   return {
+    async getActiveConfig() {
+      return structuredClone(configs.find((c) => c.version === activeVersion) ?? configs[0]);
+    },
+    async listConfigVersions() {
+      return structuredClone([...configs].sort((a, b) => b.version - a.version));
+    },
+    async saveConfigVersion(input) {
+      const created = newVersion(Math.max(...configs.map((c) => c.version)) + 1, input);
+      configs.push(created);
+      activeVersion = created.version;
+      return structuredClone(created);
+    },
+    async activateConfigVersion(version) {
+      const found = configs.find((c) => c.version === version);
+      if (!found) return null;
+      activeVersion = version;
+      return structuredClone(found);
+    },
     async getOrderById(orderId) {
       return findOrder(orderId);
     },
@@ -189,6 +244,11 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
   await orders.createIndex({ orderId: 1 }, { unique: true });
   await pricing.createIndex({ item: 1 }, { unique: true });
   await calls.createIndex({ callSid: 1 }, { unique: true });
+  const configVersions = db.collection<ConfigVersion>("config_versions");
+  const configState = db.collection<{ _id: string; version: number }>("config_state");
+  await configVersions.createIndex({ version: 1 }, { unique: true });
+  await seedIfEmpty(configVersions, [SEED_CONFIG]);
+  await configState.updateOne({ _id: "active" }, { $setOnInsert: { version: SEED_CONFIG.version } }, { upsert: true });
   await seedIfEmpty(orders, SEED_ORDERS);
   await seedIfEmpty(pricing, SEED_PRICING);
   console.log(`[data] MongoDB connected: db=${dbName}`);
@@ -196,6 +256,37 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
   const proj = { projection: { _id: 0 } } as const;
 
   return {
+    async getActiveConfig() {
+      const state = await configState.findOne({ _id: "active" });
+      const active = state ? await configVersions.findOne({ version: state.version }, proj) : null;
+      if (active) return active;
+      const latest = await configVersions.find({}, proj).sort({ version: -1 }).limit(1).toArray();
+      return latest[0] ?? structuredClone(SEED_CONFIG);
+    },
+    async listConfigVersions() {
+      return configVersions.find({}, proj).sort({ version: -1 }).toArray();
+    },
+    async saveConfigVersion(input) {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const top = await configVersions.find({}, proj).sort({ version: -1 }).limit(1).toArray();
+        const created = newVersion((top[0]?.version ?? 0) + 1, input);
+        try {
+          await configVersions.insertOne({ ...created });
+        } catch (err) {
+          if ((err as { code?: number })?.code === 11000) continue;
+          throw err;
+        }
+        await configState.updateOne({ _id: "active" }, { $set: { version: created.version } }, { upsert: true });
+        return created;
+      }
+      throw new Error("could not allocate config version");
+    },
+    async activateConfigVersion(version) {
+      const found = await configVersions.findOne({ version }, proj);
+      if (!found) return null;
+      await configState.updateOne({ _id: "active" }, { $set: { version } }, { upsert: true });
+      return found;
+    },
     async getOrderById(orderId) {
       const id = orderId.trim().toUpperCase();
       return orders.findOne({ orderId: id }, proj);

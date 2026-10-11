@@ -40,6 +40,14 @@ JSON endpoints under `/api` for the dashboard UI (calls are recorded with transc
 - `GET /api/calls?limit=50` -> call records, newest first (live calls included)
 - `GET /api/calls/:callSid` -> one call record
 - `GET /api/orders`, `GET /api/messages` -> arrays
+- `GET /api/config` -> `{active, versions}` (company config versions, newest first)
+- `PUT /api/config` `{companyName, greeting, context, note?}` -> 201, the new active version (author `manager`)
+- `POST /api/config/activate` `{version}` -> the activated version (404 if unknown); this is rollback
+
+The agent is company-agnostic: the company name, greeting and free-text context (business description,
+hours, policies, FAQs, tone) are edited from the dashboard and become part of the system prompt.
+Every change is a new immutable version (`config_versions` collection); each call records the
+`configVersion` that handled it. Writes require the dashboard token when `DASHBOARD_TOKEN` is set.
 
 Set `DASHBOARD_TOKEN` to require an `x-dashboard-token` header (except on `/api/health` and
 OPTIONS). `ALLOWED_ORIGINS` (comma-separated, default `*`) controls CORS. When the server is

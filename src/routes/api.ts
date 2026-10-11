@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { Router, Request, Response, NextFunction } from "express";
 import { config } from "../config";
 import { getStore } from "../services/gemini/liveSession";
@@ -20,7 +21,7 @@ function cors(req: Request, res: Response, next: NextFunction): void {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
   }
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, PUT, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-dashboard-token, ngrok-skip-browser-warning");
   res.setHeader("Access-Control-Max-Age", "600");
   if (req.method === "OPTIONS") {
@@ -116,6 +117,57 @@ apiRouter.get(
   "/messages",
   wrap(async (_req, res) => {
     res.json(await (await getStore()).listMessages());
+  })
+);
+
+const configSchema = z.object({
+  companyName: z.string().trim().min(1).max(80),
+  greeting: z.string().trim().min(1).max(300),
+  context: z.string().trim().max(8000),
+  note: z.string().trim().max(300).optional(),
+});
+const activateSchema = z.object({ version: z.number().int().positive() });
+
+function badRequest(res: Response, err: z.ZodError): void {
+  const msg = err.issues.map((i) => `${i.path.join(".") || "body"}: ${i.message}`).join("; ");
+  res.status(400).json({ error: msg });
+}
+
+apiRouter.get(
+  "/config",
+  wrap(async (_req, res) => {
+    const store = await getStore();
+    const [active, versions] = await Promise.all([store.getActiveConfig(), store.listConfigVersions()]);
+    res.json({ active, versions });
+  })
+);
+
+apiRouter.put(
+  "/config",
+  wrap(async (req, res) => {
+    const parsed = configSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return badRequest(res, parsed.error);
+    const { note, ...rest } = parsed.data;
+    const saved = await (await getStore()).saveConfigVersion({
+      ...rest,
+      author: "manager",
+      ...(note ? { note } : {}),
+    });
+    res.status(201).json(saved);
+  })
+);
+
+apiRouter.post(
+  "/config/activate",
+  wrap(async (req, res) => {
+    const parsed = activateSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return badRequest(res, parsed.error);
+    const activated = await (await getStore()).activateConfigVersion(parsed.data.version);
+    if (!activated) {
+      res.status(404).json({ error: "version not found" });
+      return;
+    }
+    res.json(activated);
   })
 );
 
