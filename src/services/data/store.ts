@@ -89,6 +89,7 @@ export interface DataStore {
   saveConfigVersion(input: ConfigInput): Promise<ConfigVersion>;
   activateConfigVersion(version: number): Promise<ConfigVersion | null>;
   getOrderById(orderId: string): Promise<Order | null>;
+  upsertOrder(order: Order): Promise<void>;
   searchOrdersByName(name: string): Promise<Order[]>;
   getOrdersByPhone(phone: string): Promise<Order[]>;
   listPrices(): Promise<PriceRow[]>;
@@ -171,6 +172,13 @@ export function createMemoryStore(): DataStore {
     },
     async getOrderById(orderId) {
       return findOrder(orderId);
+    },
+    async upsertOrder(order) {
+      const id = order.orderId.toUpperCase();
+      const next = { ...order, orderId: id, phone: normalizePhone(order.phone) };
+      const idx = orders.findIndex((o) => o.orderId.toUpperCase() === id);
+      if (idx >= 0) orders[idx] = next;
+      else orders.push(next);
     },
     async searchOrdersByName(name) {
       const q = name.trim().toLowerCase();
@@ -290,6 +298,14 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
     async getOrderById(orderId) {
       const id = orderId.trim().toUpperCase();
       return orders.findOne({ orderId: id }, proj);
+    },
+    async upsertOrder(order) {
+      const id = order.orderId.toUpperCase();
+      await orders.replaceOne(
+        { orderId: id },
+        { ...order, orderId: id, phone: normalizePhone(order.phone) },
+        { upsert: true }
+      );
     },
     async searchOrdersByName(name) {
       return orders

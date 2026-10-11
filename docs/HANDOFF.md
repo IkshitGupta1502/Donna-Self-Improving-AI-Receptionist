@@ -98,3 +98,43 @@ Not verified:
    - Fill the dashboard's Improvements tab with a score and frustration timeline and the change log.
 5. Scripted demo: a call that fails, the teacher applies a fix, the next call succeeds.
 6. Optional: switch to Atlas (`MONGODB_URI`), then vector search and change streams as stretch goals.
+
+---
+
+## Update: where things stand now (supersedes "Next steps" above where they conflict)
+
+### New since the first handoff
+- `npm run live`: starts ngrok, sets `PUBLIC_HOST`, points the Twilio number's voice webhook at the tunnel (needs `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` in `.env`), then starts the server. `scripts/live.ts`.
+- `npm run doctor`: pre-flight check with no phone call. Checks `.env` names, Mongo connection, Twilio credentials and the number's webhook, and a real Gemini Live session using production settings. `scripts/doctor.ts`.
+- `npm run seed`: seeds demo data. Upserts 3 orders (ORD-0101..0103) for caller `+19255511546` and adds a richer company-context version ("Demo context", becomes the active config; roll back from the dashboard). Uses `MONGODB_URI` if set, otherwise runs against memory as a dry run. `scripts/seed-demo.ts`. Override the number with `--phone=...`. `DataStore` gained `upsertOrder`.
+- Company Context tab and versioned config (`config_versions`, `config_state`); every call records the `configVersion` used.
+- Gemini close reason is now logged: `[gemini] session closed code=... reason=...`.
+
+### The open problem: first live call connects then hangs up immediately
+- Twilio reached the server and the stream started, but the call dropped within ~1 s.
+- Reproduced locally: with an invalid Gemini key, `ai.live.connect()` never resolves, but the close callback fires (`code=1007 reason=API key not valid`), and the bridge closes the Twilio socket without logging. The close logging is now added.
+- Real cause on the owner's setup is NOT yet confirmed. Suspects, in order: Gemini key or model name (`MODEL` in `src/services/gemini/liveSession.ts`), Mongo connection failure, Twilio signature check (wrong `TWILIO_AUTH_TOKEN`).
+- Next action: on the laptop run `git pull && npm install && npm run doctor`, read the first `✗` line, fix it, then `npm run live` and call again.
+
+### Environment names (common mistakes)
+`TWILIO_PHONE_NUMBER` (not `TWILIO_NUMBER`), `TWILIO_ACCOUNT_SID` starts with `AC`. The owner's Twilio number is +1 605 476 1503 and the demo caller is +1 925 551 1546 (a verified caller; Twilio trial accounts only accept verified callers). ngrok domain: `bruising-boogieman-unreal.ngrok-free.dev`.
+
+### What the assistant can and cannot reach (why "before it could" is not true)
+- The cloud session container holds only a clone of this repo from GitHub. It has no access to the owner's laptop, `.env`, MongoDB Atlas, Twilio console or ngrok, and its network blocks most outside hosts.
+- Everything that touches those (keys, Atlas, Twilio, ngrok, live calls) has to run on the owner's laptop. A Claude Code session running locally (for example in VS Code) can do that directly.
+
+### Other work in flight
+- RSI / teaching agent is being built by another agent or teammate. It should write config versions with `saveConfigVersion({... author: "teacher"})` and roll back with `activateConfigVersion`. Pull this branch before starting so store/API changes don't conflict.
+- Planned, not started: generic tool registry (query/create records, SMS, Stripe payment links) and industry packs.
+- Pending admin: add `IkshitGupta1502` as a collaborator.
+
+### Resume checklist (laptop or VS Code)
+```bash
+git clone https://github.com/gandhiaayush/mongodb_hack && cd mongodb_hack
+git checkout claude/mongodb-harness-hackathon-7hdril && git pull
+cp .env.example .env       # fill in keys (never commit .env)
+npm install
+npm run doctor             # fix every ✗
+npm run seed               # once, with MONGODB_URI set
+npm run live               # then call the Twilio number from a verified phone
+```
