@@ -1,4 +1,4 @@
-# Snoopy teacher agent
+# Donna teacher agent
 
 Grades every finished receptionist call and rewrites the receptionist's harness (rules) in MongoDB Atlas.
 Built during the Harness Engineering & Model Wrangling hackathon, 2026-10-11.
@@ -9,7 +9,7 @@ Team status, data shapes for the dashboard, and known issues: [../docs/TEAM_HAND
 cd teacher && npm install
 # create .env (see below), never commit it
 npm run selftest          # offline, no keys needed
-npm run demo              # seeds the snoopy_demo database, teaches 3 fake calls, prints the new context
+npm run demo              # seeds the donna_demo database, teaches 3 fake calls, prints the new context
 ```
 `.env` in this `teacher/` folder:
 ```
@@ -32,7 +32,7 @@ It grades every finished call that has no grade yet and writes new config versio
 (author `teacher`), so they show up in the bridge's dashboard history and are loaded on the next call.
 The teacher keeps its rules in a `LEARNED RULES` block at the end of the config's context text.
 
-`npm run demo` and `npm run seed` only ever touch the separate database `snoopy_demo`.
+`npm run demo` and `npm run seed` only ever touch the separate database `donna_demo`.
 
 ## Safety limits (src/services/teacher/plan.ts)
 - The rubric lives in code; the teacher cannot edit it. Overall score is computed in code.

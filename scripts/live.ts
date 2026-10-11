@@ -91,7 +91,7 @@ async function main(): Promise<void> {
   const dashboard = process.env.DASHBOARD_URL ?? (local || "http://localhost:8080");
   console.log(`  Dashboard API:  ${url}${process.env.DASHBOARD_TOKEN ? "   (token: your DASHBOARD_TOKEN)" : ""}`);
   console.log(`  Ops dashboard:    ${dashboard}/?api=${url}   (tools, playbook, owner answers, company context)`);
-  console.log(`  Snoopy dashboard: ${dashboard}/snoopy/?api=${url}   (live line, calls, learning, knowledge, customers)\n`);
+  console.log(`  Donna dashboard: ${dashboard}/donna/?api=${url}   (live line, calls, learning, knowledge, customers)\n`);
 }
 
 main().catch((err) => fail(err instanceof Error ? err.message : String(err)));

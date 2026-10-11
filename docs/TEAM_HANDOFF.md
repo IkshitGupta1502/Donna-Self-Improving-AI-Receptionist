@@ -60,13 +60,13 @@ Both sides must use the same Atlas database.
    #   GEMINI_API_KEY=<key>
    #   GEMINI_TEACHER_MODEL=gemini-3.8-flash
    npm run selftest     # offline checks, no keys needed
-   npm run demo         # 3 fake calls in a separate database, snoopy_demo
+   npm run demo         # 3 fake calls in a separate database, donna_demo
    npm run watch        # grade every finished call from the bridge
    ```
 
 Other commands: `npm run teach <callSid>`, `npm run answer <improvementId> <answer>`, `npm run rollback`, `npm run trend`, `npm run context` (prints the context the receptionist currently gets).
 
-`npm run demo` and `npm run seed` only touch `snoopy_demo`. `seed` refuses any database whose name does not end in `_demo`, because it wipes the collections.
+`npm run demo` and `npm run seed` only touch `donna_demo`. `seed` refuses any database whose name does not end in `_demo`, because it wipes the collections.
 
 ## 4. What is done and how it was checked
 
@@ -201,12 +201,12 @@ Optional: rewrite the teacher's demo fixtures as dry cleaner calls (they are a h
 | `teacher judge failed twice: ... 503 ... high demand` | Gemini overloaded. Seen twice today | `watch` retries each call 3 times; restart it to retry again |
 | `404 ... no longer available to new users` | Old model ID | `GEMINI_TEACHER_MODEL=gemini-3.8-flash` |
 | `E11000 duplicate key` on `config_versions`, `grades` or `improvements` | PR #2's harness has run in the same database | Section 2. Use a separate database for one of them |
-| `refusing to seed "snoopy"` | `seed` run against a real database | Use `npm run seed` or `npm run demo`, which set `snoopy_demo` |
+| `refusing to seed "snoopy"` | `seed` run against a real database | Use `npm run seed` or `npm run demo`, which set `donna_demo` |
 | `call ... has not ended yet` | `teach` called on an active call | Wait for the call to end |
 | `v<N> has no recorded parent` on rollback | The active version was saved by a manager or the seed | Activate another version from the dashboard |
 | First `npm run watch` makes many Gemini calls | It grades every old completed call that has no grade | Expected. Clear old test calls first if you want to avoid it |
 | A rule the teacher added has disappeared | A manager removed the block or the line in the context editor | Expected. That edit is a new version; history still has the old one |
-| `MONGODB_DB=snoopy_demo tsx ...` fails on Windows | The npm scripts use a Unix-style env prefix | Run on macOS/Linux, or set the variable separately |
+| `MONGODB_DB=donna_demo tsx ...` fails on Windows | The npm scripts use a Unix-style env prefix | Run on macOS/Linux, or set the variable separately |
 
 ## 10. Choices that differ from PLAN.md
 

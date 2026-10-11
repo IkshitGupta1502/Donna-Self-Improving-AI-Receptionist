@@ -1,10 +1,10 @@
-# Snoopy AI: Voice Receptionist with Recursive Self-Improvement (RSI)
+# Donna AI: Voice Receptionist with Recursive Self-Improvement (RSI)
 
 Status: DRAFT, decisions made, scoped to a 3-hour build. English only. Callers are customers.
 
 ## 1. Summary
 
-Snoopy AI is a Notion-style workspace. This hackathon build adds a **voice receptionist**
+Donna AI is a Notion-style workspace. This hackathon build adds a **voice receptionist**
 that answers phone calls for a workspace, using the workspace's knowledge as context.
 A **teaching agent** grades every successful call and writes concrete improvements for the
 voice agent (prompt, context, MongoDB data, tools). Approved improvements are versioned and

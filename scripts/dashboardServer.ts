@@ -1,4 +1,4 @@
-// Serves the static dashboards in web/ (Ops at "/", Snoopy at "/snoopy/") so `npm run live` needs no second terminal.
+// Serves the static dashboards in web/ (Ops at "/", Donna at "/donna/") so `npm run live` needs no second terminal.
 import path from "path";
 import express from "express";
 

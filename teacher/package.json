@@ -1,13 +1,13 @@
 {
-  "name": "snoopy-teacher",
+  "name": "donna-teacher",
   "private": true,
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "selftest": "tsx scripts/selftest.ts",
-    "seed": "MONGODB_DB=snoopy_demo tsx scripts/cli.ts seed",
+    "seed": "MONGODB_DB=donna_demo tsx scripts/cli.ts seed",
     "teach": "tsx scripts/cli.ts teach",
-    "demo": "MONGODB_DB=snoopy_demo tsx scripts/cli.ts demo",
+    "demo": "MONGODB_DB=donna_demo tsx scripts/cli.ts demo",
     "watch": "tsx scripts/cli.ts watch",
     "answer": "tsx scripts/cli.ts answer",
     "rollback": "tsx scripts/cli.ts rollback",

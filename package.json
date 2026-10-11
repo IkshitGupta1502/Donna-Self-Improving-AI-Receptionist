@@ -1,5 +1,5 @@
 {
-  "name": "snoopy-voice-receptionist",
+  "name": "donna-voice-receptionist",
   "version": "0.1.0",
   "description": "Voice receptionist (Twilio + Gemini Live + MongoDB Atlas) with a recursive self-improvement loop",
   "main": "dist/server.js",
