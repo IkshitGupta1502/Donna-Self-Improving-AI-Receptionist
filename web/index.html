@@ -104,7 +104,7 @@ td.wrapcell{min-width:200px;max-width:420px}
 .td-name{font-weight:600}.td-name .td-mono{font-weight:400}
 
 .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:var(--r);font-size:.7rem;font-weight:700;letter-spacing:.04em;white-space:nowrap;border:1px solid var(--ink)}
-.b-solid{background:var(--ink);color:var(--inv-bg)}
+.b-solid{background:var(--ink);color:var(--inv-fg)}
 .b-line{background:transparent;color:var(--ink)}
 .b-mute{background:transparent;color:var(--muted);border-color:var(--border)}
 .b-live{background:var(--live);border-color:var(--live);color:#fff}
@@ -210,6 +210,33 @@ textarea.fi{min-height:260px;resize:vertical;line-height:1.55}
 .df-del .df-t{text-decoration:line-through;color:var(--muted)}
 .df-skip{padding:3px 10px;color:var(--muted);font-style:italic;font-size:.72rem;border-top:1px dashed var(--border);border-bottom:1px dashed var(--border)}
 
+/* ─── Customers ──────────────────────────────────────────────────────── */
+.cu-split{grid-template-columns:minmax(320px,540px) 1fr}
+.cu-split>*{min-width:0}
+.cu-search{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.cu-search .fi{flex:1;min-width:0;font-family:var(--fb);background:var(--surface)}
+.cu-list{background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);max-height:calc(100vh - 290px);overflow-y:auto;overflow-x:hidden}
+.cu-list tbody tr{cursor:pointer}
+.cu-list tbody tr.sel{background:var(--active-row);box-shadow:inset 3px 0 0 var(--ink)}
+.cu-list tbody tr:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
+.cu-name{font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap;overflow-wrap:anywhere}
+.cu-name.unk{font-weight:500;color:var(--muted)}
+.cu-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px}
+.cu-fields>div{min-width:0}
+.cu-fields .wide{grid-column:1/-1}
+.cu-v{font-size:.9rem;overflow-wrap:anywhere;white-space:pre-wrap}
+.cu-v.none{color:var(--muted)}
+.cu-sec{font-family:var(--fh);font-weight:700;font-size:1rem;border-bottom:1.5px solid var(--border);padding-bottom:6px;margin-top:8px;display:flex;justify-content:space-between;gap:8px}
+.cu-sec span{font-family:var(--fb);font-weight:400;font-size:.75rem;color:var(--muted)}
+.cu-item{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--border);padding:9px 2px;min-width:0}
+.cu-item:last-child{border-bottom:none}
+button.cu-item{cursor:pointer}
+button.cu-item:hover{background:var(--hover)}
+.cu-item .ci-top{flex-wrap:wrap}
+.cu-item .ci-top>span:first-child{min-width:0;overflow-wrap:anywhere}
+.cu-none{font-size:.84rem;color:var(--muted);padding:4px 2px}
+.cu-detail-hdr{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
 /* ─── Responsive ─────────────────────────────────────────────────────── */
 @media (max-width:900px){
   .stats-bar{grid-template-columns:repeat(3,1fr)}
@@ -221,7 +248,13 @@ textarea.fi{min-height:260px;resize:vertical;line-height:1.55}
   .call-list{max-height:none}
   .detail{max-height:none;min-height:0}
   .split.has-sel .call-list{display:none}
+  .cu-split.has-sel .cu-col{display:none}
+  .cu-list{max-height:none}
+  .cu-list thead th,.cu-list tbody td{padding-left:9px;padding-right:9px}
+  .cu-fields{grid-template-columns:1fr}
+  .cu-split .dt-body{max-height:none;min-height:0}
   .split:not(.has-sel) .detail{display:none}
+  .cu-split:not(.has-sel) .detail{display:none}
   .dt-hdr .back{display:inline-block}
   .dt-body{max-height:calc(100vh - 260px);min-height:240px}
   .msg{max-width:92%}
@@ -251,6 +284,7 @@ textarea.fi{min-height:260px;resize:vertical;line-height:1.55}
 <nav class="tab-bar" role="tablist" id="tabs">
   <button class="tab active" role="tab" data-tab="overview" type="button">Overview</button>
   <button class="tab" role="tab" data-tab="calls" type="button">Live Calls <span class="tab-badge hidden" id="live-badge">0</span></button>
+  <button class="tab" role="tab" data-tab="customers" type="button">Customers</button>
   <button class="tab" role="tab" data-tab="orders" type="button">Orders</button>
   <button class="tab" role="tab" data-tab="messages" type="button">Messages</button>
   <button class="tab" role="tab" data-tab="company" type="button">Company Context</button>
@@ -271,6 +305,17 @@ textarea.fi{min-height:260px;resize:vertical;line-height:1.55}
     <div class="split" id="split">
       <div class="call-list" id="call-list"></div>
       <div class="detail" id="detail"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-customers">
+    <div id="cu-status"></div>
+    <div class="split cu-split" id="cu-main">
+      <div class="cu-col">
+        <div class="cu-search"><input class="fi" id="cu-q" type="search" placeholder="Search name, phone, email, notes" aria-label="Search customers" autocomplete="off" spellcheck="false" /><span class="tw-meta" id="cu-count"></span></div>
+        <div class="cu-list" id="cu-list"></div>
+      </div>
+      <div class="detail" id="cu-detail"></div>
     </div>
   </section>
 
@@ -390,6 +435,7 @@ var S = {
   tab: "overview", sel: null,
   health: null, // true | false | null
   stats: null, calls: null, orders: null, messages: null,
+  customers: null, custMissing: false, csel: null, cq: "",
   sig: {}
 };
 
@@ -466,11 +512,22 @@ var Demo = (function(){
         {role:"agent",text:"Of course, I'll leave a message for the owner.",ts:ts(69,40)}
       ],
       toolCalls:[{name:"take_message",args:{name:"Devon",phone:"+14155550111",message:"Wants a callback about a stain on a silk shirt."},result:{ok:true},ts:ts(69,35)}] },
+    { callSid:"CA7b20d4c915e8a03", from:"+14155550142", startedAt:ts(60*24*3), endedAt:ts(60*24*3-2), durationSec:121, status:"completed",
+      transcript:[
+        {role:"caller",text:"Hi, it's Maria. Can I add starch to the coat order?",ts:ts(60*24*3,0)},
+        {role:"agent",text:"Of course, Maria. I noted light starch, as usual. Anything else?",ts:ts(60*24*3,-8)}
+      ], toolCalls:[] },
     { callSid:"CAe5a8801b2c93f7", from:"+14155550177", startedAt:ts(190), endedAt:ts(188), durationSec:96, status:"completed",
       transcript:[
         {role:"caller",text:"Is my suit ready yet?",ts:ts(190,0)},
         {role:"agent",text:"Let me check. Your suit is still in pressing and should be ready tomorrow afternoon.",ts:ts(189,50)}
       ], toolCalls:[] }
+  ];
+  var customers = [
+    {phone:"+14155550142",name:"Maria Lopez",email:"maria.lopez@example.com",preferences:"Light starch, no hangers (folded). Prefers pickup after 5pm.",notes:"Regular since 2023. Wool coat each fall.",vip:true,firstSeenAt:ts(60*24*210),lastCallAt:ts(2),callCount:9},
+    {phone:"+14155550199",name:"Priya Shah",email:"priya.shah@example.com",preferences:"Text before delivery.",notes:"Wedding dress drop-off, handle beading with care.",firstSeenAt:ts(26),lastCallAt:ts(26),callCount:1},
+    {phone:"+14155550177",name:"James O'Neil",preferences:"Express service on suits when possible.",notes:"Asks about order status before pickup.",firstSeenAt:ts(60*24*30),lastCallAt:ts(190),callCount:4},
+    {phone:"+14155550111",email:"devon.r@example.com",notes:"Called about a silk shirt stain. Wants a callback from the owner.",firstSeenAt:ts(70),lastCallAt:ts(70),callCount:1}
   ];
   var orders = [
     {orderId:"ORD-1043",customerName:"Priya Shah",phone:"+14155550199",garment:"Wedding dress",stage:"Received",orderType:"regular",price:145,payment:"unpaid",notes:"Beading, handle with care",expectedDate:"2026-10-18"},
@@ -549,6 +606,7 @@ var Demo = (function(){
     else if(p==="/api/stats") out = {calls:calls.length,activeCalls:calls.filter(function(c){return c.status==="active";}).length,orders:orders.length,openOrders:orders.filter(function(o){return o.stage!=="Picked up";}).length,messages:messages.length};
     else if(p==="/api/calls") out = calls;
     else if(p.indexOf("/api/calls/")===0) out = calls.filter(function(c){return c.callSid===decodeURIComponent(p.slice(11));})[0];
+    else if(p==="/api/customers") out = customers;
     else if(p==="/api/orders") out = orders;
     else if(p==="/api/messages") out = messages;
     return new Promise(function(res){ setTimeout(function(){res(clone(out));},40); });
@@ -702,8 +760,86 @@ function renderMessages(){
     (rows||'<tr><td colspan="4" class="td-mono">No messages yet.</td></tr>')+'</tbody></table></div></div>';
 }
 
+/* ── Customers ────────────────────────────────────────────────────────── */
+function pkey(p){ var d=String(p==null?"":p).replace(/\D/g,""); if(d.length===11&&d.charAt(0)==="1") d=d.slice(1); return d; }
+function fmtPhone(p){
+  var raw=String(p==null?"":p), d=raw.replace(/\D/g,"");
+  if(d.length===11&&d.charAt(0)==="1") return "+1 ("+d.slice(1,4)+") "+d.slice(4,7)+"-"+d.slice(7);
+  if(d.length===10) return "("+d.slice(0,3)+") "+d.slice(3,6)+"-"+d.slice(6);
+  return raw||"—";
+}
+function custOrders(k){ return (S.orders||[]).filter(function(o){ return pkey(o.phone)===k; }); }
+function custMatches(c,q){
+  q=q.trim().toLowerCase(); if(!q) return true;
+  var hay=[c.name,c.email,c.notes,c.preferences,c.phone,fmtPhone(c.phone)].join("\n").toLowerCase();
+  if(hay.indexOf(q)>=0) return true;
+  var qd=q.replace(/\D/g,"");
+  return qd.length>=3 && String(c.phone||"").replace(/\D/g,"").indexOf(qd)>=0;
+}
+function custName(c){ return c.name?esc(c.name):"Unknown caller"; }
+function setCu(key,el,html){ if(S.sig[key]===html) return false; S.sig[key]=html; el.innerHTML=html; return true; }
+
+function renderCustomers(){
+  var st=$("cu-status"), main=$("cu-main"), msg="";
+  if(!configured()) msg=setupEmpty("Connect to a backend, or try demo data, to see your customer profiles.");
+  else if(S.custMissing) msg='<div class="empty"><h3>Customer profiles are not available on this server yet</h3><p>The backend you are connected to does not support customer profiles. Update and restart the backend, then open this tab again.</p></div>';
+  else if(S.customers===null) msg='<div class="empty"><p>Loading customers…</p></div>';
+  else if(!S.customers.length) msg='<div class="empty"><h3>No customers yet</h3><p>No customers yet. Profiles appear after the first call.</p></div>';
+  setCu("cu-status",st,msg);
+  var show=configured() && !S.custMissing && S.customers && S.customers.length>0;
+  main.classList.toggle("hidden",!show);
+  if(!show) return;
+  var all=S.customers, rows=all.filter(function(c){ return custMatches(c,S.cq); });
+  main.classList.toggle("has-sel",!!S.csel && !!all.filter(function(c){return pkey(c.phone)===S.csel;})[0]);
+  $("cu-count").textContent = rows.length===all.length ? all.length+" total" : rows.length+" of "+all.length;
+  var html;
+  if(!rows.length) html='<div class="dt-empty">No customers match your search.</div>';
+  else html='<table><thead><tr><th>Customer</th><th>Calls</th><th>Last call</th><th>Orders</th></tr></thead><tbody>'+rows.map(function(c){
+    var k=pkey(c.phone);
+    return '<tr tabindex="0" data-cu="'+esc(k)+'"'+(k===S.csel?' class="sel"':'')+'><td><div class="cu-name'+(c.name?'':' unk')+'">'+custName(c)+(c.vip?' <span class="badge b-solid">VIP</span>':'')+'</div><div class="td-mono">'+esc(fmtPhone(c.phone))+'</div></td>'+
+      '<td class="nowrap">'+esc(val(c.callCount,0))+'</td><td class="nowrap td-mono">'+esc(relTime(c.lastCallAt)||"—")+'</td><td class="nowrap">'+custOrders(k).length+'</td></tr>';
+  }).join("")+'</tbody></table>';
+  var list=$("cu-list"), keep=list.scrollTop;
+  if(setCu("cu-list",list,html)) list.scrollTop=keep;
+  renderCustDetail();
+}
+
+function renderCustDetail(){
+  var el=$("cu-detail"), all=S.customers||[];
+  var c=S.csel && all.filter(function(x){return pkey(x.phone)===S.csel;})[0];
+  if(!c){ setCu("cu-detail",el,'<div class="dt-empty">Select a customer to see their profile, orders, calls and messages.</div>'); el.removeAttribute("data-k"); return; }
+  var k=S.csel;
+  var orders=custOrders(k);
+  var calls=sortedCalls().filter(function(x){ return pkey(x.from)===k; });
+  var msgs=(S.messages||[]).filter(function(m){ return pkey(m.phone)===k; });
+  function fld(l,v,wide){ var e=v==null||v===""; return '<div'+(wide?' class="wide"':'')+'><div class="fl">'+l+'</div><div class="cu-v'+(e?' none':'')+'">'+(e?'—':esc(v))+'</div></div>'; }
+  var html='<div class="dt-hdr"><button class="icon-btn back" type="button" data-cback>&larr; Customers</button><div><div class="dt-title cu-detail-hdr">'+custName(c)+(c.vip?' <span class="badge b-solid">VIP</span>':'')+'</div><div class="dt-sub">'+esc(fmtPhone(c.phone))+'</div></div></div>'+
+    '<div class="dt-body">'+
+    '<div class="cu-fields">'+fld("Name",c.name)+fld("Phone",c.phone)+fld("Email",c.email)+fld("Calls",c.callCount)+fld("Preferences",c.preferences,true)+fld("Notes",c.notes,true)+fld("First seen",c.firstSeenAt?fmtDT(c.firstSeenAt):"")+fld("Last call",c.lastCallAt?fmtDT(c.lastCallAt)+" ("+relTime(c.lastCallAt)+")":"")+'</div>'+
+    '<div class="cu-sec">Orders<span>'+orders.length+'</span></div>'+
+    (orders.length?orders.map(function(o){
+      return '<div class="cu-item"><div class="ci-top"><span><strong>'+esc(val(o.orderId))+'</strong> · '+esc(val(o.garment))+'</span>'+stageBadge(o.stage)+'</div>'+
+        '<div class="ci-meta">'+(o.price!=null?'<span>'+esc(money(o.price))+'</span>':'')+(o.payment?'<span>'+esc(o.payment)+'</span>':'')+(o.expectedDate?'<span>due '+esc(o.expectedDate)+'</span>':'')+'</div></div>';
+    }).join(""):'<div class="cu-none">No orders for this number.</div>')+
+    '<div class="cu-sec">Calls<span>'+calls.length+(S.calls&&S.calls.length>=50?' (latest 50 overall)':'')+'</span></div>'+
+    (calls.length?calls.map(function(x){
+      return '<button type="button" class="cu-item" data-cu-call="'+esc(x.callSid)+'"><div class="ci-top"><span>'+esc(fmtDT(x.startedAt))+'</span>'+callBadge(x)+'</div>'+
+        (snippet(x)?'<div class="ci-snip">'+esc(snippet(x))+'</div>':'')+'</button>';
+    }).join(""):'<div class="cu-none">No recent calls from this number.</div>')+
+    '<div class="cu-sec">Messages<span>'+msgs.length+'</span></div>'+
+    (msgs.length?msgs.map(function(m){
+      return '<div class="cu-item"><div class="ci-top"><span>'+esc(val(m.name,"Unknown caller"))+'</span><span class="td-mono">'+esc(fmtDT(m.createdAt))+'</span></div><div class="cu-v" style="margin-top:4px">'+esc(val(m.message))+'</div></div>';
+    }).join(""):'<div class="cu-none">No messages from this number.</div>')+
+    '</div>';
+  var body=el.querySelector(".dt-body"), same=el.getAttribute("data-k")===k && body, top=same?body.scrollTop:0;
+  if(setCu("cu-detail",el,html)){
+    el.setAttribute("data-k",k);
+    var nb=el.querySelector(".dt-body"); if(nb) nb.scrollTop=top;
+  }
+}
+
 function renderAll(){
-  renderStatus(); renderBanner(); renderStats(); renderOverview(); renderCalls(); renderOrders(); renderMessages(); coRender();
+  renderStatus(); renderBanner(); renderStats(); renderOverview(); renderCalls(); renderCustomers(); renderOrders(); renderMessages(); coRender();
 }
 
 /* ── Company context (versioned editor) ───────────────────────────────── */
@@ -984,10 +1120,14 @@ function refresh(){
       api("/api/stats").catch(function(){return S.stats;}),
       api("/api/calls?limit=50").catch(function(){return S.calls;}),
       api("/api/orders").catch(function(){return S.orders;}),
-      api("/api/messages").catch(function(){return S.messages;})
+      api("/api/messages").catch(function(){return S.messages;}),
+      (S.tab==="customers"||S.customers===null) ? api("/api/customers").then(function(d){ S.custMissing=false; return arr(d); },function(e){
+        if(e && e.status===404){ S.custMissing=true; return []; }
+        return S.customers;
+      }) : S.customers
     ]);
   }).then(function(r){
-    S.stats=r[0]; S.calls=r[1]?arr(r[1]):S.calls; S.orders=r[2]?arr(r[2]):S.orders; S.messages=r[3]?arr(r[3]):S.messages;
+    S.stats=r[0]; S.calls=r[1]?arr(r[1]):S.calls; S.orders=r[2]?arr(r[2]):S.orders; S.messages=r[3]?arr(r[3]):S.messages; S.customers=r[4];
   }).catch(function(){ S.health=false; }).then(function(){ busy=false; renderAll(); });
 }
 function schedule(){
@@ -1002,6 +1142,7 @@ function setTab(t){
   document.querySelectorAll(".tab").forEach(function(b){ var on=b.getAttribute("data-tab")===t; b.classList.toggle("active",on); b.setAttribute("aria-selected",on); });
   document.querySelectorAll(".panel").forEach(function(p){ p.classList.toggle("active",p.id==="panel-"+t); });
   if(t==="calls") renderCalls();
+  if(t==="customers"){ renderCustomers(); refresh(); }
   if(t==="company"){ coRender(); coFetch(); }
 }
 $("tabs").addEventListener("click",function(e){ var b=e.target.closest(".tab"); if(b) setTab(b.getAttribute("data-tab")); });
@@ -1011,7 +1152,7 @@ function openSettings(){
   $("settings-ov").classList.remove("hidden"); $("in-api").focus();
 }
 function closeSettings(){ $("settings-ov").classList.add("hidden"); }
-function resetData(){ S.health=null; S.stats=S.calls=S.orders=S.messages=null; S.sel=null; S.sig={}; coReset(); ["call-list","detail","orders-wrap","messages-wrap","overview-recent","stats"].forEach(function(i){$(i).innerHTML="";}); }
+function resetData(){ S.health=null; S.stats=S.calls=S.orders=S.messages=S.customers=null; S.custMissing=false; S.csel=null; S.sel=null; S.sig={}; coReset(); ["call-list","detail","cu-list","cu-detail","cu-status","orders-wrap","messages-wrap","overview-recent","stats"].forEach(function(i){$(i).innerHTML="";}); }
 function applySettings(){
   S.api=$("in-api").value.trim().replace(/\/+$/,""); S.token=$("in-token").value.trim(); S.demo=$("in-demo").checked;
   sset("hanger_api",S.api); sset("hanger_token",S.token); sset("hanger_demo",S.demo?"1":"0");
@@ -1038,8 +1179,19 @@ document.addEventListener("click",function(e){
   if(t.closest("[data-open-settings]")){ openSettings(); return; }
   if(t.closest("[data-demo]")){ S.demo=true; sset("hanger_demo","1"); resetData(); renderAll(); refresh(); return; }
   if(t.closest("[data-back]")){ S.sel=null; S.sig["call-list"]=null; S.sig.detail=null; $("detail").removeAttribute("data-sid"); renderCalls(); return; }
+  if(t.closest("[data-cback]")){ S.csel=null; S.sig["cu-list"]=null; S.sig["cu-detail"]=null; renderCustomers(); return; }
+  var cc=t.closest("[data-cu-call]");
+  if(cc){ S.sel=cc.getAttribute("data-cu-call"); S.sig.detail=null; S.sig["call-list"]=null; $("detail").removeAttribute("data-sid"); setTab("calls"); window.scrollTo(0,0); return; }
+  var cr=t.closest("tr[data-cu]");
+  if(cr){ S.csel=cr.getAttribute("data-cu"); S.sig["cu-list"]=null; S.sig["cu-detail"]=null; renderCustomers(); if(window.matchMedia("(max-width:760px)").matches) window.scrollTo(0,0); return; }
   var ci=t.closest(".call-item");
   if(ci){ S.sel=ci.getAttribute("data-sid"); S.sig.detail=null; S.sig["call-list"]=null; renderCalls(); if(window.matchMedia("(max-width:760px)").matches) window.scrollTo(0,0); }
+});
+
+$("cu-q").addEventListener("input",function(){ S.cq=this.value; renderCustomers(); });
+$("cu-list").addEventListener("keydown",function(e){
+  var r=e.target.closest&&e.target.closest("tr[data-cu]");
+  if(r && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); r.click(); }
 });
 
 renderAll();
