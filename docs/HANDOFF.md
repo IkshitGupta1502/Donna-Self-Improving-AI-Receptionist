@@ -163,3 +163,11 @@ npm run live               # then call the Twilio number from a verified phone
 - The teacher adds at most one entry per call from an edge case it sees. It is created **active** when the call scored below `PLAYBOOK_GRADE_THRESHOLD` (default 7) and `PLAYBOOK_AUTO_ACTIVATE` is not `0`, otherwise **proposed** for the owner. A similar entry is not duplicated, only counted (`timesSeen`), and a disabled entry stays disabled. Handling text may not contain invented prices or numbers, links, payments, or promises of things the receptionist cannot do (email, text, transfer).
 - The owner adds, turns on or off, and removes entries in the dashboard's Improvements tab (`POST /api/playbook...`, see `docs/API.md`). Every active entry (max 12, 3000 characters) is added to the system prompt on each call under `SCENARIO PLAYBOOK`.
 - End-to-end checked with a MongoDB-compatible server (FerretDB, built from source in this environment because the MongoDB downloads were blocked): call saved by the bridge -> graded by the real teacher pipeline (stand-in judge) -> rule, tool, owner question and playbook entry written -> bridge loads the tool and the entry, runs the tool, and puts the rule and entry in the next prompt; the API and the owner answer work. NOT run: the real Gemini judge, Atlas, a live call.
+
+### Teacher grounding fixes (found on the first real calls)
+The first real run graded old test calls and wrote two wrong rules: "do not address the caller by name" (it never saw the caller profile the receptionist is given from caller ID) and "always say CJ's Cleaning Company" (the call predated the rename but was judged against today's config). Fixed in `teacher/`:
+- The judge now sees the **caller profile** (customer + orders by the call's caller ID) and is told that using it, including greeting by name, is correct.
+- Each call is judged against the **config version it actually ran with**, not the active one. Changes are still built on the active config.
+- A call cut off by a technical failure gets graded but no improvements.
+- `watch` grades only calls that **end after the teacher starts** (set `TEACHER_GRADE_BACKLOG=1` to grade older ones) and never a call with no caller turn.
+- Bad rules that already exist can be undone in the dashboard by activating an earlier Knowledge version, or with `cd teacher && npm run rollback`.

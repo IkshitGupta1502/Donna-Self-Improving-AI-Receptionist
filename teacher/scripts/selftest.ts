@@ -367,4 +367,15 @@ assert.deepEqual([pbRej.status, pbRej.rejected_reason, "playbook_id" in pbRej.pa
 const pbPlan = buildPlan(JudgeOutput.parse({ ...out, improvements: [], playbook_entry: pbRaw }), hold, configV1, "mock");
 assert.deepEqual([pbPlan.nextConfig, pbPlan.improvements.length], [null, 0]);
 
+// ---- Caller profile in the judge input, and grounding ----
+import { formatCallerProfile } from "../src/services/teacher/profile.js";
+import { buildJudgeInput as judgeInput } from "../src/services/teacher/judge.js";
+const prof = formatCallerProfile({ name: "Aayush Gandhi", vip: true, callCount: 2, preferences: "Light starch" }, [{ orderId: "ORD-1", garment: "Suit", stage: "Ready", orderType: "Regular", price: 24, payment: "Unpaid", expectedDate: "2026-10-11" }]);
+assert.match(prof, /Name: Aayush Gandhi \(VIP\)/);
+assert.match(prof, /Order ORD-1: Suit, Ready/);
+assert.match(formatCallerProfile(null, []), /not recognised/);
+const withProfile = judgeInput(call, configV1, { profile: prof });
+assert.match(withProfile, /CALLER PROFILE/);
+assert.match(withProfile, /Aayush Gandhi/);
+assert.match(judgeInput(call, configV1), /CALLER PROFILE[^\n]*\n\(not available\)/);
 console.log("selftest passed");
