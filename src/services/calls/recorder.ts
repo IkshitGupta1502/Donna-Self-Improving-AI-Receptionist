@@ -50,8 +50,13 @@ export class CallRecorder {
     this.scheduleSave();
   }
 
-  async end(): Promise<void> {
-    if (this.ended) return;
+  setConfigVersion(versionId: string): void {
+    this.record.configVersionId = versionId;
+  }
+
+  /** Finalizes the call and returns the saved record (null if it was already ended). */
+  async end(): Promise<CallRecord | null> {
+    if (this.ended) return null;
     this.ended = true;
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
@@ -61,6 +66,7 @@ export class CallRecorder {
     this.record.status = "completed";
     activeCalls.delete(this.record.callSid);
     await this.flush();
+    return structuredClone(this.record);
   }
 
   private scheduleSave(): void {

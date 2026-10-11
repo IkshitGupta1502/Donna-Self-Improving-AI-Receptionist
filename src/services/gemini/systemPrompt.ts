@@ -1,4 +1,8 @@
-export function buildSystemPrompt(todayString: string, callerPhone?: string): string {
+import { renderConfigSections } from "../harness/config";
+import type { AgentConfig } from "../harness/types";
+
+export function buildSystemPrompt(todayString: string, callerPhone?: string, agentConfig?: AgentConfig): string {
+  const learned = agentConfig ? renderConfigSections(agentConfig) : "";
   const callerLine = callerPhone
     ? `\nCaller ID: ${callerPhone}. When the caller asks about "my order" without giving a number or name, call get_order with this phone. Do not read the number aloud unless asked.\n`
     : "";
@@ -23,6 +27,6 @@ TOOLS:
 - Prices: lookup_price for one item and speed, list_prices for the full list.
 - Special handling requests: add_order_note, after looking up the order.
 - Caller asks for a person, or asks something no tool can answer: take_message. Collect their name and callback number first, one question at a time.
-
+${learned ? `\n${learned}\n` : ""}
 Open the call by saying only: "Hey, this is Charlie's Cleaners." Then wait for the caller.`;
 }

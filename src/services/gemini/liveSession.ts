@@ -9,6 +9,7 @@ import { createDataStore, type DataStore } from "../data/store";
 import type { CallRecorder } from "../calls/recorder";
 import { TOOLS, executeTool } from "./tools";
 import { buildSystemPrompt } from "./systemPrompt";
+import { getHarnessStore } from "../harness/store";
 import { twilioToGemini, geminiToTwilio } from "../audio/converter";
 
 const MODEL = "gemini-3.1-flash-live-preview";
@@ -46,13 +47,23 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
     day: "numeric",
   });
 
+  // Load the active harness config; a failure here must never block the call.
+  const agentConfig = await (await getHarnessStore()).getActiveConfig().catch((err) => {
+    console.error("[harness] could not load active config, using base prompt:", err);
+    return undefined;
+  });
+  if (agentConfig) {
+    recorder?.setConfigVersion(agentConfig.versionId);
+    console.log(`[harness] call using config ${agentConfig.versionId} (${agentConfig.rules.length} rules, ${agentConfig.docs.length} docs)`);
+  }
+
   let liveSession!: Awaited<ReturnType<typeof ai.live.connect>>;
 
   liveSession = await ai.live.connect({
     model: MODEL,
     config: {
       responseModalities: [Modality.AUDIO],
-      systemInstruction: { parts: [{ text: buildSystemPrompt(today, callerPhone) }] },
+      systemInstruction: { parts: [{ text: buildSystemPrompt(today, callerPhone, agentConfig) }] },
       temperature: 0,
       speechConfig: {
         voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },

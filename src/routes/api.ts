@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from "express";
 import { config } from "../config";
 import { getStore } from "../services/gemini/liveSession";
 import { getActiveCalls } from "../services/calls/recorder";
+import { harnessRouter } from "./harnessApi";
 import type { CallRecord } from "../services/data/store";
 
 export const apiRouter = Router();
@@ -20,7 +21,7 @@ function cors(req: Request, res: Response, next: NextFunction): void {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
   }
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-dashboard-token, ngrok-skip-browser-warning");
   res.setHeader("Access-Control-Max-Age", "600");
   if (req.method === "OPTIONS") {
@@ -44,6 +45,7 @@ function auth(req: Request, res: Response, next: NextFunction): void {
 }
 
 apiRouter.use(cors, auth);
+apiRouter.use("/harness", harnessRouter);
 
 // Stored calls overlaid with the live in-memory copy of active calls
 async function allCalls(limit: number): Promise<CallRecord[]> {

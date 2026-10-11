@@ -1,5 +1,6 @@
 import WebSocket from "ws";
 import { openGeminiSession, getStore } from "../services/gemini/liveSession";
+import { processCall } from "../services/harness/pipeline";
 import { CallRecorder } from "../services/calls/recorder";
 
 interface TwilioFrame {
@@ -26,7 +27,9 @@ export function handleMediaStream(ws: WebSocket): void {
     const handle = gemini;
     gemini = null;
     handle?.close();
-    void recorder?.end();
+    void recorder?.end().then((finished) => {
+      if (finished) void processCall(finished);
+    });
   }
 
   ws.on("message", async (raw: WebSocket.RawData) => {
@@ -53,7 +56,7 @@ export function handleMediaStream(ws: WebSocket): void {
           });
         if (startedRecorder) {
           recorder = startedRecorder;
-          if (closed) void startedRecorder.end();
+          if (closed) void startedRecorder.end().then((f) => f && processCall(f));
           else await startedRecorder.start();
         }
 

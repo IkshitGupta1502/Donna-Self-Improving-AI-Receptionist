@@ -62,6 +62,9 @@ export interface CallRecord {
   transcript: CallTranscriptEntry[];
   toolCalls: CallToolCall[];
   status: "active" | "completed";
+  /** Harness config version that handled this call. */
+  configVersionId?: string;
+  outcome?: { label: string; success: boolean };
 }
 
 export interface DataStore {
@@ -76,6 +79,9 @@ export interface DataStore {
   listCalls(limit: number): Promise<CallRecord[]>;
   listOrders(): Promise<Order[]>;
   listMessages(): Promise<Message[]>;
+  getPrice(item: string): Promise<PriceRow | null>;
+  upsertPrice(row: PriceRow): Promise<void>;
+  removePrice(item: string): Promise<PriceRow | null>;
 }
 
 export function normalizePhone(input: string): string {
@@ -166,6 +172,20 @@ export function createMemoryStore(): DataStore {
     },
     async listMessages() {
       return [...messages].reverse().map((m) => ({ ...m }));
+    },
+    async getPrice(item) {
+      const row = pricing.find((r) => r.item.toLowerCase() === item.trim().toLowerCase());
+      return row ? { ...row } : null;
+    },
+    async upsertPrice(row) {
+      const idx = pricing.findIndex((r) => r.item.toLowerCase() === row.item.trim().toLowerCase());
+      if (idx < 0) pricing.push({ ...row });
+      else pricing[idx] = { ...row };
+    },
+    async removePrice(item) {
+      const idx = pricing.findIndex((r) => r.item.toLowerCase() === item.trim().toLowerCase());
+      if (idx < 0) return null;
+      return pricing.splice(idx, 1)[0];
     },
   };
 }
@@ -261,6 +281,19 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
     },
     async listMessages() {
       return messages.find({}, proj).sort({ createdAt: -1 }).toArray();
+    },
+    async getPrice(item) {
+      return pricing.findOne({ item: { $regex: `^${escapeRegex(item.trim())}$`, $options: "i" } }, proj);
+    },
+    async upsertPrice(row) {
+      const existing = await pricing.findOne({ item: { $regex: `^${escapeRegex(row.item.trim())}$`, $options: "i" } }, proj);
+      await pricing.replaceOne({ item: existing?.item ?? row.item }, { ...row, item: existing?.item ?? row.item }, { upsert: true });
+    },
+    async removePrice(item) {
+      const existing = await pricing.findOne({ item: { $regex: `^${escapeRegex(item.trim())}$`, $options: "i" } }, proj);
+      if (!existing) return null;
+      await pricing.deleteOne({ item: existing.item });
+      return existing;
     },
   };
 }
