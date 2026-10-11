@@ -13,15 +13,6 @@ function upsample(samples: Int16Array, fromRate: number, toRate: number): Int16A
   return output;
 }
 
-function downsample(samples: Int16Array, fromRate: number, toRate: number): Int16Array {
-  const ratio = fromRate / toRate;
-  const output = new Int16Array(Math.floor(samples.length / ratio));
-  for (let i = 0; i < output.length; i++) {
-    output[i] = samples[Math.round(i * ratio)];
-  }
-  return output;
-}
-
 // Twilio μ-law 8kHz base64 → PCM16 16kHz base64 (Gemini input format)
 export function twilioToGemini(base64Mulaw: string): string {
   const mulawBytes = new Uint8Array(Buffer.from(base64Mulaw, "base64"));
@@ -33,9 +24,13 @@ export function twilioToGemini(base64Mulaw: string): string {
 // Gemini PCM16 24kHz base64 → Twilio μ-law 8kHz base64
 export function geminiToTwilio(base64Pcm24k: string): string {
   const raw = Buffer.from(base64Pcm24k, "base64");
-  const pcm24k = new Int16Array(raw.buffer, raw.byteOffset, raw.byteLength / 2);
-  const pcm16k = downsample(pcm24k, 24000, 16000);
-  const pcm8k = downsample(pcm16k, 16000, 8000);
+  const pcm24k = new Int16Array(raw.buffer, raw.byteOffset, Math.floor(raw.byteLength / 2));
+  // 24 kHz -> 8 kHz: average each group of 3 samples (a simple low-pass) instead of dropping 2 of 3,
+  // which avoids aliasing and the thin, harsh sound it causes
+  const pcm8k = new Int16Array(Math.floor(pcm24k.length / 3));
+  for (let i = 0; i < pcm8k.length; i++) {
+    pcm8k[i] = Math.round((pcm24k[i * 3] + pcm24k[i * 3 + 1] + pcm24k[i * 3 + 2]) / 3);
+  }
   const mulawBytes = mulaw.encode(pcm8k);
   return Buffer.from(mulawBytes).toString("base64");
 }

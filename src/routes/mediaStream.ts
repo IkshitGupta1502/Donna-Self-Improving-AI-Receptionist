@@ -65,6 +65,12 @@ export function handleMediaStream(ws: WebSocket): void {
               ws.send(JSON.stringify({ event: "media", streamSid, media: { payload: base64Mulaw } }));
             }
           },
+          onInterrupted: () => {
+            // Caller spoke over the agent: tell Twilio to drop any audio it has queued
+            if (ws.readyState === WebSocket.OPEN && streamSid) {
+              ws.send(JSON.stringify({ event: "clear", streamSid }));
+            }
+          },
           onError: (err) => {
             console.error(`[${callSid}] Gemini error:`, err);
             ws.close();

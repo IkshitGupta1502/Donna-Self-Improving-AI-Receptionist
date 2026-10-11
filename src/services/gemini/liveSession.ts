@@ -23,6 +23,8 @@ export function getStore(): Promise<DataStore> {
 }
 
 export interface GeminiSessionOptions {
+  /** Called when the caller talks over the agent, so queued speech can be flushed */
+  onInterrupted?: () => void;
   callerPhone?: string;
   recorder?: CallRecorder;
   onAudio: (base64Mulaw: string) => void;
@@ -37,7 +39,7 @@ export interface GeminiSessionHandle {
 }
 
 export async function openGeminiSession(opts: GeminiSessionOptions): Promise<GeminiSessionHandle> {
-  const { onAudio, onError, onClose, callerPhone, recorder } = opts;
+  const { onAudio, onError, onClose, onInterrupted, callerPhone, recorder } = opts;
   const store = await getStore();
   const activeConfig: ConfigVersion = await store.getActiveConfig();
   recorder?.setConfigVersion(activeConfig.version);
@@ -96,6 +98,7 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
         if (msg.data) {
           onAudio(geminiToTwilio(msg.data));
         }
+        if (msg.serverContent?.interrupted) onInterrupted?.();
 
         const inText = msg.serverContent?.inputTranscription?.text;
         if (inText) {
