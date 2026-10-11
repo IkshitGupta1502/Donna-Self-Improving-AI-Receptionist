@@ -128,6 +128,29 @@ apiRouter.get(
   })
 );
 
+const customerSchema = z.object({
+  name: z.string().trim().max(80).optional(),
+  email: z.string().trim().max(120).optional(),
+  preferences: z.string().trim().max(500).optional(),
+  notes: z.string().trim().max(1000).optional(),
+  vip: z.boolean().optional(),
+});
+
+// Owner edit. An empty string clears a field.
+apiRouter.put(
+  "/customers/:phone",
+  wrap(async (req, res) => {
+    const parsed = customerSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return badRequest(res, parsed.error);
+    const saved = await (await getStore()).editCustomer(String(req.params.phone), parsed.data);
+    if (!saved) {
+      res.status(404).json({ error: "customer not found" });
+      return;
+    }
+    res.json(saved);
+  })
+);
+
 apiRouter.get(
   "/messages",
   wrap(async (_req, res) => {

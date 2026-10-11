@@ -691,7 +691,7 @@ const S = {
   theme: sget("snoopy_theme") || "auto",
   view: "line", sel: null, liveSel: null,
   health: null,
-  calls: null, orders: null, messages: null, customers: null, custSel: null, custQ: "",
+  calls: null, orders: null, messages: null, customers: null, custSel: null, custQ: "", custEdit: false, custMsg: "",
   grades: null, imps: null,   // null = teacher API not available
   callQ: "", callF: "all", orderQ: "",
   h: {}, seenLive: {},
@@ -1004,6 +1004,16 @@ const Demo = (function () {
       const f = configs.find((x) => x.version === body.version);
       if (!f) fail(404, "version not found");
       active = f.version; return f;
+    }
+    if (method === "PUT") {
+      const cm = /^\/api\/customers\/([^/]+)$/.exec(p);
+      if (cm) {
+        const c = customers.find((x) => x.phone === decodeURIComponent(cm[1]));
+        if (!c) fail(404, "customer not found");
+        ["name", "email", "preferences", "notes"].forEach((k) => { if (typeof body[k] === "string") { if (body[k].trim()) c[k] = body[k].trim(); else delete c[k]; } });
+        if (typeof body.vip === "boolean") c.vip = body.vip;
+        return c;
+      }
     }
     const m = /^\/api\/improvements\/([^/]+)$/.exec(p);
     if (method === "POST" && m) {
@@ -1582,21 +1592,45 @@ function callGist(c) {
   const first = t.length ? t[0].text : "";
   return (first.length > 70 ? first.slice(0, 67) + "…" : first) || "No transcript";
 }
-function openCustomer(ph) {
+function openCustomer(ph, edit) {
   const c = arr(S.customers).find((x) => x.phone === ph); if (!c) return;
+  S.custSel = ph; S.custEdit = !!edit;
   const orders = arr(S.orders).filter((o) => samePhone(o.phone, c.phone));
   const calls = sortedCalls().filter((x) => samePhone(x.from, c.phone));
   const msgs = arr(S.messages).filter((m) => samePhone(m.phone, c.phone));
   const sec = (t, inner) => inner ? '<div class="cd-h">' + t + '</div><div class="cd-list">' + inner + "</div>" : "";
-  $("cust-body").innerHTML = '<div class="dlg-h"><h2 id="cust-t">Customer</h2><button class="icon-btn" type="button" data-close aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
-    '<div class="dlg-b"><div class="cd-top"><div class="avatar" aria-hidden="true">' + custInitials(c) + '</div><div><div style="font-size:20px;font-weight:600;letter-spacing:-.02em">' + esc(c.name || "Unknown name") + (c.vip ? ' <span class="chip vip">VIP</span>' : "") + '</div><div class="cust-sub">' + esc(phone(c.phone)) + (c.email ? " · " + esc(c.email) : "") + "</div></div></div>" +
-    '<div class="cd-grid" style="margin-top:16px"><div class="cd-stat"><b>' + (c.callCount || 0) + "</b><span>Calls</span></div><div class=\"cd-stat\"><b>" + orders.length + "</b><span>Orders</span></div><div class=\"cd-stat\"><b>" + (c.firstSeenAt ? esc(rel(c.firstSeenAt)) : "–") + "</b><span>First seen</span></div></div>" +
-    (c.preferences ? '<div class="cd-h">Preferences</div><div class="cd-note">' + esc(c.preferences) + "</div>" : "") +
-    (c.notes ? '<div class="cd-h">Notes</div><div class="cd-note">' + esc(c.notes) + "</div>" : "") +
-    sec("Orders", orders.map((o) => '<div class="cd-item"><div><span class="o-id">' + esc(o.orderId) + "</span> " + esc(o.garment) + "<small>" + esc(o.stage) + (stageIx(o.stage) < 5 ? " · due " + esc(day(o.expectedDate)) : "") + '</small></div><div style="font-weight:600">' + esc(money(o.price)) + "</div></div>").join("")) +
-    sec("Calls", calls.slice(0, 6).map((x) => '<button type="button" class="cd-item" data-cust-call="' + esc(x.callSid) + '"><div>' + esc(dateTime(x.startedAt)) + "<small>" + esc(callGist(x)) + "</small></div>" + CHEV + "</button>").join("")) +
-    sec("Messages", msgs.map((m) => '<div class="cd-item"><div>' + esc(m.message) + "<small>" + esc(rel(m.createdAt)) + "</small></div></div>").join("")) + "</div>";
+  const head = (t) => '<div class="dlg-h"><h2 id="cust-t">' + t + '</h2><button class="icon-btn" type="button" data-close aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>';
+  if (edit) {
+    const f = (id, label, val, tag, max) => '<div style="margin-bottom:14px"><div class="frow"><label class="lbl" for="' + id + '">' + label + "</label></div>" +
+      (tag === "ta" ? '<textarea class="field" id="' + id + '" maxlength="' + max + '" style="min-height:84px">' + esc(val || "") + "</textarea>" : '<input class="field" id="' + id + '" maxlength="' + max + '" value="' + esc(val || "") + '" autocomplete="off" />') + "</div>";
+    $("cust-body").innerHTML = head("Edit customer") +
+      '<div class="dlg-b"><p class="cust-sub" style="margin-bottom:14px">' + esc(phone(c.phone)) + " · changes apply the next time they call.</p>" +
+      f("ce-name", "Name", c.name, "in", 80) + f("ce-email", "Email", c.email, "in", 120) + f("ce-pref", "Preferences", c.preferences, "ta", 500) + f("ce-notes", "Notes", c.notes, "ta", 1000) +
+      '<label style="display:flex;gap:8px;align-items:center;font-size:15px"><input type="checkbox" id="ce-vip"' + (c.vip ? " checked" : "") + " /> VIP customer</label>" +
+      '<p class="cust-sub" id="ce-msg" role="status" style="margin-top:12px;color:var(--bad)">' + esc(S.custMsg || "") + "</p></div>" +
+      '<div class="dlg-f"><button class="btn" type="button" data-cust-cancel>Cancel</button><button class="btn primary" type="button" data-cust-save>Save</button></div>';
+  } else {
+    $("cust-body").innerHTML = head("Customer") +
+      '<div class="dlg-b"><div class="cd-top"><div class="avatar" aria-hidden="true">' + custInitials(c) + '</div><div><div style="font-size:20px;font-weight:600;letter-spacing:-.02em">' + esc(c.name || "Unknown name") + (c.vip ? ' <span class="chip vip">VIP</span>' : "") + '</div><div class="cust-sub">' + esc(phone(c.phone)) + (c.email ? " · " + esc(c.email) : "") + "</div></div></div>" +
+      '<div class="cd-grid" style="margin-top:16px"><div class="cd-stat"><b>' + (c.callCount || 0) + "</b><span>Calls</span></div><div class=\"cd-stat\"><b>" + orders.length + "</b><span>Orders</span></div><div class=\"cd-stat\"><b>" + (c.firstSeenAt ? esc(rel(c.firstSeenAt)) : "–") + "</b><span>First seen</span></div></div>" +
+      '<div class="cd-h">Preferences</div><div class="cd-note">' + (esc(c.preferences) || '<span class="muted">None noted</span>') + "</div>" +
+      '<div class="cd-h">Notes</div><div class="cd-note">' + (esc(c.notes) || '<span class="muted">None</span>') + "</div>" +
+      sec("Orders", orders.map((o) => '<div class="cd-item"><div><span class="o-id">' + esc(o.orderId) + "</span> " + esc(o.garment) + "<small>" + esc(o.stage) + (stageIx(o.stage) < 5 ? " · due " + esc(day(o.expectedDate)) : "") + '</small></div><div style="font-weight:600">' + esc(money(o.price)) + "</div></div>").join("")) +
+      sec("Calls", calls.slice(0, 6).map((x) => '<button type="button" class="cd-item" data-cust-call="' + esc(x.callSid) + '"><div>' + esc(dateTime(x.startedAt)) + "<small>" + esc(callGist(x)) + "</small></div>" + CHEV + "</button>").join("")) +
+      sec("Messages", msgs.map((m) => '<div class="cd-item"><div>' + esc(m.message) + "<small>" + esc(rel(m.createdAt)) + "</small></div></div>").join("")) + "</div>" +
+      '<div class="dlg-f"><button class="btn primary" type="button" data-cust-edit>Edit</button></div>';
+  }
   openDlg($("cust-dlg"));
+}
+async function saveCustomer() {
+  const ph = S.custSel, v = (id) => $(id).value;
+  const body = { name: v("ce-name"), email: v("ce-email"), preferences: v("ce-pref"), notes: v("ce-notes"), vip: $("ce-vip").checked };
+  const btn = document.querySelector("[data-cust-save]"); btn.disabled = true;
+  try {
+    const saved = await api("/api/customers/" + encodeURIComponent(ph), { method: "PUT", body });
+    S.customers = arr(S.customers).map((c) => (c.phone === ph ? saved : c));
+    S.custMsg = ""; S.h.customers = null; renderCustomers(); openCustomer(ph, false); toast("Saved");
+  } catch (e) { S.custMsg = errText(e); btn.disabled = false; $("ce-msg").textContent = S.custMsg; }
 }
 $("cust-q").addEventListener("input", (e) => { S.custQ = e.target.value; renderCustomers(); });
 
@@ -1751,6 +1785,9 @@ document.addEventListener("click", (e) => {
   if (t.closest("[data-play]")) { Demo.playCall(); refresh(); return; }
   if ((el = t.closest("[data-live]"))) { S.liveSel = el.getAttribute("data-live"); S.h["now-head"] = null; renderLine(); return; }
   if ((el = t.closest("[data-cust]"))) { openCustomer(el.getAttribute("data-cust")); return; }
+  if (t.closest("[data-cust-edit]")) { S.custMsg = ""; openCustomer(S.custSel, true); return; }
+  if (t.closest("[data-cust-cancel]")) { S.custMsg = ""; openCustomer(S.custSel, false); return; }
+  if (t.closest("[data-cust-save]")) { saveCustomer(); return; }
   if ((el = t.closest("[data-cust-call]"))) { closeDlg($("cust-dlg")); go("#/calls/" + encodeURIComponent(el.getAttribute("data-cust-call"))); return; }
   if ((el = t.closest("[data-sheet]"))) { openSheet(Number(el.getAttribute("data-sheet"))); return; }
   if ((el = t.closest("[data-mode]"))) { K.mode = el.getAttribute("data-mode"); renderSheet(); return; }
