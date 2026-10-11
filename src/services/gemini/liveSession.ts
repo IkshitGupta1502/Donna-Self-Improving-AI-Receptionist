@@ -9,7 +9,7 @@ import { createDataStore, type ConfigVersion, type DataStore } from "../data/sto
 import type { CallRecorder } from "../calls/recorder";
 import { TOOLS, executeTool } from "./tools";
 import { buildSystemPrompt, type CallerProfile } from "./systemPrompt";
-import { twilioToGemini, geminiToTwilio } from "../audio/converter";
+import { twilioToGemini, createGeminiToTwilio } from "../audio/converter";
 
 export const MODEL = "gemini-3.1-flash-live-preview";
 
@@ -40,27 +40,31 @@ export interface GeminiSessionHandle {
 
 export async function openGeminiSession(opts: GeminiSessionOptions): Promise<GeminiSessionHandle> {
   const { onAudio, onError, onClose, onInterrupted, callerPhone, recorder } = opts;
+  const t0 = Date.now();
   const store = await getStore();
-  const activeConfig: ConfigVersion = await store.getActiveConfig();
-  recorder?.setConfigVersion(activeConfig.version);
 
-  // Pull the caller's profile and orders from MongoDB before the call starts
-  let profile: CallerProfile | undefined;
-  if (callerPhone) {
-    try {
-      const [customer, orders] = await Promise.all([
-        store.getCustomerByPhone(callerPhone),
-        store.getOrdersByPhone(callerPhone),
-      ]);
-      profile = { customer, orders };
-      console.log(
-        `[profile] ${callerPhone}: ${customer?.name ?? "unknown caller"}, ${orders.length} order(s), ${customer?.callCount ?? 0} previous call(s)`
-      );
-      await store.recordCustomerCall(callerPhone);
-    } catch (err) {
-      console.error("[profile] lookup failed, continuing without it:", err);
-    }
-  }
+  // Config, profile and orders are independent MongoDB reads: fetch them together, not one after another
+  const [activeConfig, profile] = await Promise.all([
+    store.getActiveConfig() as Promise<ConfigVersion>,
+    callerPhone
+      ? Promise.all([store.getCustomerByPhone(callerPhone), store.getOrdersByPhone(callerPhone)])
+          .then(([customer, orders]): CallerProfile => {
+            console.log(
+              `[profile] ${callerPhone}: ${customer?.name ?? "unknown caller"}, ${orders.length} order(s), ${customer?.callCount ?? 0} previous call(s)`
+            );
+            return { customer, orders };
+          })
+          .catch((err): undefined => {
+            console.error("[profile] lookup failed, continuing without it:", err);
+            return undefined;
+          })
+      : Promise.resolve(undefined),
+  ]);
+  recorder?.setConfigVersion(activeConfig.version);
+  // The call counter is bookkeeping: do not make the caller wait for it
+  if (callerPhone) void store.recordCustomerCall(callerPhone).catch((err) => console.error("[profile] call count failed:", err));
+  const dbMs = Date.now() - t0;
+  const toTwilio = createGeminiToTwilio();
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -87,7 +91,7 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
           disabled: false,
           startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_LOW,
           endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_LOW,
-          silenceDurationMs: 700,
+          silenceDurationMs: Number(process.env.GEMINI_SILENCE_MS) || 500,
         },
       },
       inputAudioTranscription: {},
@@ -96,7 +100,7 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
     callbacks: {
       onmessage: (msg: LiveServerMessage) => {
         if (msg.data) {
-          onAudio(geminiToTwilio(msg.data));
+          onAudio(toTwilio(msg.data));
         }
         if (msg.serverContent?.interrupted) onInterrupted?.();
 
@@ -142,6 +146,8 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
       },
     },
   });
+
+  console.log(`[latency] MongoDB context loaded in ${dbMs}ms, Gemini session ready in ${Date.now() - t0}ms`);
 
   liveSession.sendRealtimeInput({
     text: `Say exactly: "${activeConfig.greeting.replace(/"/g, "'")}" Then wait for the caller.`,

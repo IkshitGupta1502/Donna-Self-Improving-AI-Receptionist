@@ -1,5 +1,5 @@
 import { MongoClient, type Collection, type OptionalUnlessRequiredId } from "mongodb";
-import { SEED_CONFIG, SEED_CUSTOMERS, SEED_ORDERS, SEED_PRICING } from "./seed";
+import { SEED_APPOINTMENTS, SEED_CONFIG, SEED_CUSTOMERS, SEED_ORDERS, SEED_PRICING } from "./seed";
 
 export type Speed = "Regular" | "Expedited";
 
@@ -107,6 +107,202 @@ function cleanPatch(patch: CustomerPatch): CustomerPatch {
   return out;
 }
 
+export type AppointmentKind = "pickup" | "delivery" | "dropoff";
+
+export interface Appointment {
+  id: string;
+  phone: string;
+  name: string;
+  kind: AppointmentKind;
+  date: string; // YYYY-MM-DD
+  window: string; // e.g. "10am-12pm"
+  address?: string;
+  orderId?: string;
+  notes?: string;
+  status: "scheduled";
+  createdAt: string;
+}
+
+export interface AppointmentInput {
+  phone: string;
+  name: string;
+  kind: AppointmentKind;
+  date: string;
+  window: string;
+  address?: string;
+  orderId?: string;
+  notes?: string;
+}
+
+export interface CreateOrderInput {
+  customerName: string;
+  phone: string;
+  garment: string;
+  orderType?: Speed;
+  notes?: string;
+}
+
+export interface OrderResult {
+  ok: boolean;
+  order?: Order;
+  reason?: string;
+}
+
+export interface AppointmentResult {
+  ok: boolean;
+  appointment?: Appointment;
+  reason?: string;
+}
+
+/** Days of the week (0 = Sunday) the business is closed. Used for turnaround and scheduling. */
+export const CLOSED_DAYS: readonly number[] = [0];
+export const TURNAROUND_DAYS: Record<Speed, number> = { Regular: 3, Expedited: 1 };
+/** Stages in which an order can still be cancelled. */
+export const CANCELLABLE_STAGES: readonly string[] = ["Received", "Sorting"];
+
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+export function weekdayName(date: string): string {
+  return WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()];
+}
+
+export function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Date `days` open days after `from` (YYYY-MM-DD, default today), skipping closed days. */
+export function computeExpectedDate(speed: Speed, from: string = todayISO()): string {
+  const d = new Date(`${from}T00:00:00Z`);
+  let left = TURNAROUND_DAYS[speed];
+  while (left > 0) {
+    d.setUTCDate(d.getUTCDate() + 1);
+    if (!CLOSED_DAYS.includes(d.getUTCDay())) left--;
+  }
+  return d.toISOString().slice(0, 10);
+}
+
+function findPriceRow(rows: PriceRow[], item: string): PriceRow | undefined {
+  const q = item.trim().toLowerCase();
+  if (!q) return undefined;
+  return (
+    rows.find((r) => r.item.toLowerCase() === q) ??
+    rows.find((r) => r.item.toLowerCase().includes(q) || q.includes(r.item.toLowerCase()))
+  );
+}
+
+/**
+ * Price a free-text garment string that may list several items, e.g. "Suit (2-piece) x2, Shirt (dress) x3".
+ * Quantity forms: "x3", "3x", or a leading number. Returns matched=false if any segment is not in the table.
+ */
+export function priceGarment(garment: string, speed: Speed, rows: PriceRow[]): { price: number; matched: boolean } {
+  const segments = garment.split(/,|;|\band\b|\+/i).map((x) => x.trim()).filter(Boolean);
+  if (segments.length === 0) return { price: 0, matched: false };
+  let total = 0;
+  for (const seg of segments) {
+    let qty = 1;
+    let name = seg;
+    let m = name.match(/\s*[x×]\s*(\d+)\s*$/i) ?? name.match(/\s*\(?\s*(\d+)\s*[x×]\s*\)?\s*$/i);
+    if (m) {
+      qty = Number.parseInt(m[1], 10);
+      name = name.slice(0, m.index).trim();
+    } else if ((m = name.match(/^(\d+)\s*[x×]?\s+(.+)$/i))) {
+      qty = Number.parseInt(m[1], 10);
+      name = m[2].trim();
+    }
+    const row = findPriceRow(rows, name);
+    if (!row || qty < 1) return { price: 0, matched: false };
+    total += (speed === "Expedited" ? row.expeditedPrice : row.regularPrice) * qty;
+  }
+  return { price: Math.round(total * 100) / 100, matched: true };
+}
+
+const PRICE_TBC_NOTE = "Price to be confirmed.";
+
+function buildNewOrder(orderId: string, input: CreateOrderInput, rows: PriceRow[]): Order {
+  const speed: Speed = input.orderType === "Expedited" ? "Expedited" : "Regular";
+  const garment = input.garment.trim();
+  const { price, matched } = priceGarment(garment, speed, rows);
+  const day = todayISO();
+  const notes = [input.notes?.trim() ? `[${day}] ${input.notes.trim()}` : "", matched ? "" : `[${day}] ${PRICE_TBC_NOTE}`]
+    .filter(Boolean)
+    .join(" ");
+  return {
+    orderId,
+    customerName: input.customerName.trim(),
+    phone: normalizePhone(input.phone),
+    garment,
+    stage: "Received",
+    orderType: speed,
+    price,
+    payment: "Unpaid",
+    notes,
+    expectedDate: computeExpectedDate(speed),
+  };
+}
+
+function nextId(prefix: string, existing: string[]): string {
+  let max = 0;
+  for (const id of existing) {
+    const m = id.match(new RegExp(`^${prefix}-(\\d+)$`, "i"));
+    if (m) max = Math.max(max, Number.parseInt(m[1], 10));
+  }
+  return `${prefix}-${String(max + 1).padStart(4, "0")}`;
+}
+
+function applySpeed(order: Order, speed: Speed, rows: PriceRow[]): Order {
+  const { price, matched } = priceGarment(order.garment, speed, rows);
+  return {
+    ...order,
+    orderType: speed,
+    price: matched ? price : order.price,
+    expectedDate: computeExpectedDate(speed),
+  };
+}
+
+function cancelledOrder(order: Order, reason?: string): OrderResult {
+  if (order.stage.trim().toLowerCase() === "cancelled") {
+    return { ok: false, order, reason: `Order ${order.orderId} is already cancelled.` };
+  }
+  if (!CANCELLABLE_STAGES.some((s) => s.toLowerCase() === order.stage.trim().toLowerCase())) {
+    return {
+      ok: false,
+      order,
+      reason: `Order ${order.orderId} cannot be cancelled because work has started (stage: ${order.stage}).`,
+    };
+  }
+  const line = `[${todayISO()}] Cancelled by caller${reason?.trim() ? `: ${reason.trim()}` : "."}`;
+  return { ok: true, order: { ...order, stage: "Cancelled", notes: order.notes ? `${order.notes} ${line}` : line } };
+}
+
+/** Returns a human-readable rejection reason, or null when the booking input is valid. */
+export function validateAppointment(input: AppointmentInput, today: string = todayISO()): string | null {
+  if (!["pickup", "delivery", "dropoff"].includes(input.kind)) return "Kind must be pickup, delivery or dropoff.";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date) || Number.isNaN(Date.parse(`${input.date}T00:00:00Z`))) {
+    return "Date must be a real date in YYYY-MM-DD format.";
+  }
+  if (input.date < today) return `${input.date} is in the past. Ask for a date from today (${today}) onward.`;
+  const dow = new Date(`${input.date}T00:00:00Z`).getUTCDay();
+  if (CLOSED_DAYS.includes(dow)) return `We are closed on ${WEEKDAYS[dow]}s. Offer a different day.`;
+  if (!input.window.trim()) return "A time window is required, for example 10am-12pm.";
+  return null;
+}
+
+function buildAppointment(id: string, input: AppointmentInput): Appointment {
+  return {
+    id,
+    phone: normalizePhone(input.phone),
+    name: input.name.trim(),
+    kind: input.kind,
+    date: input.date,
+    window: input.window.trim(),
+    ...(input.address?.trim() ? { address: input.address.trim() } : {}),
+    ...(input.orderId?.trim() ? { orderId: input.orderId.trim().toUpperCase() } : {}),
+    ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),
+    status: "scheduled",
+    createdAt: new Date().toISOString(),
+  };
+}
+
 export interface DataStore {
   getActiveConfig(): Promise<ConfigVersion>;
   listConfigVersions(): Promise<ConfigVersion[]>;
@@ -128,6 +324,12 @@ export interface DataStore {
   upsertCustomer(phone: string, patch: CustomerPatch): Promise<Customer>;
   recordCustomerCall(phone: string): Promise<void>;
   listCustomers(): Promise<Customer[]>;
+  createOrder(input: CreateOrderInput): Promise<Order>;
+  setOrderType(orderId: string, speed: Speed): Promise<Order | null>;
+  cancelOrder(orderId: string, reason?: string): Promise<OrderResult>;
+  scheduleAppointment(input: AppointmentInput): Promise<AppointmentResult>;
+  listAppointments(): Promise<Appointment[]>;
+  listAppointmentsByPhone(phone: string): Promise<Appointment[]>;
 }
 
 export function normalizePhone(input: string): string {
@@ -172,6 +374,7 @@ export function createMemoryStore(): DataStore {
   const pricing: PriceRow[] = structuredClone(SEED_PRICING);
   const messages: Message[] = [];
   const customers = new Map<string, Customer>(SEED_CUSTOMERS.map((c) => [c.phone, structuredClone(c)]));
+  const appointments: Appointment[] = structuredClone(SEED_APPOINTMENTS);
   const calls = new Map<string, CallRecord>();
   const configs: ConfigVersion[] = [structuredClone(SEED_CONFIG)];
   let activeVersion = SEED_CONFIG.version;
@@ -200,7 +403,8 @@ export function createMemoryStore(): DataStore {
       return structuredClone(found);
     },
     async getOrderById(orderId) {
-      return findOrder(orderId);
+      const o = findOrder(orderId);
+      return o ? { ...o } : null;
     },
     async upsertOrder(order) {
       const id = order.orderId.toUpperCase();
@@ -281,6 +485,46 @@ export function createMemoryStore(): DataStore {
         .sort((a, b) => (b.lastCallAt ?? b.firstSeenAt).localeCompare(a.lastCallAt ?? a.firstSeenAt))
         .map((c) => ({ ...c }));
     },
+    async createOrder(input) {
+      const order = buildNewOrder(
+        nextId("ORD", orders.map((o) => o.orderId)),
+        input,
+        pricing
+      );
+      orders.push(order);
+      return { ...order };
+    },
+    async setOrderType(orderId, speed) {
+      const order = findOrder(orderId);
+      if (!order) return null;
+      Object.assign(order, applySpeed(order, speed, pricing));
+      return { ...order };
+    },
+    async cancelOrder(orderId, reason) {
+      const order = findOrder(orderId);
+      if (!order) return { ok: false, reason: `No order ${orderId}.` };
+      const res = cancelledOrder(order, reason);
+      if (!res.ok) return { ...res, order: { ...order } };
+      Object.assign(order, res.order);
+      return { ok: true, order: { ...order } };
+    },
+    async scheduleAppointment(input) {
+      const reason = validateAppointment(input);
+      if (reason) return { ok: false, reason };
+      const appt = buildAppointment(
+        nextId("APT", appointments.map((a) => a.id)),
+        input
+      );
+      appointments.push(appt);
+      return { ok: true, appointment: { ...appt } };
+    },
+    async listAppointments() {
+      return [...appointments].reverse().map((a) => ({ ...a }));
+    },
+    async listAppointmentsByPhone(phone) {
+      const p = normalizePhone(phone);
+      return appointments.filter((a) => a.phone === p).reverse().map((a) => ({ ...a }));
+    },
   };
 }
 
@@ -300,6 +544,7 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
   const messages = db.collection<Message>("messages");
   const calls = db.collection<CallRecord>("calls");
   const customers = db.collection<Customer>("customers");
+  const appointments = db.collection<Appointment>("appointments");
 
   await orders.createIndex({ orderId: 1 }, { unique: true });
   await pricing.createIndex({ item: 1 }, { unique: true });
@@ -313,6 +558,9 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
   await customers.createIndex({ phone: 1 }, { unique: true });
   await seedIfEmpty(pricing, SEED_PRICING);
   await seedIfEmpty(customers, SEED_CUSTOMERS);
+  await appointments.createIndex({ phone: 1 });
+  await appointments.createIndex({ id: 1 }, { unique: true });
+  await seedIfEmpty(appointments, SEED_APPOINTMENTS);
   console.log(`[data] MongoDB connected: db=${dbName}`);
 
   const proj = { projection: { _id: 0 } } as const;
@@ -449,6 +697,68 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
     },
     async listCustomers() {
       return customers.find({}, proj).sort({ lastCallAt: -1, firstSeenAt: -1 }).toArray();
+    },
+    async createOrder(input) {
+      const rows = await pricing.find({}, proj).toArray();
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const ids = await orders.find({}, { projection: { _id: 0, orderId: 1 } }).toArray();
+        const order = buildNewOrder(nextId("ORD", ids.map((o) => o.orderId)), input, rows);
+        try {
+          await orders.insertOne({ ...order });
+        } catch (err) {
+          if ((err as { code?: number })?.code === 11000) continue;
+          throw err;
+        }
+        return order;
+      }
+      throw new Error("could not allocate order id");
+    },
+    async setOrderType(orderId, speed) {
+      const id = orderId.trim().toUpperCase();
+      const order = await orders.findOne({ orderId: id }, proj);
+      if (!order) return null;
+      const rows = await pricing.find({}, proj).toArray();
+      const next = applySpeed(order, speed, rows);
+      await orders.updateOne({ orderId: id }, { $set: { orderType: next.orderType, price: next.price, expectedDate: next.expectedDate } });
+      return next;
+    },
+    async cancelOrder(orderId, reason) {
+      const id = orderId.trim().toUpperCase();
+      const order = await orders.findOne({ orderId: id }, proj);
+      if (!order) return { ok: false, reason: `No order ${orderId}.` };
+      const res = cancelledOrder(order, reason);
+      if (!res.ok || !res.order) return res;
+      // Guard on the stage we read so a concurrent stage change cannot be overwritten
+      const upd = await orders.updateOne(
+        { orderId: id, stage: order.stage },
+        { $set: { stage: res.order.stage, notes: res.order.notes } }
+      );
+      if (upd.matchedCount === 0) {
+        return { ok: false, reason: `Order ${id} changed while cancelling. Check its status and try again.` };
+      }
+      return res;
+    },
+    async scheduleAppointment(input) {
+      const reason = validateAppointment(input);
+      if (reason) return { ok: false, reason };
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const ids = await appointments.find({}, { projection: { _id: 0, id: 1 } }).toArray();
+        const appt = buildAppointment(nextId("APT", ids.map((a) => a.id)), input);
+        try {
+          await appointments.insertOne({ ...appt });
+        } catch (err) {
+          if ((err as { code?: number })?.code === 11000) continue;
+          throw err;
+        }
+        return { ok: true, appointment: appt };
+      }
+      throw new Error("could not allocate appointment id");
+    },
+    async listAppointments() {
+      return appointments.find({}, proj).sort({ createdAt: -1, id: -1 }).toArray();
+    },
+    async listAppointmentsByPhone(phone) {
+      return appointments.find({ phone: normalizePhone(phone) }, proj).sort({ createdAt: -1, id: -1 }).toArray();
     },
   };
 }

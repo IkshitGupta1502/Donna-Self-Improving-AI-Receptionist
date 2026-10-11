@@ -144,3 +144,9 @@ npm run live               # then call the Twilio number from a verified phone
 - At call start `liveSession.ts` loads the caller's profile and orders by caller ID and puts them in the system prompt (`CALLER PROFILE`). The terminal logs `[profile] +1...: <name>, N order(s), N previous call(s)`. Every call increments `callCount`; unknown numbers get a profile created.
 - New tool `update_customer_profile` lets the agent save a name, email, preference or note for the current caller. `GET /api/customers` serves the dashboard's Customers tab.
 - Company name is now "CJ's Cleaning Company". Rerun `npm run seed` to update the active config in an existing database.
+
+### Ordering and scheduling by phone (added)
+- New tools: `create_order`, `set_order_type`, `cancel_order`, `schedule_appointment`, `quote_turnaround` (writes need `confirmed=true`). The system prompt has a "WHAT YOU CAN DO" section so the agent no longer says it cannot take orders.
+- `DataStore` gained `createOrder` (next `ORD-XXXX`, price from the pricing table or 0 with a "Price to be confirmed" note, expected date = 3 days regular / 1 day expedited, skipping `CLOSED_DAYS`), `setOrderType`, `cancelOrder` (only Received/Sorting; returns `{ok, order?, reason?}`), `scheduleAppointment` (rejects past dates and closed days), `listAppointments`, `listAppointmentsByPhone`.
+- New `appointments` collection (`APT-XXXX`, indexes on `phone` and unique `id`), seeded with 4 demo rows. `GET /api/appointments`.
+- Overlaps with PR #5 (`calendar-integration`, pickup slot booking / Google Calendar sync): the appointments model here is deliberately small; reconcile before merging both.

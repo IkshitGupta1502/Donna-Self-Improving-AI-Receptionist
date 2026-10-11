@@ -54,7 +54,7 @@ export function handleMediaStream(ws: WebSocket): void {
         if (startedRecorder) {
           recorder = startedRecorder;
           if (closed) void startedRecorder.end();
-          else await startedRecorder.start();
+          else void startedRecorder.start().catch((err) => console.error(`[${callSid}] recorder start failed:`, err));
         }
 
         const handle = await openGeminiSession({
