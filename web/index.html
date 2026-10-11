@@ -14,7 +14,7 @@
 :root{
   --bg:#F5F4F0;--ink:#0D0D0D;--surface:#FFFFFF;--border:#D8D5CC;--muted:#777;
   --hover:#F0EFE8;--active-row:#EDECEA;--inv-bg:#0D0D0D;--inv-fg:#FFFFFF;
-  --good:#1f7a4d;--bad:#b3261e;--live:#c0392b;
+  --good:#1f7a4d;--bad:#b3261e;--live:#c0392b;--teacher:#5b3fd1;
   --bubble-caller:#EDECEA;--bubble-agent:#0D0D0D;--bubble-agent-fg:#FFFFFF;
   --shadow:0 1px 3px rgba(0,0,0,.07);--shadow-lg:0 4px 16px rgba(0,0,0,.1);
   --r:2px;
@@ -25,7 +25,7 @@
   :root{
     --bg:#111110;--ink:#EDEBE4;--surface:#1A1A18;--border:#34332F;--muted:#9A978E;
     --hover:#242421;--active-row:#2C2B27;--inv-bg:#EDEBE4;--inv-fg:#111110;
-    --good:#4cc38a;--bad:#ff7a70;--live:#ff6b5e;
+    --good:#4cc38a;--bad:#ff7a70;--live:#ff6b5e;--teacher:#a995ff;
     --bubble-caller:#2C2B27;--bubble-agent:#EDEBE4;--bubble-agent-fg:#111110;
     --shadow:0 1px 3px rgba(0,0,0,.4);--shadow-lg:0 4px 16px rgba(0,0,0,.5);
   }
@@ -33,7 +33,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html{font-size:15px;-webkit-text-size-adjust:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--fb);min-height:100vh;overflow-x:hidden}
-button,input{font:inherit;color:inherit}
+button,input,textarea{font:inherit;color:inherit}
 .hidden{display:none!important}
 
 /* ─── Header ─────────────────────────────────────────────────────────── */
@@ -164,6 +164,52 @@ td.wrapcell{min-width:200px;max-width:420px}
 .coming h3{font-family:var(--fh);font-size:1.3rem;margin-bottom:10px}
 .coming p{color:var(--muted);line-height:1.6;font-size:.9rem}
 
+
+/* ─── Company context ────────────────────────────────────────────────── */
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.sm{padding:4px 10px;font-size:.78rem}
+.b-good{background:transparent;color:var(--good);border-color:var(--good)}
+.b-teacher{background:transparent;color:var(--teacher);border-color:var(--teacher)}
+.card{background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);margin-bottom:18px;min-width:0}
+.card-body{padding:18px;display:flex;flex-direction:column;gap:16px}
+.co-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.co-grid>div{min-width:0}
+.fl-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.fl-row .fl{margin-bottom:5px}
+.counter{font-family:var(--fm);font-size:.7rem;color:var(--muted);white-space:nowrap}
+.counter.over{color:var(--bad);font-weight:600}
+textarea.fi{min-height:260px;resize:vertical;line-height:1.55}
+.hint ul{margin:4px 0 0 18px}
+.notice{border:1px solid var(--border);border-left:3px solid var(--live);background:var(--bg);padding:10px 14px;font-size:.84rem;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.co-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.co-msg{font-size:.82rem;font-family:var(--fm);overflow-wrap:anywhere}
+.co-msg.ok{color:var(--good)}.co-msg.bad{color:var(--bad)}
+.co-split{display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:18px;align-items:start}
+.co-split>*{min-width:0}
+.co-split .card{margin-bottom:0}
+.ver-list{max-height:620px;overflow-y:auto}
+.ver{padding:12px 16px;border-bottom:1px solid var(--border)}
+.ver:last-child{border-bottom:none}
+.ver.sel{background:var(--active-row);box-shadow:inset 3px 0 0 var(--ink)}
+.ver-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ver-n{font-family:var(--fh);font-weight:700;font-size:1.05rem}
+.ver-time{margin-left:auto;font-size:.74rem;color:var(--muted);white-space:nowrap}
+.ver-note{font-size:.84rem;margin-top:6px;overflow-wrap:anywhere}
+.ver-meta{font-family:var(--fm);font-size:.72rem;color:var(--muted);margin-top:4px}
+.ver-act{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.pv-body{padding:18px;display:flex;flex-direction:column;gap:14px}
+.pv-val{font-size:.9rem;overflow-wrap:anywhere;white-space:pre-wrap}
+.pv-ctx{font-family:var(--fm);font-size:.8rem;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg);border:1px solid var(--border);padding:12px;max-height:420px;overflow:auto}
+.pv-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.diff{font-family:var(--fm);font-size:.78rem;line-height:1.5;border:1px solid var(--border);background:var(--bg);max-height:460px;overflow:auto}
+.df{display:flex;gap:8px;padding:1px 10px}
+.df-m{flex:none;width:1ch;color:var(--muted)}
+.df-t{white-space:pre-wrap;overflow-wrap:anywhere;min-width:0}
+.df-add{background:rgba(31,122,77,.16)}
+.df-del{background:rgba(179,38,30,.13)}
+.df-del .df-t{text-decoration:line-through;color:var(--muted)}
+.df-skip{padding:3px 10px;color:var(--muted);font-style:italic;font-size:.72rem;border-top:1px dashed var(--border);border-bottom:1px dashed var(--border)}
+
 /* ─── Responsive ─────────────────────────────────────────────────────── */
 @media (max-width:900px){
   .stats-bar{grid-template-columns:repeat(3,1fr)}
@@ -180,6 +226,9 @@ td.wrapcell{min-width:200px;max-width:420px}
   .dt-body{max-height:calc(100vh - 260px);min-height:240px}
   .msg{max-width:92%}
   .tab{padding:0 14px}
+  .co-grid,.co-split{grid-template-columns:1fr}
+  .ver-list{max-height:none}
+  .card-body,.pv-body{padding:14px}
   main{padding-top:18px}
 }
 @media (max-width:520px){
@@ -204,6 +253,7 @@ td.wrapcell{min-width:200px;max-width:420px}
   <button class="tab" role="tab" data-tab="calls" type="button">Live Calls <span class="tab-badge hidden" id="live-badge">0</span></button>
   <button class="tab" role="tab" data-tab="orders" type="button">Orders</button>
   <button class="tab" role="tab" data-tab="messages" type="button">Messages</button>
+  <button class="tab" role="tab" data-tab="company" type="button">Company Context</button>
   <button class="tab" role="tab" data-tab="improvements" type="button">Improvements</button>
 </nav>
 
@@ -230,6 +280,61 @@ td.wrapcell{min-width:200px;max-width:420px}
 
   <section class="panel" id="panel-messages">
     <div id="messages-wrap"></div>
+  </section>
+
+  <section class="panel" id="panel-company">
+    <div id="co-status"></div>
+    <div id="co-main" class="hidden">
+      <div class="card" id="co-editor">
+        <div class="tw-hdr"><div class="tw-title">Company context</div><div class="tw-meta" id="co-base"></div></div>
+        <div class="card-body">
+          <div class="hint" style="margin:0">This is what your voice agent knows. Every save creates a new version that goes live on the next call; older versions are kept and can be restored.</div>
+          <div class="notice hidden" id="co-notice"></div>
+          <div class="co-grid">
+            <div>
+              <div class="fl-row"><label class="fl" for="co-name">Company name</label><span class="counter" id="co-name-n"></span></div>
+              <input class="fi" id="co-name" type="text" autocomplete="off" placeholder="Bright Press Cleaners" />
+            </div>
+            <div>
+              <div class="fl-row"><label class="fl" for="co-greet">Greeting</label><span class="counter" id="co-greet-n"></span></div>
+              <input class="fi" id="co-greet" type="text" autocomplete="off" placeholder="Thanks for calling Bright Press Cleaners, how can I help?" />
+              <div class="hint">What the agent says when it answers the phone.</div>
+            </div>
+          </div>
+          <div>
+            <div class="fl-row"><label class="fl" for="co-ctx">What should the agent know about your business?</label><span class="counter" id="co-ctx-n"></span></div>
+            <textarea class="fi" id="co-ctx" spellcheck="true" placeholder="Hours, services, prices, FAQs, tone..."></textarea>
+            <div class="hint">Include things callers ask about:
+              <ul>
+                <li>Opening hours, including holidays and weekends</li>
+                <li>Services you offer and what you do not do</li>
+                <li>Pricing and policies (turnaround, payment, refunds, damage claims)</li>
+                <li>Frequently asked questions and the answers you want given</li>
+                <li>Tone of voice (friendly, formal, brief)</li>
+                <li>When to take a message instead of answering</li>
+              </ul>
+            </div>
+          </div>
+          <div>
+            <label class="fl" for="co-note">What changed? (optional)</label>
+            <input class="fi" id="co-note" type="text" autocomplete="off" placeholder="e.g. Updated Saturday hours" />
+          </div>
+          <div class="co-actions">
+            <button class="btn" type="button" id="co-save" data-act="save">Save new version</button>
+            <button class="btn ghost" type="button" id="co-reload" data-act="reload">Reload active</button>
+            <span class="co-msg" id="co-msg" role="status" aria-live="polite"></span>
+          </div>
+        </div>
+      </div>
+      <div class="co-split">
+        <div class="card">
+          <div class="tw-hdr"><div class="tw-title">Version history</div><div class="tw-meta" id="co-hist-meta"></div></div>
+          <div class="co-msg" id="co-hist-msg" role="status" aria-live="polite" style="padding:0 18px"></div>
+          <div class="ver-list" id="co-hist"></div>
+        </div>
+        <div class="card" id="co-preview"></div>
+      </div>
+    </div>
   </section>
 
   <section class="panel" id="panel-improvements">
@@ -310,16 +415,21 @@ function stageBadge(st){
 }
 
 /* ── API ──────────────────────────────────────────────────────────────── */
-function api(path){
-  if(S.demo) return Demo.get(path);
+function api(path,opt){
+  opt=opt||{};
+  var method=opt.method||"GET";
+  if(S.demo) return method==="GET" ? Demo.get(path) : Demo.write(method,path,opt.body);
   if(!S.api) return Promise.reject(new Error("no-api"));
   var h = {"ngrok-skip-browser-warning":"1"};
   if(S.token) h["x-dashboard-token"] = S.token;
+  if(opt.body!==undefined) h["Content-Type"]="application/json";
   var ctl = new AbortController(), t = setTimeout(function(){ctl.abort();},8000);
-  return fetch(S.api+path,{headers:h,signal:ctl.signal}).then(function(r){
+  return fetch(S.api+path,{method:method,headers:h,body:opt.body!==undefined?JSON.stringify(opt.body):undefined,signal:ctl.signal}).then(function(r){
     clearTimeout(t);
-    if(!r.ok) throw new Error("HTTP "+r.status);
-    return r.json();
+    if(r.ok) return r.json();
+    return r.json().catch(function(){return null;}).then(function(d){
+      var e=new Error(d&&d.error?String(d.error):"HTTP "+r.status); e.status=r.status; throw e;
+    });
   },function(e){clearTimeout(t);throw e;});
 }
 
@@ -391,9 +501,50 @@ var Demo = (function(){
     if(!script.length && tick>10){ c.status="completed"; c.endedAt=new Date().toISOString(); c.durationSec=Math.round((Date.now()-new Date(c.startedAt))/1000); }
   }
   function clone(o){ return JSON.parse(JSON.stringify(o)); }
+  /* company context (in-memory, oldest first) */
+  var cfgV = [
+    {version:1,companyName:"Bright Press Cleaners",greeting:"Thanks for calling Bright Press Cleaners, how can I help?",context:"We are a neighborhood dry cleaner.\nHours: Mon-Fri 8am-6pm, Sat 9am-3pm, closed Sunday.\nServices: dry cleaning, laundry, pressing, alterations.\nTone: friendly and brief.",author:"system",note:"Initial setup",createdAt:ts(4320)},
+    {version:2,companyName:"Bright Press Cleaners",greeting:"Thanks for calling Bright Press Cleaners, how can I help?",context:"We are a neighborhood dry cleaner.\nHours: Mon-Fri 8am-6pm, Sat 8am-4pm, closed Sunday.\nServices: dry cleaning, laundry, pressing, alterations, wedding dress cleaning.\nPricing: wedding dress cleaning starts at $145 (5-7 day turnaround). Suits are $21 for two pieces.\nPayment is due at pickup. We are not responsible for items left over 60 days.\nTone: friendly and brief.",author:"manager",note:"Updated Saturday hours and added pricing",createdAt:ts(1440)},
+    {version:3,companyName:"Bright Press Cleaners",greeting:"Thanks for calling Bright Press Cleaners, this is the virtual receptionist. How can I help?",context:"We are a neighborhood dry cleaner.\nHours: Mon-Fri 8am-6pm, Sat 8am-4pm, closed Sunday.\nCaller question: what time do you close today? Answer with today's closing time from the hours above.\nServices: dry cleaning, laundry, pressing, alterations, wedding dress cleaning.\nPricing: wedding dress cleaning starts at $145 (5-7 day turnaround). Suits are $21 for two pieces.\nPayment is due at pickup. We are not responsible for items left over 60 days.\nTone: friendly and brief. If you cannot answer, take a message for the owner.",author:"teacher",note:"Added hours question from call #12",createdAt:ts(40)}
+  ];
+  var cfgActive = 3;
+  function cfgSnap(){
+    var vs = cfgV.slice().sort(function(a,b){return b.version-a.version;});
+    return {active: vs.filter(function(v){return v.version===cfgActive;})[0], versions: vs};
+  }
+  function write(method,path,body){
+    return new Promise(function(res,rej){
+      setTimeout(function(){
+        function fail(st,msg){ var e=new Error(msg); e.status=st; rej(e); }
+        body = body || {};
+        var p = path.split("?")[0];
+        if(method==="PUT" && p==="/api/config"){
+          var n = typeof body.companyName==="string" ? body.companyName.trim() : "";
+          var g = typeof body.greeting==="string" ? body.greeting.trim() : "";
+          var c = body.context==null ? "" : body.context;
+          if(n.length<1||n.length>80) return fail(400,"companyName must be 1-80 characters");
+          if(g.length<1||g.length>300) return fail(400,"greeting must be 1-300 characters");
+          if(typeof c!=="string"||c.length>8000) return fail(400,"context must be at most 8000 characters");
+          var v = {version:Math.max.apply(null,cfgV.map(function(x){return x.version;}))+1,companyName:n,greeting:g,context:c,author:"manager",createdAt:new Date().toISOString()};
+          if(typeof body.note==="string" && body.note.trim()) v.note = body.note.trim().slice(0,200);
+          cfgV.push(v); cfgActive = v.version;
+          return res(clone(v));
+        }
+        if(method==="POST" && p==="/api/config/activate"){
+          var f = cfgV.filter(function(x){return x.version===body.version;})[0];
+          if(!f) return fail(404,"Unknown version");
+          cfgActive = f.version;
+          return res(clone(f));
+        }
+        fail(404,"Not found");
+      },60);
+    });
+  }
   function get(path){
     advance();
     var p = path.split("?")[0], out;
+    if(p==="/api/config") out = cfgSnap();
+    else
     if(p==="/api/health") out = {status:"ok"};
     else if(p==="/api/stats") out = {calls:calls.length,activeCalls:calls.filter(function(c){return c.status==="active";}).length,orders:orders.length,openOrders:orders.filter(function(o){return o.stage!=="Picked up";}).length,messages:messages.length};
     else if(p==="/api/calls") out = calls;
@@ -402,7 +553,7 @@ var Demo = (function(){
     else if(p==="/api/messages") out = messages;
     return new Promise(function(res){ setTimeout(function(){res(clone(out));},40); });
   }
-  return {get:get};
+  return {get:get,write:write};
 })();
 
 /* ── rendering ────────────────────────────────────────────────────────── */
@@ -552,8 +703,272 @@ function renderMessages(){
 }
 
 function renderAll(){
-  renderStatus(); renderBanner(); renderStats(); renderOverview(); renderCalls(); renderOrders(); renderMessages();
+  renderStatus(); renderBanner(); renderStats(); renderOverview(); renderCalls(); renderOrders(); renderMessages(); coRender();
 }
+
+/* ── Company context (versioned editor) ───────────────────────────────── */
+var CO = {
+  active:null, versions:[], base:null, seenActive:null,
+  missing:false, err:"", view:null, mode:"diff",
+  saving:false, msg:null, hmsg:null, gen:0, busy:false, dc:{}, h:{}
+};
+var CO_LIM = {name:80, greet:300, ctx:8000};
+
+function coVals(){ return {companyName:$("co-name").value, greeting:$("co-greet").value, context:$("co-ctx").value}; }
+function coDirty(){
+  if(!CO.base) return false;
+  var v=coVals();
+  return v.companyName!==CO.base.companyName || v.greeting!==CO.base.greeting || v.context!==CO.base.context;
+}
+function coValidate(v){
+  var n=v.companyName.trim().length, g=v.greeting.trim().length;
+  if(n<1) return "Company name is required.";
+  if(n>CO_LIM.name) return "Company name must be at most "+CO_LIM.name+" characters.";
+  if(g<1) return "Greeting is required.";
+  if(g>CO_LIM.greet) return "Greeting must be at most "+CO_LIM.greet+" characters.";
+  if(v.context.length>CO_LIM.ctx) return "Context must be at most "+CO_LIM.ctx+" characters.";
+  return "";
+}
+function coErrText(e){
+  if(e && e.status) return e.message;
+  if(e && e.name==="AbortError") return "The backend took too long to respond.";
+  return "Could not reach the backend.";
+}
+function setH(id,html){ var el=$(id); if(CO.h[id]===html) return; CO.h[id]=html; el.innerHTML=html; }
+function relTime(t){
+  var d=tms(t); if(!d) return "";
+  var s=Math.round((Date.now()-d)/1000);
+  if(s<45) return "just now";
+  if(s<3600) return Math.max(1,Math.round(s/60))+"m ago";
+  if(s<86400) return Math.round(s/3600)+"h ago";
+  if(s<86400*14) return Math.round(s/86400)+"d ago";
+  return fmtDT(t);
+}
+function authorBadge(a){
+  var l=String(a||"unknown"), cls=l==="teacher"?"b-teacher":l==="manager"?"b-line":"b-mute";
+  return '<span class="badge '+cls+'">'+esc(l)+'</span>';
+}
+function coFind(n){ for(var i=0;i<CO.versions.length;i++) if(CO.versions[i].version===n) return CO.versions[i]; return null; }
+function coPrev(v){
+  var best=null;
+  CO.versions.forEach(function(x){ if(x.version<v.version && (!best||x.version>best.version)) best=x; });
+  return best;
+}
+
+/* line-level diff */
+function verLines(v){
+  if(!v) return [];
+  return ["Company name: "+v.companyName,"Greeting: "+v.greeting,""].concat(String(v.context||"").split("\n"));
+}
+function lineDiff(a,b){
+  var n=a.length, m=b.length, i, j, ops=[];
+  if(n*m>300000){ a.forEach(function(s){ops.push({t:"-",s:s});}); b.forEach(function(s){ops.push({t:"+",s:s});}); return ops; }
+  var w=m+1, L=new Uint16Array((n+1)*w);
+  for(i=n-1;i>=0;i--) for(j=m-1;j>=0;j--)
+    L[i*w+j] = a[i]===b[j] ? L[(i+1)*w+j+1]+1 : Math.max(L[(i+1)*w+j],L[i*w+j+1]);
+  i=0; j=0;
+  while(i<n&&j<m){
+    if(a[i]===b[j]){ ops.push({t:"=",s:a[i]}); i++; j++; }
+    else if(L[(i+1)*w+j]>=L[i*w+j+1]){ ops.push({t:"-",s:a[i]}); i++; }
+    else { ops.push({t:"+",s:b[j]}); j++; }
+  }
+  while(i<n){ ops.push({t:"-",s:a[i++]}); }
+  while(j<m){ ops.push({t:"+",s:b[j++]}); }
+  return ops;
+}
+function coDiff(v){
+  var p=coPrev(v), k=(p?p.version:0)+">"+v.version;
+  if(!CO.dc[k]){
+    var ops=lineDiff(verLines(p),verLines(v)), add=0, del=0;
+    ops.forEach(function(o){ if(o.t==="+") add++; else if(o.t==="-") del++; });
+    CO.dc[k]={ops:ops,add:add,del:del,prev:p};
+  }
+  return CO.dc[k];
+}
+function diffHtml(ops){
+  var keep=[], i, k, changes=0;
+  ops.forEach(function(o,ix){ if(o.t!=="="){ changes++; for(k=Math.max(0,ix-2);k<=Math.min(ops.length-1,ix+2);k++) keep[k]=1; } });
+  if(!changes) return '<div class="hint" style="padding:10px">No changes from the previous version.</div>';
+  var out=[], skipped=0;
+  function flush(){ if(skipped){ out.push('<div class="df-skip">&hellip; '+skipped+' unchanged line'+(skipped>1?'s':'')+'</div>'); skipped=0; } }
+  ops.forEach(function(o,ix){
+    if(o.t==="="&&!keep[ix]){ skipped++; return; }
+    flush();
+    var cls=o.t==="+"?" df-add":o.t==="-"?" df-del":"";
+    out.push('<div class="df'+cls+'"><span class="df-m">'+(o.t==="="?"":o.t==="+"?"+":"−")+'</span><span class="df-t">'+(esc(o.s)||"&nbsp;")+'</span></div>');
+  });
+  flush();
+  return out.join("");
+}
+
+/* editor state */
+function coSetEditor(v){
+  $("co-name").value=v.companyName||""; $("co-greet").value=v.greeting||""; $("co-ctx").value=v.context||""; $("co-note").value="";
+  CO.base={version:v.version,companyName:v.companyName||"",greeting:v.greeting||"",context:v.context||""};
+  CO.seenActive=CO.active?CO.active.version:v.version;
+  CO.msg=null;
+}
+function coSync(){
+  if(!CO.active) return;
+  if(!CO.base){ coSetEditor(CO.active); return; }
+  if(CO.active.version!==CO.seenActive && !coDirty()) coSetEditor(CO.active);   // never clobber unsaved edits
+}
+function coApply(d){
+  var vs=Array.isArray(d&&d.versions)?d.versions.slice():[];
+  vs.sort(function(a,b){ return b.version-a.version; });
+  CO.versions=vs; CO.active=(d&&d.active)||vs[0]||null;
+  if(CO.view!=null && !coFind(CO.view)) CO.view=null;
+  coSync();
+}
+function coFetch(){
+  if(CO.busy || !configured()) return Promise.resolve();
+  CO.busy=true; var gen=CO.gen;
+  return api("/api/config").then(function(d){
+    if(gen!==CO.gen) return;                 // a save/activate happened meanwhile: this answer is stale
+    CO.missing=false; CO.err=""; coApply(d);
+  }).catch(function(e){
+    if(e && e.status===404){ CO.missing=true; CO.err=""; }
+    else CO.err=coErrText(e);
+  }).then(function(){ CO.busy=false; coRender(); });
+}
+
+/* actions */
+function coSave(){
+  if(CO.saving) return;
+  var v=coVals();
+  if(!coDirty()||coValidate(v)) return;
+  var body={companyName:v.companyName.trim(),greeting:v.greeting.trim(),context:v.context}, note=$("co-note").value.trim();
+  if(note) body.note=note;
+  CO.saving=true; CO.msg=null; coRender();
+  api("/api/config",{method:"PUT",body:body}).then(function(saved){
+    CO.gen++;
+    CO.active=saved;
+    CO.versions=[saved].concat(CO.versions.filter(function(x){return x.version!==saved.version;}));
+    var cur=coVals();
+    if(cur.companyName===v.companyName && cur.greeting===v.greeting && cur.context===v.context && $("co-note").value.trim()===note){
+      coSetEditor(saved);                    // nothing typed since sending: sync to the stored (trimmed) text
+    } else {
+      CO.base={version:saved.version,companyName:saved.companyName,greeting:saved.greeting,context:saved.context}; CO.seenActive=saved.version;
+    }
+    CO.msg={ok:true,text:"Saved as v"+saved.version+", live on the next call."};
+    CO.saving=false; coRender();
+  }).catch(function(e){
+    CO.saving=false; CO.msg={ok:false,text:coErrText(e)}; coRender();
+  });
+}
+function coActivate(n){
+  var v=coFind(n); if(!v||(CO.active&&CO.active.version===n)) return;
+  if(!window.confirm("Make v"+n+" the active version? The voice agent will use it from the next call.")) return;
+  CO.hmsg=null;
+  api("/api/config/activate",{method:"POST",body:{version:n}}).then(function(r){
+    CO.gen++; CO.active=r; coSync();
+    CO.hmsg={ok:true,text:"v"+n+" is now active, live on the next call."};
+    coRender(); coFetch();
+  }).catch(function(e){ CO.hmsg={ok:false,text:coErrText(e)}; coRender(); });
+}
+function coEditFrom(n){
+  var v=coFind(n); if(!v) return;
+  if(coDirty() && !window.confirm("Replace your unsaved changes with v"+n+"?")) return;
+  coSetEditor(v); coRender();
+  var ed=$("co-editor"); if(ed.scrollIntoView) ed.scrollIntoView({block:"start"});
+  $("co-ctx").focus();
+}
+function coReload(){
+  if(!CO.active) return;
+  if(coDirty() && !window.confirm("Discard your unsaved changes and load the active version?")) return;
+  coSetEditor(CO.active); coRender();
+}
+
+/* rendering (never touches editor field values) */
+function coRenderEditor(){
+  var v=coVals(), dirty=coDirty(), err=coValidate(v);
+  [["co-name-n",v.companyName.length,CO_LIM.name],["co-greet-n",v.greeting.length,CO_LIM.greet],["co-ctx-n",v.context.length,CO_LIM.ctx]].forEach(function(c){
+    var el=$(c[0]); el.textContent=c[1].toLocaleString()+" / "+c[2].toLocaleString(); el.classList.toggle("over",c[1]>c[2]);
+  });
+  var b=CO.base, act=CO.active;
+  $("co-base").textContent = b ? "Editing from v"+b.version+(act&&act.version===b.version?" (active)":" (not active)")+(dirty?" · unsaved changes":"") : "";
+  var nt=$("co-notice");
+  if(dirty && act && act.version!==CO.seenActive){
+    setH("co-notice",'<span>A newer version is active (v'+esc(act.version)+'). Your unsaved edits were kept.</span> <button class="btn ghost sm" type="button" data-act="reload">Reload active</button>');
+    nt.classList.remove("hidden");
+  } else { nt.classList.add("hidden"); }
+  $("co-save").disabled = CO.saving || !dirty || !!err;
+  $("co-save").textContent = CO.saving ? "Saving…" : "Save new version";
+  $("co-reload").classList.toggle("hidden", !(act && b && (dirty || act.version!==b.version)));
+  var m=$("co-msg");
+  if(CO.msg){ m.textContent=CO.msg.text; m.className="co-msg "+(CO.msg.ok?"ok":"bad"); }
+  else if(dirty && err){ m.textContent=err; m.className="co-msg bad"; }
+  else { m.textContent=""; m.className="co-msg"; }
+}
+function coRenderHistory(){
+  var act=CO.active;
+  $("co-hist-meta").textContent=CO.versions.length+" version"+(CO.versions.length===1?"":"s");
+  var hm=$("co-hist-msg");
+  var t=CO.hmsg?CO.hmsg:(CO.err?{ok:false,text:"Could not refresh: "+CO.err}:null);
+  hm.textContent=t?t.text:""; hm.className="co-msg"+(t?(t.ok?" ok":" bad"):""); hm.style.paddingTop=t?"10px":"0"; hm.style.paddingBottom=t?"4px":"0";
+  setH("co-hist", CO.versions.map(function(v){
+    var isAct=act&&act.version===v.version, p=coPrev(v), d=coDiff(v);
+    return '<div class="ver'+(CO.view===v.version?" sel":"")+'">'+
+      '<div class="ver-top"><span class="ver-n">v'+esc(v.version)+'</span>'+authorBadge(v.author)+(isAct?'<span class="badge b-good">ACTIVE</span>':'')+
+      '<span class="ver-time" title="'+esc(fmtDT(v.createdAt))+'">'+esc(relTime(v.createdAt))+'</span></div>'+
+      (v.note?'<div class="ver-note">'+esc(v.note)+'</div>':'')+
+      (p?'<div class="ver-meta">+'+d.add+' / −'+d.del+' lines vs v'+esc(p.version)+'</div>':'<div class="ver-meta">First version</div>')+
+      '<div class="ver-act"><button class="btn ghost sm" type="button" data-act="view" data-v="'+esc(v.version)+'">View</button>'+
+      '<button class="btn ghost sm" type="button" data-act="edit" data-v="'+esc(v.version)+'">Edit from this version</button>'+
+      (isAct?'':'<button class="btn sm" type="button" data-act="activate" data-v="'+esc(v.version)+'">Make active</button>')+'</div></div>';
+  }).join("") || '<div class="dt-empty">No versions yet.</div>');
+}
+function coRenderPreview(){
+  var v=CO.view!=null?coFind(CO.view):null;
+  if(!v){ setH("co-preview",'<div class="tw-hdr"><div class="tw-title">Preview</div></div><div class="dt-empty">Choose View on a version to read it here, read-only, with a diff against the version before it.</div>'); return; }
+  var isAct=CO.active&&CO.active.version===v.version, d=coDiff(v), body;
+  if(CO.mode==="diff"){
+    body = d.prev ? '<div class="diff">'+diffHtml(d.ops)+'</div>' : '<div class="hint">This is the first version, so there is nothing to compare it with.</div>';
+  } else {
+    body='<div><div class="fl">Company name</div><div class="pv-val">'+esc(v.companyName)+'</div></div>'+
+      '<div><div class="fl">Greeting</div><div class="pv-val">'+esc(v.greeting)+'</div></div>'+
+      '<div><div class="fl">What the agent knows</div><pre class="pv-ctx">'+(esc(v.context)||'<span style="color:var(--muted)">(empty)</span>')+'</pre></div>';
+  }
+  setH("co-preview",
+    '<div class="tw-hdr"><div class="tw-title">Preview v'+esc(v.version)+'</div><div class="tw-meta">read-only</div></div>'+
+    '<div class="pv-body"><div class="pv-bar">'+authorBadge(v.author)+(isAct?'<span class="badge b-good">ACTIVE</span>':'')+'<span class="tw-meta">'+esc(fmtDT(v.createdAt))+'</span></div>'+
+    (v.note?'<div class="ver-note" style="margin:0">'+esc(v.note)+'</div>':'')+
+    '<div class="pv-bar"><button class="btn sm'+(CO.mode==="diff"?'':' ghost')+'" type="button" data-act="mode" data-m="diff">Changes</button>'+
+    '<button class="btn sm'+(CO.mode==="full"?'':' ghost')+'" type="button" data-act="mode" data-m="full">Full text</button>'+
+    '<span style="flex:1"></span><button class="btn ghost sm" type="button" data-act="edit" data-v="'+esc(v.version)+'">Edit from this version</button>'+
+    (isAct?'':'<button class="btn sm" type="button" data-act="activate" data-v="'+esc(v.version)+'">Make active</button>')+'</div>'+
+    body+'</div>');
+}
+function coRender(){
+  var msg="", show=configured() && !CO.missing && !!CO.active;
+  if(!configured()) msg=setupEmpty("Connect to a backend, or try demo data, to edit what your voice agent knows.");
+  else if(CO.missing) msg='<div class="empty"><h3>Company context is not available yet</h3><p>The backend you are connected to does not support editable company context. Update and restart the backend, then open this tab again.</p></div>';
+  else if(!CO.active) msg=CO.err ? '<div class="banner">Could not load company context: '+esc(CO.err)+'. Retrying every 3 seconds.</div>' : '<div class="empty"><p>Loading company context…</p></div>';
+  setH("co-status",msg);
+  $("co-main").classList.toggle("hidden",!show);
+  if(!show) return;
+  coRenderEditor(); coRenderHistory(); coRenderPreview();
+}
+function coReset(){
+  CO.gen++; CO.active=null; CO.versions=[]; CO.base=null; CO.seenActive=null; CO.missing=false; CO.err=""; CO.view=null; CO.msg=null; CO.hmsg=null; CO.saving=false; CO.dc={}; CO.h={};
+  ["co-name","co-greet","co-ctx","co-note"].forEach(function(i){ $(i).value=""; });
+}
+["co-name","co-greet","co-ctx","co-note"].forEach(function(i){
+  $(i).addEventListener("input",function(){ CO.msg=null; coRenderEditor(); });
+});
+$("panel-company").addEventListener("click",function(e){
+  var b=e.target.closest("[data-act]"); if(!b) return;
+  var act=b.getAttribute("data-act"), n=Number(b.getAttribute("data-v"));
+  if(act==="save") coSave();
+  else if(act==="reload") coReload();
+  else if(act==="view"){ CO.view=n; CO.mode=coPrev(coFind(n)||{version:0})?"diff":"full"; coRender(); if(window.matchMedia("(max-width:760px)").matches) $("co-preview").scrollIntoView({block:"start"}); }
+  else if(act==="mode"){ CO.mode=b.getAttribute("data-m"); coRender(); }
+  else if(act==="edit") coEditFrom(n);
+  else if(act==="activate") coActivate(n);
+});
+window.addEventListener("beforeunload",function(e){
+  if(coDirty()){ e.preventDefault(); e.returnValue=""; return ""; }
+});
 
 /* ── polling ──────────────────────────────────────────────────────────── */
 var busy=false, timer=null;
@@ -577,9 +992,9 @@ function refresh(){
 }
 function schedule(){
   clearInterval(timer);
-  timer=setInterval(function(){ if(!document.hidden) refresh(); },POLL_MS);
+  timer=setInterval(function(){ if(!document.hidden){ refresh(); if(S.tab==="company") coFetch(); } },POLL_MS);
 }
-document.addEventListener("visibilitychange",function(){ if(!document.hidden) refresh(); });
+document.addEventListener("visibilitychange",function(){ if(!document.hidden){ refresh(); if(S.tab==="company") coFetch(); } });
 
 /* ── UI wiring ────────────────────────────────────────────────────────── */
 function setTab(t){
@@ -587,6 +1002,7 @@ function setTab(t){
   document.querySelectorAll(".tab").forEach(function(b){ var on=b.getAttribute("data-tab")===t; b.classList.toggle("active",on); b.setAttribute("aria-selected",on); });
   document.querySelectorAll(".panel").forEach(function(p){ p.classList.toggle("active",p.id==="panel-"+t); });
   if(t==="calls") renderCalls();
+  if(t==="company"){ coRender(); coFetch(); }
 }
 $("tabs").addEventListener("click",function(e){ var b=e.target.closest(".tab"); if(b) setTab(b.getAttribute("data-tab")); });
 
@@ -595,7 +1011,7 @@ function openSettings(){
   $("settings-ov").classList.remove("hidden"); $("in-api").focus();
 }
 function closeSettings(){ $("settings-ov").classList.add("hidden"); }
-function resetData(){ S.health=null; S.stats=S.calls=S.orders=S.messages=null; S.sel=null; S.sig={}; ["call-list","detail","orders-wrap","messages-wrap","overview-recent","stats"].forEach(function(i){$(i).innerHTML="";}); }
+function resetData(){ S.health=null; S.stats=S.calls=S.orders=S.messages=null; S.sel=null; S.sig={}; coReset(); ["call-list","detail","orders-wrap","messages-wrap","overview-recent","stats"].forEach(function(i){$(i).innerHTML="";}); }
 function applySettings(){
   S.api=$("in-api").value.trim().replace(/\/+$/,""); S.token=$("in-token").value.trim(); S.demo=$("in-demo").checked;
   sset("hanger_api",S.api); sset("hanger_token",S.token); sset("hanger_demo",S.demo?"1":"0");
