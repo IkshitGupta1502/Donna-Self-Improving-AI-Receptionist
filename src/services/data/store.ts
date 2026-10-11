@@ -1,5 +1,5 @@
 import { MongoClient, type Collection, type OptionalUnlessRequiredId } from "mongodb";
-import { SEED_CONFIG, SEED_ORDERS, SEED_PRICING } from "./seed";
+import { SEED_CONFIG, SEED_CUSTOMERS, SEED_ORDERS, SEED_PRICING } from "./seed";
 
 export type Speed = "Regular" | "Expedited";
 
@@ -83,6 +83,30 @@ export interface ConfigInput {
   note?: string;
 }
 
+export interface Customer {
+  phone: string;
+  name?: string;
+  email?: string;
+  preferences?: string;
+  notes?: string;
+  vip?: boolean;
+  firstSeenAt: string;
+  lastCallAt?: string;
+  callCount: number;
+}
+
+export type CustomerPatch = Partial<Pick<Customer, "name" | "email" | "preferences" | "notes" | "vip">>;
+
+function cleanPatch(patch: CustomerPatch): CustomerPatch {
+  const out: CustomerPatch = {};
+  for (const key of ["name", "email", "preferences", "notes"] as const) {
+    const v = patch[key];
+    if (typeof v === "string" && v.trim()) out[key] = v.trim();
+  }
+  if (typeof patch.vip === "boolean") out.vip = patch.vip;
+  return out;
+}
+
 export interface DataStore {
   getActiveConfig(): Promise<ConfigVersion>;
   listConfigVersions(): Promise<ConfigVersion[]>;
@@ -100,6 +124,10 @@ export interface DataStore {
   listCalls(limit: number): Promise<CallRecord[]>;
   listOrders(): Promise<Order[]>;
   listMessages(): Promise<Message[]>;
+  getCustomerByPhone(phone: string): Promise<Customer | null>;
+  upsertCustomer(phone: string, patch: CustomerPatch): Promise<Customer>;
+  recordCustomerCall(phone: string): Promise<void>;
+  listCustomers(): Promise<Customer[]>;
 }
 
 export function normalizePhone(input: string): string {
@@ -143,6 +171,7 @@ export function createMemoryStore(): DataStore {
   const orders: Order[] = structuredClone(SEED_ORDERS);
   const pricing: PriceRow[] = structuredClone(SEED_PRICING);
   const messages: Message[] = [];
+  const customers = new Map<string, Customer>(SEED_CUSTOMERS.map((c) => [c.phone, structuredClone(c)]));
   const calls = new Map<string, CallRecord>();
   const configs: ConfigVersion[] = [structuredClone(SEED_CONFIG)];
   let activeVersion = SEED_CONFIG.version;
@@ -230,6 +259,28 @@ export function createMemoryStore(): DataStore {
     async listMessages() {
       return [...messages].reverse().map((m) => ({ ...m }));
     },
+    async getCustomerByPhone(phone) {
+      const c = customers.get(normalizePhone(phone));
+      return c ? { ...c } : null;
+    },
+    async upsertCustomer(phone, patch) {
+      const key = normalizePhone(phone);
+      const existing = customers.get(key) ?? { phone: key, firstSeenAt: new Date().toISOString(), callCount: 0 };
+      const next = { ...existing, ...cleanPatch(patch) };
+      customers.set(key, next);
+      return { ...next };
+    },
+    async recordCustomerCall(phone) {
+      const key = normalizePhone(phone);
+      const now = new Date().toISOString();
+      const existing = customers.get(key) ?? { phone: key, firstSeenAt: now, callCount: 0 };
+      customers.set(key, { ...existing, callCount: existing.callCount + 1, lastCallAt: now });
+    },
+    async listCustomers() {
+      return [...customers.values()]
+        .sort((a, b) => (b.lastCallAt ?? b.firstSeenAt).localeCompare(a.lastCallAt ?? a.firstSeenAt))
+        .map((c) => ({ ...c }));
+    },
   };
 }
 
@@ -248,6 +299,7 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
   const pricing = db.collection<PriceRow>("pricing");
   const messages = db.collection<Message>("messages");
   const calls = db.collection<CallRecord>("calls");
+  const customers = db.collection<Customer>("customers");
 
   await orders.createIndex({ orderId: 1 }, { unique: true });
   await pricing.createIndex({ item: 1 }, { unique: true });
@@ -258,7 +310,9 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
   await seedIfEmpty(configVersions, [SEED_CONFIG]);
   await configState.updateOne({ _id: "active" }, { $setOnInsert: { version: SEED_CONFIG.version } }, { upsert: true });
   await seedIfEmpty(orders, SEED_ORDERS);
+  await customers.createIndex({ phone: 1 }, { unique: true });
   await seedIfEmpty(pricing, SEED_PRICING);
+  await seedIfEmpty(customers, SEED_CUSTOMERS);
   console.log(`[data] MongoDB connected: db=${dbName}`);
 
   const proj = { projection: { _id: 0 } } as const;
@@ -368,6 +422,33 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
     },
     async listMessages() {
       return messages.find({}, proj).sort({ createdAt: -1 }).toArray();
+    },
+    async getCustomerByPhone(phone) {
+      return customers.findOne({ phone: normalizePhone(phone) }, proj);
+    },
+    async upsertCustomer(phone, patch) {
+      const key = normalizePhone(phone);
+      const set = cleanPatch(patch);
+      await customers.updateOne(
+        { phone: key },
+        {
+          ...(Object.keys(set).length ? { $set: set } : {}),
+          $setOnInsert: { firstSeenAt: new Date().toISOString(), callCount: 0 },
+        },
+        { upsert: true }
+      );
+      return (await customers.findOne({ phone: key }, proj)) as Customer;
+    },
+    async recordCustomerCall(phone) {
+      const now = new Date().toISOString();
+      await customers.updateOne(
+        { phone: normalizePhone(phone) },
+        { $set: { lastCallAt: now }, $inc: { callCount: 1 }, $setOnInsert: { firstSeenAt: now } },
+        { upsert: true }
+      );
+    },
+    async listCustomers() {
+      return customers.find({}, proj).sort({ lastCallAt: -1, firstSeenAt: -1 }).toArray();
     },
   };
 }

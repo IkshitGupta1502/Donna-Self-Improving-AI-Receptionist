@@ -1,5 +1,5 @@
 import { FunctionDeclaration, Type } from "@google/genai";
-import type { DataStore, Speed } from "../data/store";
+import type { CustomerPatch, DataStore, Speed } from "../data/store";
 
 export const TOOLS: FunctionDeclaration[] = [
   {
@@ -68,6 +68,20 @@ export const TOOLS: FunctionDeclaration[] = [
       required: ["name", "phone", "message"],
     },
   },
+  {
+    name: "update_customer_profile",
+    description:
+      "Save or update what we know about the current caller (matched by their caller ID). Use when they tell you their name or email, or a preference worth remembering. Notes are appended, other fields are replaced.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        name: { type: Type.STRING, description: "Caller's name" },
+        email: { type: Type.STRING, description: "Caller's email address" },
+        preferences: { type: Type.STRING, description: "Standing preferences, e.g. light starch on shirts" },
+        notes: { type: Type.STRING, description: "A short note for staff to remember about this customer" },
+      },
+    },
+  },
 ];
 
 type Args = Record<string, unknown>;
@@ -80,7 +94,8 @@ function str(args: Args, key: string): string {
 export async function executeTool(
   name: string,
   args: Args,
-  store: DataStore
+  store: DataStore,
+  ctx: { callerPhone?: string } = {}
 ): Promise<Record<string, unknown>> {
   switch (name) {
     case "get_order": {
@@ -132,6 +147,26 @@ export async function executeTool(
       }
       const saved = await store.takeMessage({ name: callerName, phone, message });
       return { saved: true, message: saved };
+    }
+
+    case "update_customer_profile": {
+      if (!ctx.callerPhone) return { error: "No caller phone number is available for this call." };
+      const patch: CustomerPatch = {
+        name: str(args, "name") || undefined,
+        email: str(args, "email") || undefined,
+        preferences: str(args, "preferences") || undefined,
+      };
+      const note = str(args, "notes");
+      if (note) {
+        const existing = await store.getCustomerByPhone(ctx.callerPhone);
+        const dated = `[${new Date().toISOString().slice(0, 10)}] ${note}`;
+        patch.notes = [existing?.notes, dated].filter(Boolean).join(" ");
+      }
+      if (!patch.name && !patch.email && !patch.preferences && !patch.notes) {
+        return { error: "Provide at least one of name, email, preferences, or notes." };
+      }
+      const saved = await store.upsertCustomer(ctx.callerPhone, patch);
+      return { saved: true, customer: saved };
     }
 
     default:

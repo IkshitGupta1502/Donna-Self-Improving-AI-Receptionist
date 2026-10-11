@@ -1,4 +1,4 @@
-// Seeds demo data for the CJ's Cleaners demo: `npm run seed` (uses MONGODB_URI if set, else a dry run in memory).
+// Seeds demo data for the CJ's Cleaning Company demo: `npm run seed` (uses MONGODB_URI if set, else a dry run in memory).
 // Safe to re-run: orders are upserted by orderId, and the demo context version is added only once.
 import dotenv from "dotenv";
 import { createDataStore, normalizePhone } from "../src/services/data/store";
@@ -8,11 +8,11 @@ dotenv.config();
 const phoneArg = process.argv.find((a) => a.startsWith("--phone="))?.split("=")[1];
 const PHONE = normalizePhone(phoneArg ?? "925-551-1546");
 const NAME = "Aayush Gandhi";
-const COMPANY = "CJ's Cleaners";
+const COMPANY = "CJ's Cleaning Company";
 const GREETING = `Hey, this is ${COMPANY}.`;
 
 const DEMO_CONTEXT = [
-  "CJ's Cleaners is a friendly neighborhood dry cleaner.",
+  "CJ's Cleaning Company is a friendly neighborhood dry cleaner.",
   "Services: dry cleaning, laundry and press, alterations and repairs, wedding gown and leather care, and household items like comforters and curtains.",
   "Turnaround: regular service takes 3 days. Expedited service is ready the next day for an extra fee.",
   "Pickup hours: Monday to Saturday, 8am to 6pm. Closed on Sunday and major holidays.",
@@ -30,6 +30,15 @@ const DEMO_CONTEXT = [
 
 async function main(): Promise<void> {
   const store = await createDataStore();
+
+  await store.upsertCustomer(PHONE, {
+    name: NAME,
+    email: "demo@example.com",
+    preferences: "Light starch on dress shirts. Prefers a text over a phone call.",
+    notes: "Usually drops off on Fridays.",
+    vip: true,
+  });
+  console.log(`✓ Upserted customer profile for ${NAME} (${PHONE})`);
 
   const orders = [
     { orderId: "ORD-0101", customerName: NAME, phone: PHONE, garment: "Suit (2-piece)", stage: "Ready for Pickup", orderType: "Regular" as const, price: 24, payment: "Unpaid", notes: "Please press the lapels.", expectedDate: "2026-10-11" },

@@ -8,7 +8,7 @@ import {
 import { createDataStore, type ConfigVersion, type DataStore } from "../data/store";
 import type { CallRecorder } from "../calls/recorder";
 import { TOOLS, executeTool } from "./tools";
-import { buildSystemPrompt } from "./systemPrompt";
+import { buildSystemPrompt, type CallerProfile } from "./systemPrompt";
 import { twilioToGemini, geminiToTwilio } from "../audio/converter";
 
 export const MODEL = "gemini-3.1-flash-live-preview";
@@ -41,6 +41,24 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
   const store = await getStore();
   const activeConfig: ConfigVersion = await store.getActiveConfig();
   recorder?.setConfigVersion(activeConfig.version);
+
+  // Pull the caller's profile and orders from MongoDB before the call starts
+  let profile: CallerProfile | undefined;
+  if (callerPhone) {
+    try {
+      const [customer, orders] = await Promise.all([
+        store.getCustomerByPhone(callerPhone),
+        store.getOrdersByPhone(callerPhone),
+      ]);
+      profile = { customer, orders };
+      console.log(
+        `[profile] ${callerPhone}: ${customer?.name ?? "unknown caller"}, ${orders.length} order(s), ${customer?.callCount ?? 0} previous call(s)`
+      );
+      await store.recordCustomerCall(callerPhone);
+    } catch (err) {
+      console.error("[profile] lookup failed, continuing without it:", err);
+    }
+  }
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -55,7 +73,7 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
     model: MODEL,
     config: {
       responseModalities: [Modality.AUDIO],
-      systemInstruction: { parts: [{ text: buildSystemPrompt(today, callerPhone, activeConfig) }] },
+      systemInstruction: { parts: [{ text: buildSystemPrompt(today, callerPhone, activeConfig, profile) }] },
       temperature: 0,
       speechConfig: {
         voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
@@ -98,7 +116,7 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
               const name = fc.name ?? "";
               const args = (fc.args as Record<string, unknown>) ?? {};
               try {
-                const result = await executeTool(name, args, store);
+                const result = await executeTool(name, args, store, { callerPhone });
                 const short = JSON.stringify(result).slice(0, 200);
                 console.log(`[tool] ${name} ${JSON.stringify(args)} -> ${short}`);
                 recorder?.addToolCall(name, args, result);

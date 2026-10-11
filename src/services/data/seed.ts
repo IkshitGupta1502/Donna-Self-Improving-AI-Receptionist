@@ -1,4 +1,4 @@
-import type { ConfigVersion, Order, PriceRow } from "./store";
+import type { ConfigVersion, Customer, Order, PriceRow } from "./store";
 
 export const SEED_ORDERS: Order[] = [
   {
@@ -97,10 +97,10 @@ export const SEED_PRICING: PriceRow[] = [
 
 export const SEED_CONFIG: ConfigVersion = {
   version: 1,
-  companyName: "CJ's Cleaners",
-  greeting: "Hey, this is CJ's Cleaners.",
+  companyName: "CJ's Cleaning Company",
+  greeting: "Hey, this is CJ's Cleaning Company.",
   context: [
-    "CJ's Cleaners is a friendly neighborhood dry cleaner.",
+    "CJ's Cleaning Company is a friendly neighborhood dry cleaner.",
     "Services: dry cleaning, laundry and press, alterations and repairs, wedding gown and leather care, and household items like comforters and curtains.",
     "Turnaround: regular service takes 3 days. Expedited service is ready the next day for an extra fee.",
     "Pickup hours: Monday to Saturday, 8am to 6pm. Closed on Sunday.",
@@ -115,3 +115,11 @@ export const SEED_CONFIG: ConfigVersion = {
   note: "Default",
   createdAt: new Date(0).toISOString(),
 };
+
+// One profile per distinct phone in the seed orders, so lookups by caller ID work out of the box
+export const SEED_CUSTOMERS: Customer[] = [...new Map(SEED_ORDERS.map((o) => [o.phone, o])).values()].map((o) => ({
+  phone: o.phone,
+  name: o.customerName,
+  firstSeenAt: "2026-09-01T00:00:00.000Z",
+  callCount: 0,
+}));

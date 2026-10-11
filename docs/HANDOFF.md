@@ -13,7 +13,7 @@ Plan and rationale: [PLAN.md](PLAN.md). Run instructions: [../README.md](../READ
 
 ## What it is
 
-A phone number that answers as a dry cleaner ("CJ's Cleaners"). Customers call; a Gemini
+A phone number that answers as a dry cleaner ("CJ's Cleaning Company"). Customers call; a Gemini
 Live voice agent looks up orders and prices, adds order notes, and takes messages. The end goal
 is a teaching agent that grades each call and improves the voice agent over time (RSI).
 Decisions already made: callers are customers, English only, 3-hour build, success judged by
@@ -138,3 +138,9 @@ npm run doctor             # fix every ✗
 npm run seed               # once, with MONGODB_URI set
 npm run live               # then call the Twilio number from a verified phone
 ```
+
+### Customer profiles (added)
+- `customers` collection, keyed by E.164 phone: name, email, preferences, notes, vip, firstSeenAt, lastCallAt, callCount. Seeded from the sample orders; `npm run seed` adds the demo caller (+19255511546).
+- At call start `liveSession.ts` loads the caller's profile and orders by caller ID and puts them in the system prompt (`CALLER PROFILE`). The terminal logs `[profile] +1...: <name>, N order(s), N previous call(s)`. Every call increments `callCount`; unknown numbers get a profile created.
+- New tool `update_customer_profile` lets the agent save a name, email, preference or note for the current caller. `GET /api/customers` serves the dashboard's Customers tab.
+- Company name is now "CJ's Cleaning Company". Rerun `npm run seed` to update the active config in an existing database.

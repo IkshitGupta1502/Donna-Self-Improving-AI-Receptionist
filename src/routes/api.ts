@@ -114,6 +114,13 @@ apiRouter.get(
 );
 
 apiRouter.get(
+  "/customers",
+  wrap(async (_req, res) => {
+    res.json(await (await getStore()).listCustomers());
+  })
+);
+
+apiRouter.get(
   "/messages",
   wrap(async (_req, res) => {
     res.json(await (await getStore()).listMessages());
