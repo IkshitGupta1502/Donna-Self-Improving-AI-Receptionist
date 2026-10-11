@@ -343,6 +343,23 @@ button.cu-item:hover{background:var(--hover)}
 .gr td{vertical-align:middle}
 .mb{display:flex;align-items:center;gap:6px;min-width:62px}
 .mb i{display:block;height:6px;background:var(--ink);opacity:.85;border-radius:1px}
+.pb-intro{font-size:.88rem;color:var(--muted);line-height:1.5;margin:-2px 0 10px}
+.pb-counts{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:.8rem;margin-bottom:12px;font-family:var(--fm)}
+.pb-counts b{font-weight:600}
+.pb-counts .w{color:var(--warn)}
+.pb-list{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+.pb-card.pb-prop{border-left:3px solid var(--warn)}
+.pb-card.pb-off{opacity:.78}
+.pb-card.pb-tmp{opacity:.6}
+.pb-title{font-weight:600;font-size:1rem;overflow-wrap:anywhere}
+.pb-line{font-size:.9rem;line-height:1.5;overflow-wrap:anywhere}
+.pb-line strong{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:6px;font-weight:600}
+.pb-badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start}
+.pb-form .fi{font-family:var(--fb)}
+.pb-form textarea.fi{min-height:70px}
+.pb-form .pb-row{display:flex;flex-direction:column;gap:4px}
+.pb-form .pb-row .cnt{align-self:flex-end;font-family:var(--fm);font-size:.7rem;color:var(--muted)}
+.pb-form .pb-row .cnt.over{color:var(--bad)}
 .mb s{display:block;flex:1 1 auto;height:6px;background:var(--hover);position:relative;text-decoration:none}
 .mb s i{position:absolute;left:0;top:0}
 .mb b{font-family:var(--fm);font-size:.72rem;font-weight:500;min-width:2ch;text-align:right}
@@ -517,6 +534,10 @@ button.cu-item:hover{background:var(--hover)}
       </div>
       <h2 class="im-h">Tool proposals <small>approve what the receptionist is allowed to do</small></h2>
       <div id="im-tools"></div>
+      <h2 class="im-h">Scenario playbook <small>edge cases and how to handle them</small></h2>
+      <div id="im-pb-sum"></div>
+      <div id="im-pb-form"></div>
+      <div id="im-pb-list"></div>
       <h2 class="im-h">Changes the teacher made <small>newest first</small></h2>
       <div id="im-changes"></div>
       <h2 class="im-h">Recent grades <small id="im-grades-meta"></small></h2>
@@ -803,6 +824,31 @@ var Demo = (function(){
         exampleArgs:{order_id:"ORD-1041",window:"4-6pm",address:"220 Mission Street",confirmed:true},exampleResult:{upgraded:true,new_price:52,appointment:"apt_5521"}},
       status:"proposed",requestCount:1,sourceCallSids:[gSid[8]],evidence:[{turn:2,quote:"Is my suit ready yet?"}],createdAt:ts(30),updatedAt:ts(30)}
   ];
+  var pbSeq=5, pbNow=Date.now();
+  var playbook = [
+    {id:"pb1",title:"Caller wants an order held until a later date",when:"The caller asks to hold or delay pickup of a finished order until a later date.",handling:"Note the date and the order number, tell them staff will confirm the hold, and take a message.",source:"teacher",status:"active",timesSeen:3,sourceCallSids:[gSid[8],gSid[10]],evidence:[{turn:3,quote:"My suit is ready but I'm travelling. Can you keep it until the 20th?"}],createdAt:ts(2600),updatedAt:ts(1500)},
+    {id:"pb2",title:"Caller asks about removing an old stain",when:"The caller asks whether an old or set-in stain can be removed.",handling:"Do not promise results. Say the cleaners will assess it at drop-off and offer to take a callback number.",source:"teacher",status:"active",timesSeen:1,sourceCallSids:[gSid[3]],evidence:[{turn:2,quote:"There's a wine stain from last winter, can you get that out?"}],createdAt:ts(900),updatedAt:ts(900)},
+    {id:"pb3",title:"Caller is picking up for someone else",when:"The caller says they are collecting an order on behalf of another person.",handling:"Ask for the order number and the name on the order, and remind them to bring the ticket or ID.",source:"owner",status:"active",timesSeen:0,sourceCallSids:[],evidence:[],createdAt:ts(4000),updatedAt:ts(4000)},
+    {id:"pb4",title:"Caller wants a price quote for leather or suede",when:"The caller asks for a price on leather, suede or fur garments.",handling:"Say pricing depends on the item and the owner will quote it; take a name and number for a callback.",source:"teacher",status:"proposed",timesSeen:2,sourceCallSids:[gSid[10]],evidence:[{turn:3,quote:"How much for a suede jacket? I couldn't find it on your price list."}],createdAt:ts(25),updatedAt:ts(25)},
+    {id:"pb5",title:"Caller reports a missing item after pickup",when:"The caller says an item was missing from their order when they collected it.",handling:"Apologise, collect the order number and a description of the item, and tell them the owner will call back.",source:"owner",status:"disabled",timesSeen:0,sourceCallSids:[],evidence:[],createdAt:ts(3000),updatedAt:ts(700)}
+  ];
+  function pbWrite(method,p,body,fail,res){
+    var now=new Date().toISOString();
+    if(p==="/api/playbook"){
+      var t=typeof body.title==="string"?body.title.trim():"", w=typeof body.when==="string"?body.when.trim():"", hd=typeof body.handling==="string"?body.handling.trim():"";
+      if(t.length<1||t.length>80){ fail(400,"title must be 1-80 characters"); return true; }
+      if(w.length<1||w.length>200){ fail(400,"when must be 1-200 characters"); return true; }
+      if(hd.length<1||hd.length>300){ fail(400,"handling must be 1-300 characters"); return true; }
+      var ne={id:"pb"+(++pbSeq),title:t,when:w,handling:hd,source:"owner",status:"active",timesSeen:0,sourceCallSids:[],evidence:[],createdAt:now,updatedAt:now};
+      playbook.push(ne); res(clone(ne)); return true;
+    }
+    var m=p.match(/^\/api\/playbook\/([^\/]+)\/(enable|disable|delete)$/);
+    if(!m) return false;
+    var id=decodeURIComponent(m[1]), e=playbook.filter(function(x){return x.id===id;})[0];
+    if(!e){ fail(404,"Unknown playbook entry: "+id); return true; }
+    if(m[2]==="delete"){ playbook=playbook.filter(function(x){return x!==e;}); res({ok:true}); return true; }
+    e.status=m[2]==="enable"?"active":"disabled"; e.updatedAt=now; res(clone(e)); return true;
+  }
   var records = [
     {id:"rec_c1",tool:"file_damage_claim",phone:"+14155550142",callSid:gSid[8],fields:{item:"Wool coat",description:"Button torn off during cleaning",order_id:"ORD-1042"},createdAt:ts(600)},
     {id:"rec_c2",tool:"file_damage_claim",phone:"+14155550177",callSid:gSid[9],fields:{item:"Silk shirt",description:"Color transfer on the collar",order_id:"ORD-1039"},createdAt:ts(95)}
@@ -861,6 +907,7 @@ var Demo = (function(){
           return res({ok:true,version:nv.version,improvementId:iid});
         }
         if(method==="POST" && toolWrite(p,fail,res)) return;
+        if(method==="POST" && pbWrite(method,p,body,fail,res)) return;
         fail(404,"Not found");
       },60);
     });
@@ -871,12 +918,13 @@ var Demo = (function(){
     if(p==="/api/config") out = cfgSnap();
     else
     if(p==="/api/health") out = {status:"ok"};
-    else if(p==="/api/stats") out = {calls:calls.length,activeCalls:calls.filter(function(c){return c.status==="active";}).length,orders:orders.length,openOrders:orders.filter(function(o){return o.stage!=="Picked up";}).length,messages:messages.length};
+    else if(p==="/api/stats") out = {calls:calls.length,activeCalls:calls.filter(function(c){return c.status==="active";}).length,orders:orders.length,openOrders:orders.filter(function(o){return o.stage!=="Picked up";}).length,messages:messages.length,playbook:playbook.filter(function(e){return e.status==="active";}).length};
     else if(p==="/api/calls") out = calls;
     else if(p.indexOf("/api/calls/")===0) out = calls.filter(function(c){return c.callSid===decodeURIComponent(p.slice(11));})[0];
     else if(p==="/api/grades") out = grades;
     else if(p==="/api/improvements") out = improvements;
     else if(p==="/api/tools") out = tools;
+    else if(p==="/api/playbook") out = playbook;
     else if(p==="/api/records"){ var qs=new URLSearchParams(path.split("?")[1]||""), tn=qs.get("tool"); out = records.filter(function(r){return !tn||r.tool===tn;}).slice(0,Number(qs.get("limit"))||50); }
     else if(p==="/api/customers") out = customers;
     else if(p==="/api/orders") out = orders;
@@ -1380,7 +1428,8 @@ window.addEventListener("beforeunload",function(e){
 
 /* ── Improvements (teacher: grades, changes, tool proposals) ─────────── */
 var IM = { grades:null, impr:null, tools:null, rec:{}, missing:{}, err:{}, loaded:false,
-  gen:0, busy:false, pending:{}, msg:{}, draft:{}, ans:{}, open:{}, gopen:{}, h:{}, asc:[], geo:null, toastT:null, cw:0 };
+  gen:0, busy:false, pending:{}, msg:{}, draft:{}, ans:{}, open:{}, gopen:{}, h:{}, asc:[], geo:null, toastT:null, cw:0,
+  pb:null, pbTmp:[], pbPend:{}, pbMsg:{}, pbForm:{open:false,title:"",when:"",handling:"",sending:false,err:""} };
 var OUT_CLS = {answered:"b-good", message_taken:"b-warn", failed:"b-bad"};
 var OUT_LBL = {answered:"answered", message_taken:"message taken", failed:"failed"};
 var IM_ICON = {prompt:"Aa", context:"?", tool:"fx", schema:"{}"};
@@ -1409,7 +1458,7 @@ function imFetch(){
   function get(path,key){
     return api(path).then(function(d){ return {key:key,d:arr(d)}; },function(e){ return {key:key,e:e}; });
   }
-  return Promise.all([get("/api/grades","grades"),get("/api/improvements","impr"),get("/api/tools","tools")]).then(function(rs){
+  return Promise.all([get("/api/grades","grades"),get("/api/improvements","impr"),get("/api/tools","tools"),get("/api/playbook","pb")]).then(function(rs){
     if(gen!==IM.gen) return null;                       // an action happened meanwhile: stale
     rs.forEach(function(r){
       if(r.e){ if(r.e.status===404){ IM.missing[r.key]=true; IM.err[r.key]=""; if(!IM[r.key]) IM[r.key]=[]; } else { IM.err[r.key]=coErrText(r.e); } }
@@ -1488,7 +1537,8 @@ function imStats(){
     tile(g.length?f1(avgOf(g,"overall")):"–","Average score /10",ok?imDelta(avgOf(latest,"overall"),avgOf(prev,"overall"),false,prev.length):"")+
     tile(g.length?f1(avgOf(g,"frustration")):"–","Avg frustration /10",ok?imDelta(avgOf(latest,"frustration"),avgOf(prev,"frustration"),true,prev.length):"")+
     tile(applied,"Improvements applied","")+
-    tile(wait,"Tools awaiting approval","",wait?" warn":"");
+    tile(wait,"Tools awaiting approval","",wait?" warn":"")+
+    (IM.missing.pb?"":tile(pbCounts().active,"Playbook entries active",""));
 }
 
 /* score timeline */
@@ -1691,6 +1741,111 @@ function changeItem(i,pinned){
   return h+'</div></div>';
 }
 
+/* scenario playbook */
+var PB_MAX={title:80,when:200,handling:300};
+var PB_LBL={active:"Active",proposed:"Waiting for you",disabled:"Off"};
+function pbAll(){ return arr(IM.pb).concat(IM.pbTmp); }
+function pbCounts(){
+  var c={active:0,proposed:0,disabled:0};
+  if(IM.pb===null && S.stats && S.stats.playbook!=null) c.active=nz(S.stats.playbook);
+  pbAll().forEach(function(e){ if(c.hasOwnProperty(e.status)) c[e.status]++; });
+  return c;
+}
+function pbCard(e){
+  var id=e.id, tmp=!!e._tmp, pend=IM.pbPend[id], st=e.status, msg=IM.pbMsg[id], ev=arr(e.evidence), src=arr(e.sourceCallSids), seen=nz(e.timesSeen);
+  var cls="card pb-card"+(st==="proposed"?" pb-prop":st==="disabled"?" pb-off":"")+(tmp?" pb-tmp":"");
+  var bc=st==="active"?"b-good":st==="proposed"?"b-warn":"b-mute";
+  var h='<div class="'+cls+'" data-pb="'+esc(id)+'"><div class="tw-hdr"><div style="min-width:0"><div class="pb-title">'+esc(e.title)+'</div>'+
+    '<div class="imt-meta" style="margin-top:4px">'+(seen>0?'<span>Seen '+seen+' time'+(seen===1?'':'s')+'</span>':'')+(e.updatedAt&&!tmp?'<span>updated '+esc(relTime(e.updatedAt))+'</span>':'')+'</div></div>'+
+    '<div class="pb-badges">'+(e.source==="teacher"?'<span class="badge b-teacher">&#10022; Added by the teacher</span>':'<span class="badge b-line">Added by you</span>')+
+    '<span class="badge '+bc+'">'+(tmp?"Saving…":esc(PB_LBL[st]||st))+'</span></div></div><div class="card-body">'+
+    '<div class="pb-line"><strong>When:</strong>'+esc(e.when)+'</div><div class="pb-line"><strong>Do:</strong>'+esc(e.handling)+'</div>';
+  if(ev.length||src.length){
+    h+='<details class="im-d" data-k="e:'+esc(id)+'"'+(imOpen("e:"+id,false)?" open":"")+'><summary>Evidence from calls ('+ev.length+')</summary><div class="im-d-body">'+
+      ev.map(function(x){ return '<div class="im-q">&ldquo;'+esc(x.quote)+'&rdquo;<small>turn '+esc(x.turn)+'</small></div>'; }).join("")+
+      (src.length?'<div class="imt-meta">from call'+(src.length>1?'s':'')+' '+src.map(imCallLink).join(" ")+'</div>':'')+'</div></details>';
+  }
+  if(!tmp){
+    function b(act,label,c){ return '<button type="button" class="btn '+c+'" data-pb-act="'+act+'" data-id="'+esc(id)+'"'+(pend?' disabled':'')+'>'+(pend===act?"Working…":label)+'</button>'; }
+    h+='<div class="im-acts">';
+    if(st==="proposed") h+=b("enable","Approve","")+b("delete","Remove","danger");
+    else if(st==="active"){ h+=b("disable","Turn off","ghost"); if(e.source==="owner") h+=b("delete","Remove","danger"); }
+    else h+=b("enable","Turn on","")+b("delete","Remove","danger");
+    h+='<span class="co-msg '+(msg&&!msg.ok?"bad":"")+'" role="status" aria-live="polite">'+(msg?esc(msg.text):"")+'</span></div>';
+  }
+  return h+'</div></div>';
+}
+function pbFormValid(){
+  var f=IM.pbForm;
+  return !!f.title.trim() && !!f.when.trim() && !!f.handling.trim() && f.title.length<=PB_MAX.title && f.when.length<=PB_MAX.when && f.handling.length<=PB_MAX.handling;
+}
+function pbFormHtml(){
+  var f=IM.pbForm;
+  if(!f.open) return '<button type="button" class="btn ghost" data-pb-toggle="1">+ Add an edge case</button>';
+  function row(k,label,ph,area){
+    var v=f[k], n=v.length, ro=f.sending?' readonly':'';
+    var inp=area?'<textarea class="fi" id="pb-'+k+'" data-pb-in="'+k+'" rows="3" placeholder="'+esc(ph)+'"'+ro+'>'+esc(v)+'</textarea>'
+                :'<input class="fi" type="text" id="pb-'+k+'" data-pb-in="'+k+'" placeholder="'+esc(ph)+'" autocomplete="off"'+ro+' value="'+esc(v)+'" />';
+    return '<div class="pb-row"><label for="pb-'+k+'">'+label+'</label>'+inp+'<span class="cnt'+(n>PB_MAX[k]?' over':'')+'" data-pb-cnt="'+k+'">'+n+' / '+PB_MAX[k]+'</span></div>';
+  }
+  return '<div class="im-form pb-form">'+row("title","Title","Short name, e.g. Caller wants to reschedule",false)+row("when","When this happens...","Describe the situation",true)+row("handling","Do this...","Say what the receptionist should do",true)+
+    '<div class="im-form-bar"><button type="button" class="btn" data-pb-save="1"'+(f.sending||!pbFormValid()?' disabled':'')+'>'+(f.sending?"Saving…":"Save")+'</button>'+
+    '<button type="button" class="btn ghost" data-pb-toggle="1"'+(f.sending?' disabled':'')+'>Cancel</button></div>'+
+    '<div class="err" role="alert" data-pb-err>'+esc(f.err)+'</div></div>';
+}
+function pbRender(){
+  var m=IM.missing.pb;
+  if(m){ setI("im-pb-sum",imNoteMissing("The scenario playbook")); setI("im-pb-form",""); setI("im-pb-list",""); return; }
+  var c=pbCounts(), list=pbAll();
+  setI("im-pb-sum",'<div class="pb-intro">Edge cases the receptionist has seen and how to handle them. Active entries are read by the receptionist on every call.</div>'+
+    '<div class="pb-counts"><span><b>'+c.active+'</b> active</span><span class="'+(c.proposed?'w':'')+'"><b>'+c.proposed+'</b> waiting for you</span><span><b>'+c.disabled+'</b> off</span></div>');
+  var af=document.activeElement, fid=af&&af.getAttribute&&af.getAttribute("data-pb-in"), ss=fid?af.selectionStart:0, se=fid?af.selectionEnd:0;
+  if(setI("im-pb-form",pbFormHtml()) && fid){ var nf=$("pb-"+fid); if(nf&&!nf.readOnly){ nf.focus(); try{ nf.setSelectionRange(ss,se); }catch(x){} } }
+  var o={proposed:0,active:1,disabled:2};
+  list=list.slice().sort(function(a,b){ return ((o[a.status]==null?3:o[a.status])-(o[b.status]==null?3:o[b.status]))||((tms(b.updatedAt)||0)-(tms(a.updatedAt)||0)); });
+  var fa=document.activeElement, fk=fa&&fa.closest&&fa.closest("[data-pb]")?fa.closest("[data-pb]").getAttribute("data-pb")+"|"+(fa.getAttribute("data-pb-act")||""):null;
+  var lh=list.length?'<div class="pb-list">'+list.map(pbCard).join("")+'</div>':'<div class="empty"><p>No edge cases yet. When a call goes somewhere unexpected, the teacher will add an entry here, or add one yourself.</p></div>';
+  if(setI("im-pb-list",lh) && fk){ var ps=fk.split("|"); try{ var re=$("im-pb-list").querySelector('[data-pb="'+ps[0].replace(/"/g,"")+'"] [data-pb-act="'+ps[1]+'"]'); if(re&&!re.disabled) re.focus(); }catch(x){} }
+}
+function pbAct(id,act){
+  var e=arr(IM.pb).filter(function(x){ return x.id===id; })[0];
+  if(!e || IM.pbPend[id]) return;
+  if(act==="delete" && !window.confirm('Remove "'+e.title+'"? The receptionist will no longer use it.')) return;
+  IM.gen++; IM.pbPend[id]=act; IM.pbMsg[id]=null; imRender();
+  api("/api/playbook/"+encodeURIComponent(id)+"/"+act,{method:"POST",body:{}}).then(function(u){
+    IM.gen++; delete IM.pbPend[id];
+    if(act==="delete") IM.pb=IM.pb.filter(function(x){ return x.id!==id; });
+    else if(u && u.id) IM.pb=IM.pb.map(function(x){ return x.id===id?u:x; });
+    imToast({enable:"Turned on: ",disable:"Turned off: ",del:"Removed: "}[act==="delete"?"del":act]+e.title,true);
+    imRender(); IM.busy=false; imFetch();
+  }).catch(function(er){
+    IM.gen++; delete IM.pbPend[id];
+    IM.pbMsg[id]={ok:false,text:coErrText(er)};
+    imToast("Could not update the entry: "+coErrText(er),false);
+    imRender();
+  });
+}
+function pbSave(){
+  var f=IM.pbForm;
+  if(f.sending || !pbFormValid()) return;
+  var body={title:f.title.trim(),when:f.when.trim(),handling:f.handling.trim()};
+  var tid="tmp-"+Date.now(), now=new Date().toISOString();
+  var tmp={id:tid,_tmp:true,title:body.title,when:body.when,handling:body.handling,source:"owner",status:"active",timesSeen:0,sourceCallSids:[],evidence:[],createdAt:now,updatedAt:now};
+  IM.gen++; f.sending=true; f.err=""; IM.pbTmp.push(tmp); imRender();
+  api("/api/playbook",{method:"POST",body:body}).then(function(r){
+    IM.gen++; IM.pbTmp=IM.pbTmp.filter(function(x){ return x.id!==tid; });
+    if(r && r.id) IM.pb=arr(IM.pb).filter(function(x){ return x.id!==r.id; }).concat([r]);
+    IM.pbForm={open:false,title:"",when:"",handling:"",sending:false,err:""};
+    imToast("Added. The receptionist will use it from the next call.",true);
+    imRender(); IM.busy=false; imFetch();
+  }).catch(function(er){
+    IM.gen++; IM.pbTmp=IM.pbTmp.filter(function(x){ return x.id!==tid; });
+    f.sending=false;
+    f.err=er && er.status===404 ? "The playbook is not available on this server yet." : coErrText(er);
+    imRender();
+  });
+}
+
 /* grades */
 function bar(v,fr){ return '<div class="mb'+(fr?' fr':'')+'" title="'+f1(v)+' / 10"><s><i style="width:'+Math.max(0,Math.min(100,nz(v)*10))+'%"></i></s><b>'+f1(v)+'</b></div>'; }
 function gradesTable(){
@@ -1721,8 +1876,8 @@ function imRender(){
   var show=configured() && IM.loaded && !all3;
   $("im-main").classList.toggle("hidden",!show);
   if(!show) return;
-  var errs=["grades","impr","tools"].filter(function(k){ return IM.err[k]; });
-  setI("im-err",errs.length?'<div class="banner">Could not refresh '+errs.map(function(k){ return {grades:"grades",impr:"improvements",tools:"tool proposals"}[k]; }).join(", ")+': '+esc(IM.err[errs[0]])+'. Retrying every 3 seconds.</div>':"");
+  var errs=["grades","impr","tools","pb"].filter(function(k){ return IM.err[k]; });
+  setI("im-err",errs.length?'<div class="banner">Could not refresh '+errs.map(function(k){ return {grades:"grades",impr:"improvements",tools:"tool proposals",pb:"the playbook"}[k]; }).join(", ")+': '+esc(IM.err[errs[0]])+'. Retrying every 3 seconds.</div>':"");
   IM.asc=(IM.grades||[]).slice().sort(function(a,b){ return (tms(a.created_at)||0)-(tms(b.created_at)||0); });
   var g=IM.asc;
   setI("im-stats",imStats());
@@ -1745,6 +1900,7 @@ function imRender(){
   var th=IM.missing.tools?imNoteMissing("Tool proposals"):tools.length?tools.map(toolCard).join(""):'<div class="empty"><p>No tool proposals yet. When a caller asks for something the receptionist can\'t do, the teacher will propose one here.</p></div>';
   var focus=document.activeElement, fk=focus&&focus.closest&&focus.closest("[data-tool]")?focus.closest("[data-tool]").getAttribute("data-tool")+"|"+(focus.getAttribute("data-im-act")||""):null;
   if(setI("im-tools",th) && fk){ var parts=fk.split("|"), sel='[data-tool="'+parts[0]+'"] [data-im-act="'+parts[1]+'"]'; var re=null; try{ re=$("im-tools").querySelector(sel); }catch(e){} if(re&&!re.disabled) re.focus(); }
+  pbRender();
   /* changes */
   var imps=(IM.impr||[]).slice().sort(function(a,b){ return (tms(b.created_at)||0)-(tms(a.created_at)||0); });
   var pins=imps.filter(function(i){ return i.type==="context"&&i.status==="proposed"; });
@@ -1761,10 +1917,16 @@ function imRender(){
 }
 function imReset(){
   IM.gen++; IM.grades=IM.impr=IM.tools=null; IM.rec={}; IM.missing={}; IM.err={}; IM.loaded=false; IM.busy=false; IM.pending={}; IM.msg={}; IM.draft={}; IM.ans={}; IM.h={}; IM.asc=[];
+  IM.pb=null; IM.pbTmp=[]; IM.pbPend={}; IM.pbMsg={}; IM.pbForm={open:false,title:"",when:"",handling:"",sending:false,err:""};
 }
 $("panel-improvements").addEventListener("click",function(e){
   var sb=e.target.closest("[data-im-send]");
   if(sb){ imAnswer(sb.getAttribute("data-im-send")); return; }
+  var pt=e.target.closest("[data-pb-toggle]");
+  if(pt){ var pf=IM.pbForm; if(pf.sending) return; pf.open=!pf.open; if(!pf.open){ pf.title=pf.when=pf.handling=pf.err=""; } imRender(); var fi=$("pb-title"); if(pf.open&&fi) fi.focus(); return; }
+  if(e.target.closest("[data-pb-save]")){ pbSave(); return; }
+  var pa=e.target.closest("[data-pb-act]");
+  if(pa){ pbAct(pa.getAttribute("data-id"),pa.getAttribute("data-pb-act")); return; }
   var a=e.target.closest("[data-im-act]");
   if(a){ imAct(a.getAttribute("data-name"),a.getAttribute("data-im-act")); return; }
   var c=e.target.closest("[data-im-copy]");
@@ -1779,7 +1941,16 @@ $("panel-improvements").addEventListener("click",function(e){
   if(r){ var id2=r.getAttribute("data-gid"); IM.gopen[id2]=!IM.gopen[id2]; imRender(); var nr=$("im-grades").querySelector('tr[data-gid="'+id2+'"]'); if(nr) nr.focus(); }
 });
 $("panel-improvements").addEventListener("input",function(e){
-  var t=e.target, id=t.getAttribute&&t.getAttribute("data-im-draft"); if(!id) return;
+  var t=e.target, pk=t.getAttribute&&t.getAttribute("data-pb-in");
+  if(pk){
+    var pf=IM.pbForm; pf[pk]=t.value; pf.err="";
+    var row=t.closest(".pb-row"), cn=row.querySelector("[data-pb-cnt]"); cn.textContent=t.value.length+" / "+PB_MAX[pk]; cn.classList.toggle("over",t.value.length>PB_MAX[pk]);
+    var sv=$("im-pb-form").querySelector("[data-pb-save]"); if(sv) sv.disabled=!pbFormValid();
+    var er=$("im-pb-form").querySelector("[data-pb-err]"); if(er) er.textContent="";
+    IM.h["im-pb-form"]=pbFormHtml();
+    return;
+  }
+  var id=t.getAttribute&&t.getAttribute("data-im-draft"); if(!id) return;
   IM.draft[id]=t.value;
   var f=t.closest(".im-form"), n=t.value.length, bad=n>AN_MAX;
   var c=f.querySelector("[data-cnt]"); c.textContent=n+" / "+AN_MAX; c.classList.toggle("over",bad);

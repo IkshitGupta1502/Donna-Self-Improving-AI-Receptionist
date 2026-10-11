@@ -25,11 +25,11 @@ All paths below are relative to this `teacher/` folder. Team status and open dec
 | `src/services/teacher/judge.ts` | Rubric prompt, `JudgeOutput` zod schema, `geminiJudge` (the only model call), `buildJudgeInput` |
 | `src/services/teacher/plan.ts` | Pure functions `buildPlan` (validation and guardrails) and `regression` (automatic rollback test). No database, no model. |
 | `src/services/teacher/index.ts` | `teach`, `answerOwnerQuestion`, `rollback`, `scoreTrend`, `watch`, `printResult`, `activeContext` |
-| `fixtures/seed.ts` | Demo data in the bridge's shapes: a salon config v1 and fake calls 1-5 (4 and 5 are dry cleaner calls; 5 asks for a rush plus pickup and a hem price) |
+| `fixtures/seed.ts` | Demo data in the bridge's shapes: a salon config v1 and fake calls 1-6 (4 to 6 are dry cleaner calls; 5 asks for a rush plus pickup and a hem price; 6 asks to hold an order until next Tuesday and should give a playbook entry) |
 | `scripts/cli.ts` | `seed`, `demo`, `teach`, `answer`, `rollback`, `trend`, `context`, `watch` |
 | `scripts/selftest.ts` | Offline assertions for `buildPlan`, `regression` and the bridge conversion. Must keep passing. |
 
-Commands: `npm run tools` (list tool proposals), `npm run typecheck`, `npm run selftest`, `npm run demo`, `npm run watch`.
+Commands: `npm run tools` (list tool proposals), `npm run playbook` (list playbook entries), `npm run typecheck`, `npm run selftest`, `npm run demo`, `npm run watch`.
 Environment: `MONGODB_URI`, `MONGODB_DB` (default `snoopy`, must be the same database the bridge uses), `GEMINI_API_KEY`, `GEMINI_TEACHER_MODEL` (default `gemini-3.8-flash`).
 
 `npm run seed` and `npm run demo` always use the database `snoopy_demo`, and `seed` refuses any database whose name does not end in `_demo`, because it wipes the collections. To run other commands on the demo data: `MONGODB_DB=snoopy_demo npm run answer ...`.
@@ -44,6 +44,7 @@ Owned by the bridge (shapes in its `src/services/data/store.ts`):
 Owned by the teacher (string `_id`):
 - `grades`: `{ _id = callSid, call_id, config_version_id: "v<N>"|null, outcome, scores{accuracy, tool_use, task_completion, tone, brevity}, overall, frustration, rationale, issues[{type, turn, quote, explanation}], model, created_at }`
 - `tool_proposals`: `_id` = tool name; `ToolProposal` in `types.ts` (name, description, params, write, why, mockup, status proposed|enabled|disabled|declined, requestCount, sourceCallSids, evidence, createdAt, updatedAt, enabledAt?, enabledBy? teacher|owner). Read by the bridge/dashboard.
+- `playbook`: `_id` = `id` = `PB-######`; `PlaybookEntry` in `types.ts` (title, when, handling, source teacher|owner, status active|proposed|disabled, timesSeen, sourceCallSids, evidence, createdAt, updatedAt). Read by the bridge (active entries go in the prompt) and dashboard (owner adds entries, changes status). See 4.3.
 - `improvements`: `{ _id: "<callSid>_imp<N>", source_call_ids[], type: prompt|context|tool|schema, status: proposed|applied|rejected|rolled_back, payload{op?, rule_id?, rule_kind?, text?, question?, answer?}, evidence_turns[], reason, rejected_reason?, rolled_back_reason?, applied_in_config_id?, created_at }`
 
 How the teacher's model maps onto the bridge's documents (`bridge.ts`):
@@ -97,6 +98,9 @@ How the teacher's model maps onto the bridge's documents (`bridge.ts`):
 - **Recipes** (optional `recipe` on a tool proposal, stored with `recipeVerified`): `checkRecipeStatic` (shared `validateRecipe` + a boolean param `confirmed` passed through in every call to `schedule_appointment`, `set_order_type` or `create_order`) and `selfCheckRecipe` (runs the recipe on `exampleArgs` against a mock io; `teach` calls `verifyToolRecipe` first and passes the result to `buildPlan` as `extra.recipeCheck`). A recipe without a passing self-check is rejected. `describeRecipe` gives plain-English step lines for `printResult`.
   `src/services/teacher/recipe.ts` is a synced copy of `../src/services/tools/recipe.ts` (no imports, shared with the bridge). Do not edit it here; change the bridge copy and re-copy.
   Known limit: it only accepts snake_case call-arg names, so camelCase built-in args (`orderId`, `customerName`) cannot be passed yet; the judge prompt adapts (see `CAMEL_ARGS_OK` in `judge.ts`).
+- **Scenario playbook** (`validatePlaybookEntry`, `decidePlaybookStatus`, `mergePlaybookEntry`, `playbookImprovement` in `plan.ts`; written by `savePlaybookEntry` in `index.ts`): at most one `playbook_entry` per call, "when this specific situation happens, do this" (not a rule, tool or owner question).
+  Code checks: title <= 80, when <= 200, handling <= 300; every evidence quote in the transcript; no URLs/credentials/payments (shared FORBIDDEN list); no number in `handling` absent from the config (shared `inventedNumbers`, whole numbers); no email, text message or transfer. Status: `active` when overall < `PLAYBOOK_GRADE_THRESHOLD` (default 7) and `PLAYBOOK_AUTO_ACTIVATE` != `0`, else `proposed`. A similar entry of any status (normalised title equal or word Jaccard > 0.7 on title+when) is only bumped (timesSeen once per call, sources unioned); the teacher never changes the status of an existing entry and never reactivates a `disabled` one.
+  The mirroring `improvements` doc has type `prompt` and `payload.playbook_id` but no `op`/`rule_id`/`applied_in_config_id`, so it never creates a config version, never changes rules and is not touched by rollback.
 - **Owner questions** (`context` improvements): max 2 per call, under 160 characters, no repeat of an open or answered question (normalised equality or word Jaccard > 0.8, `extra.existingQuestions`); extra or repeated ones are stored as rejected with a reason. `answerOwnerQuestion` appends `Owner answer: <question> <answer>` (`ownerAnswerLine`).
 - **The teacher can never add or change the company text.** Only `answerOwnerQuestion` can.
 - The teacher cannot edit its own rubric, weights, or limits. They are constants in code.

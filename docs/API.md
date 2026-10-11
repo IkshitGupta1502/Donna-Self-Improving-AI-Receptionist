@@ -27,6 +27,7 @@ Anything that speaks HTTP can be the dashboard. The bundled one is `web/index.ht
 | `GET /api/grades` | the teacher's grades, one per graded call (see `docs/TEAM_HANDOFF.md` section 6): `{ _id, call_id, config_version_id, outcome, scores{accuracy,tool_use,task_completion,tone,brevity}, overall, frustration, rationale, issues[], model, created_at }[]`. Empty without MongoDB |
 | `GET /api/improvements` | the teacher's changes and questions: `{ _id, source_call_ids, type: "prompt"\|"context"\|"tool"\|"schema", status: "applied"\|"proposed"\|"rejected"\|"rolled_back", payload, evidence_turns, reason, applied_in_config_id?, rejected_reason?, rolled_back_reason?, created_at }[]` |
 | `GET /api/tools` | `ToolProposal[]` (below) |
+| `GET /api/playbook` | `{ id, title, when, handling, source: "teacher"\|"owner", status: "active"\|"proposed"\|"disabled", timesSeen, sourceCallSids, evidence: [{turn, quote}], createdAt, updatedAt }[]`: the scenario playbook (edge cases and how to handle them) |
 | `GET /api/records?tool=&limit=` | `{ id, tool, phone?, callSid?, fields, createdAt }[]`: records saved by custom tools |
 
 ## Write
@@ -36,6 +37,8 @@ Anything that speaks HTTP can be the dashboard. The bundled one is `web/index.ht
 | `PUT /api/config` | `{ companyName, greeting, context, note? }` | New config version, active on the next call. 201 with the version. Limits: name 80, greeting 300, context 8000 characters |
 | `POST /api/config/activate` | `{ version }` | Re-activate any version (rollback). 404 if unknown |
 | `POST /api/tools/:name/enable` `/disable` `/decline` | none | Change a tool's status; returns the tool. Enabling a name that collides with a built-in returns 400 |
+| `POST /api/playbook` | `{ title (80), when (200), handling (300) }` | Owner adds an edge case; it is active from the next call. 201 with the entry |
+| `POST /api/playbook/:id/enable` `/disable` `/delete` | none | Turn an entry on or off, or remove it. 404 if unknown |
 | `POST /api/improvements/:id/answer` | `{ answer }` (max 600 chars) | Answers an open owner question (type `context`, status `proposed`): the answer is appended to the company context as a new version (author `manager`) and the question becomes `applied`. MongoDB only |
 
 ## ToolProposal

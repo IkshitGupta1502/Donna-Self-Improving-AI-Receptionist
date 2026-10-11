@@ -98,6 +98,20 @@ export interface Customer {
 
 export type CustomerPatch = Partial<Pick<Customer, "name" | "email" | "preferences" | "notes" | "vip">>;
 
+/** Splits an owner edit into fields to set and fields to clear. */
+function splitEdit(patch: CustomerPatch): { set: CustomerPatch; unset: string[] } {
+  const set: CustomerPatch = {};
+  const unset: string[] = [];
+  for (const key of ["name", "email", "preferences", "notes"] as const) {
+    const v = patch[key];
+    if (typeof v !== "string") continue;
+    if (v.trim()) set[key] = v.trim();
+    else unset.push(key);
+  }
+  if (typeof patch.vip === "boolean") set.vip = patch.vip;
+  return { set, unset };
+}
+
 function cleanPatch(patch: CustomerPatch): CustomerPatch {
   const out: CustomerPatch = {};
   for (const key of ["name", "email", "preferences", "notes"] as const) {
@@ -133,6 +147,65 @@ export interface ToolProposal {
   /** Optional declarative implementation written by the teacher; see src/services/tools/recipe.ts */
   recipe?: Recipe;
   recipeVerified?: boolean;
+}
+
+export type PlaybookStatus = "active" | "proposed" | "disabled";
+
+export interface PlaybookEntry {
+  id: string;
+  title: string;
+  when: string;
+  handling: string;
+  source: "teacher" | "owner";
+  status: PlaybookStatus;
+  timesSeen: number;
+  sourceCallSids: string[];
+  evidence: { turn: number; quote: string }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlaybookInput {
+  title: string;
+  when: string;
+  handling: string;
+}
+
+function newPlaybookEntry(input: PlaybookInput): PlaybookEntry {
+  const now = new Date().toISOString();
+  return {
+    id: `PB-${String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0")}`,
+    title: input.title.trim(),
+    when: input.when.trim(),
+    handling: input.handling.trim(),
+    source: "owner",
+    status: "active",
+    timesSeen: 0,
+    sourceCallSids: [],
+    evidence: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function byUpdatedDesc(a: PlaybookEntry, b: PlaybookEntry): number {
+  return (b.updatedAt ?? "").localeCompare(a.updatedAt ?? "");
+}
+
+function activeOrder(a: PlaybookEntry, b: PlaybookEntry): number {
+  return (b.timesSeen ?? 0) - (a.timesSeen ?? 0) || byUpdatedDesc(a, b);
+}
+
+/** Normalize a raw Mongo document: drop _id, make sure id is present. */
+function cleanPlaybook(doc: Record<string, unknown>): PlaybookEntry {
+  const { _id, ...rest } = doc;
+  return {
+    ...rest,
+    id: typeof rest.id === "string" && rest.id ? rest.id : String(_id),
+    timesSeen: typeof rest.timesSeen === "number" ? rest.timesSeen : 0,
+    sourceCallSids: Array.isArray(rest.sourceCallSids) ? rest.sourceCallSids : [],
+    evidence: Array.isArray(rest.evidence) ? rest.evidence : [],
+  } as PlaybookEntry;
 }
 
 export interface CustomRecord {
@@ -404,6 +477,8 @@ export interface DataStore {
   listMessages(): Promise<Message[]>;
   getCustomerByPhone(phone: string): Promise<Customer | null>;
   upsertCustomer(phone: string, patch: CustomerPatch): Promise<Customer>;
+  /** Owner edit: unlike upsertCustomer, an empty string clears the field. Returns null if the customer does not exist. */
+  editCustomer(phone: string, patch: CustomerPatch): Promise<Customer | null>;
   recordCustomerCall(phone: string): Promise<void>;
   listCustomers(): Promise<Customer[]>;
   createOrder(input: CreateOrderInput): Promise<Order>;
@@ -422,6 +497,11 @@ export interface DataStore {
   listGrades(): Promise<Record<string, unknown>[]>;
   listImprovements(): Promise<Record<string, unknown>[]>;
   answerImprovement(id: string, answer: string): Promise<AnswerImprovementResult>;
+  listPlaybook(): Promise<PlaybookEntry[]>;
+  listActivePlaybook(limit?: number): Promise<PlaybookEntry[]>;
+  addOwnerPlaybookEntry(input: PlaybookInput): Promise<PlaybookEntry>;
+  setPlaybookStatus(id: string, status: "active" | "disabled"): Promise<PlaybookEntry | null>;
+  deletePlaybookEntry(id: string): Promise<boolean>;
 }
 
 export function normalizePhone(input: string): string {
@@ -471,6 +551,7 @@ export function createMemoryStore(): DataStore {
   const configs: ConfigVersion[] = [structuredClone(SEED_CONFIG)];
   const proposals = new Map<string, ToolProposal>();
   const records: CustomRecord[] = [];
+  const playbook = new Map<string, PlaybookEntry>();
   let activeVersion = SEED_CONFIG.version;
   const findOrder = (orderId: string) => {
     const id = orderId.trim().toUpperCase();
@@ -565,6 +646,16 @@ export function createMemoryStore(): DataStore {
       const key = normalizePhone(phone);
       const existing = customers.get(key) ?? { phone: key, firstSeenAt: new Date().toISOString(), callCount: 0 };
       const next = { ...existing, ...cleanPatch(patch) };
+      customers.set(key, next);
+      return { ...next };
+    },
+    async editCustomer(phone, patch) {
+      const key = normalizePhone(phone);
+      const existing = customers.get(key);
+      if (!existing) return null;
+      const { set, unset } = splitEdit(patch);
+      const next: Customer = { ...existing, ...set };
+      for (const k of unset) delete (next as unknown as Record<string, unknown>)[k];
       customers.set(key, next);
       return { ...next };
     },
@@ -675,6 +766,28 @@ export function createMemoryStore(): DataStore {
     async answerImprovement() {
       return { ok: false, error: "needs MongoDB" };
     },
+    async listPlaybook() {
+      return structuredClone([...playbook.values()].sort(byUpdatedDesc));
+    },
+    async listActivePlaybook(limit = 12) {
+      return structuredClone([...playbook.values()].filter((e) => e.status === "active").sort(activeOrder).slice(0, limit));
+    },
+    async addOwnerPlaybookEntry(input) {
+      let entry = newPlaybookEntry(input);
+      while (playbook.has(entry.id)) entry = { ...entry, id: newPlaybookEntry(input).id };
+      playbook.set(entry.id, entry);
+      return structuredClone(entry);
+    },
+    async setPlaybookStatus(id, status) {
+      const e = playbook.get(id);
+      if (!e) return null;
+      e.status = status;
+      e.updatedAt = new Date().toISOString();
+      return structuredClone(e);
+    },
+    async deletePlaybookEntry(id) {
+      return playbook.delete(id);
+    },
   };
 }
 
@@ -716,6 +829,8 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
   await proposalsCol.createIndex({ name: 1 }, { unique: true });
   await recordsCol.createIndex({ tool: 1, phone: 1 });
   await recordsCol.createIndex({ id: 1 }, { unique: true });
+  const playbookCol = db.collection<Record<string, unknown> & { _id: string }>("playbook");
+  await playbookCol.createIndex({ status: 1 });
   console.log(`[data] MongoDB connected: db=${dbName}`);
 
   const proj = { projection: { _id: 0 } } as const;
@@ -841,6 +956,16 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
         { upsert: true }
       );
       return (await customers.findOne({ phone: key }, proj)) as Customer;
+    },
+    async editCustomer(phone, patch) {
+      const key = normalizePhone(phone);
+      const { set, unset } = splitEdit(patch);
+      const update: Record<string, unknown> = {};
+      if (Object.keys(set).length) update.$set = set;
+      if (unset.length) update.$unset = Object.fromEntries(unset.map((k) => [k, ""]));
+      if (!Object.keys(update).length) return customers.findOne({ phone: key }, proj);
+      const res = await customers.findOneAndUpdate({ phone: key }, update, { returnDocument: "after", projection: { _id: 0 } });
+      return res;
     },
     async recordCustomerCall(phone) {
       const now = new Date().toISOString();
@@ -1009,7 +1134,7 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
         const saved = await self.saveConfigVersion({
           companyName: cfg.companyName,
           greeting: cfg.greeting,
-          context: `${cfg.context}\n${question} ${answer.trim()}`.trim(),
+          context: `${cfg.context}\nOwner answer: ${question} ${answer.trim()}`.trim(),
           author: "manager",
           note: `Owner answered: ${question}`.slice(0, 300),
         });
@@ -1022,6 +1147,37 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
         await col.updateOne({ _id: id, status: "applying" }, { $set: { status: "proposed" } }).catch(() => undefined);
         throw err;
       }
+    },
+    async listPlaybook() {
+      const docs = await playbookCol.find({}).toArray();
+      return docs.map(cleanPlaybook).sort(byUpdatedDesc);
+    },
+    async listActivePlaybook(limit = 12) {
+      const docs = await playbookCol.find({ status: "active" }).toArray();
+      return docs.map(cleanPlaybook).sort(activeOrder).slice(0, limit);
+    },
+    async addOwnerPlaybookEntry(input) {
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const entry = newPlaybookEntry(input);
+        try {
+          await playbookCol.insertOne({ ...entry, _id: entry.id });
+        } catch (err) {
+          if ((err as { code?: number })?.code === 11000) continue;
+          throw err;
+        }
+        return entry;
+      }
+      throw new Error("could not allocate playbook id");
+    },
+    async setPlaybookStatus(id, status) {
+      const res = await playbookCol.updateOne({ _id: id }, { $set: { status, updatedAt: new Date().toISOString() } });
+      if (res.matchedCount === 0) return null;
+      const doc = await playbookCol.findOne({ _id: id });
+      return doc ? cleanPlaybook(doc) : null;
+    },
+    async deletePlaybookEntry(id) {
+      const res = await playbookCol.deleteOne({ _id: id });
+      return res.deletedCount > 0;
     },
   };
   return self;

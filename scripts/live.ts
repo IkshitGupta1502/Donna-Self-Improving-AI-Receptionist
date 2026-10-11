@@ -88,7 +88,8 @@ async function main(): Promise<void> {
   console.log(`\n✓ Ready. Call ${process.env.TWILIO_PHONE_NUMBER ?? "your Twilio number"} from a verified phone.`);
   const dashboard = process.env.DASHBOARD_URL ?? "http://localhost:8080";
   console.log(`  Dashboard API:  ${url}${process.env.DASHBOARD_TOKEN ? "   (token: your DASHBOARD_TOKEN)" : ""}`);
-  console.log(`  Open dashboard: ${dashboard}/?api=${url}\n`);
+  console.log(`  Ops dashboard:    ${dashboard}/?api=${url}   (tools, playbook, owner answers, company context)`);
+  console.log(`  Snoopy dashboard: ${dashboard}/snoopy/?api=${url}   (live line, calls, learning, knowledge, customers)\n`);
 }
 
 main().catch((err) => fail(err instanceof Error ? err.message : String(err)));

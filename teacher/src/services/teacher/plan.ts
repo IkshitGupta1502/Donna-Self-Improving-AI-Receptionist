@@ -3,7 +3,7 @@
 
 import { configId } from "../mongo/bridge.js";
 import type {
-  CallDoc, ConfigVersionDoc, GradeDoc, ImprovementDoc, Issue, Rule, Scores, ToolProposal,
+  CallDoc, ConfigVersionDoc, GradeDoc, ImprovementDoc, Issue, PlaybookEntry, Rule, Scores, ToolProposal,
 } from "../mongo/types.js";
 import type { JudgeOutput } from "./judge.js";
 import { CALLABLE_TOOLS, runRecipe, validateRecipe, WRITE_CALLS, type CallableTool, type Expr, type Recipe, type RecipeIO } from "./recipe.js";
@@ -60,7 +60,9 @@ export function ownerAnswerLine(question: string, answer: string): string {
 /** A rule may not smuggle in a business fact: any number it contains must already exist in the config. */
 function inventedNumbers(text: string, cfg: ConfigVersionDoc): string[] {
   const known = [cfg.company_name, cfg.greeting, cfg.context, ...cfg.rules.map((r) => r.text)].join(" ");
-  return (text.match(/\d+(?:[.:]\d+)?/g) ?? []).filter((n) => !known.includes(n));
+  // Whole numbers only: "5" is not "known" just because the config says "$65".
+  const inKnown = (n: string) => new RegExp(`(?<![\\d.:])${n.replace(/\./g, "\\.")}(?![\\d])`).test(known);
+  return (text.match(/\d+(?:[.:]\d+)?/g) ?? []).filter((n) => !inKnown(n));
 }
 
 export interface Plan {
@@ -456,4 +458,127 @@ export function describeRecipe(recipe: Recipe): string[] {
   });
   lines.push(`Reply with ${showMap(recipe.response)}`);
   return lines;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Scenario playbook: "when this specific situation happens, do this". Pure, like everything above.
+// Differs from a rule (always-on principle), a tool (capability) and a context question (missing fact).
+
+export const PLAYBOOK_LIMITS = { title: 80, when: 200, handling: 300, maxEvidence: 4, similarity: 0.7, gradeThreshold: 7 };
+// Things the receptionist cannot do: it has no email, no SMS, and cannot transfer a call. It can answer, use its tools, take a message, offer a callback.
+const CANNOT_DO: [RegExp, string][] = [
+  [/e-?mail/i, "email"],
+  [/text message|\bsms\b|\btext(?:s|ing)? (?:you|them|him|her|the|back|a)\b/i, "text message"],
+  [/\btransfer/i, "transfer"],
+];
+
+export type PlaybookValidation = { ok: true; entry: PlaybookEntry } | { ok: false; reason: string };
+
+/** Collapses whitespace so stored text is one line. */
+const oneLine = (s: string) => s.replace(/\s+/g, " ").trim();
+
+/** "PB-" + 6 random digits, not in `taken`. `rand` is injectable for tests. */
+export function newPlaybookId(taken: Iterable<string>, rand: () => number = Math.random): string {
+  const used = new Set(taken);
+  for (;;) {
+    const id = `PB-${String(Math.floor(rand() * 1_000_000)).padStart(6, "0")}`;
+    if (!used.has(id)) return id;
+  }
+}
+
+/**
+ * Validates the judge's playbook entry. Never trusts the model: limits, transcript-backed evidence (same normalization as issues,
+ * turn fixed), no URLs/credentials/payments (FORBIDDEN, shared with tools), no number that is not already in the business knowledge
+ * (inventedNumbers, shared with rules), nothing the receptionist cannot do (email, text message, transfer).
+ */
+export function validatePlaybookEntry(
+  p: NonNullable<JudgeOutput["playbook_entry"]>, call: CallDoc, cfg: ConfigVersionDoc,
+  opts: { now?: Date; existingIds?: Iterable<string>; rand?: () => number } = {},
+): PlaybookValidation {
+  const no = (reason: string): PlaybookValidation => ({ ok: false, reason });
+  const title = oneLine(p.title), when = oneLine(p.when), handling = oneLine(p.handling);
+  if (!title || !when || !handling) return no("title, when and handling must all be non-empty");
+  if (title.length > PLAYBOOK_LIMITS.title) return no(`title is longer than ${PLAYBOOK_LIMITS.title} characters`);
+  if (when.length > PLAYBOOK_LIMITS.when) return no(`when is longer than ${PLAYBOOK_LIMITS.when} characters`);
+  if (handling.length > PLAYBOOK_LIMITS.handling) return no(`handling is longer than ${PLAYBOOK_LIMITS.handling} characters`);
+
+  if (!p.evidence.length) return no("no evidence quote");
+  const evidence: PlaybookEntry["evidence"] = [];
+  for (const e of p.evidence.slice(0, PLAYBOOK_LIMITS.maxEvidence)) {
+    const q = norm(e.quote);
+    const hits = call.transcript.filter((t) => q.length > 0 && norm(t.text).includes(q));
+    if (!hits.length) return no(`evidence quote not found in transcript: "${e.quote.slice(0, 60)}"`);
+    evidence.push({ turn: (hits.find((t) => t.turn === e.turn) ?? hits[0]!).turn, quote: oneLine(e.quote) });
+  }
+
+  const scanned = `${title} ${when} ${handling}`;
+  const bad = FORBIDDEN.find((re) => re.test(scanned));
+  if (bad) return no(`mentions an external system, credentials or payments (${bad.source}); the receptionist cannot do that`);
+  const cannot = CANNOT_DO.find(([re]) => re.test(handling));
+  if (cannot) return no(`handling tells the receptionist to use ${cannot[1]}, which it cannot do (it can answer, use its tools, take a message or offer a callback)`);
+  const nums = inventedNumbers(handling, cfg);
+  if (nums.length) return no(`handling contains numbers or amounts that are not in the business knowledge: ${nums.join(", ")}`);
+
+  const iso = (opts.now ?? new Date()).toISOString();
+  return { ok: true, entry: {
+    id: newPlaybookId(opts.existingIds ?? [], opts.rand), title, when, handling, source: "teacher", status: "proposed",
+    timesSeen: 1, sourceCallSids: [call._id], evidence, createdAt: iso, updatedAt: iso,
+  } };
+}
+
+/** Same entry? Normalised title equality, or word-Jaccard > 0.7 on title + when. */
+export function similarPlaybook(a: { title: string; when: string }, b: { title: string; when: string }): boolean {
+  if (norm(a.title) && norm(a.title) === norm(b.title)) return true;
+  const A = new Set(norm(`${a.title} ${a.when}`).split(" ").filter(Boolean)), B = new Set(norm(`${b.title} ${b.when}`).split(" ").filter(Boolean));
+  if (!A.size || !B.size) return false;
+  const inter = [...A].filter((w) => B.has(w)).length;
+  return inter / (A.size + B.size - inter) > PLAYBOOK_LIMITS.similarity;
+}
+
+export interface PlaybookDecision {
+  action: "create-active" | "create-proposed" | "bump";
+  match: PlaybookEntry | null; // the similar existing entry (bump only)
+  newCall: boolean; // bump only: false when this call already counted (timesSeen is not raised again)
+  threshold: number;
+}
+
+/**
+ * Pure decision. A similar entry of ANY status is bumped (counters only, status never changes, a disabled one stays disabled).
+ * Otherwise create: "active" when overall < PLAYBOOK_GRADE_THRESHOLD (default 7) and PLAYBOOK_AUTO_ACTIVATE is not "0", else "proposed".
+ */
+export function decidePlaybookStatus(
+  overall: number, existing: PlaybookEntry[],
+  env: { PLAYBOOK_AUTO_ACTIVATE?: string; PLAYBOOK_GRADE_THRESHOLD?: string } = {},
+  candidate: { title: string; when: string; callSid?: string } = { title: "", when: "" },
+): PlaybookDecision {
+  const t = Number(env.PLAYBOOK_GRADE_THRESHOLD);
+  const threshold = env.PLAYBOOK_GRADE_THRESHOLD?.trim() && Number.isFinite(t) ? t : PLAYBOOK_LIMITS.gradeThreshold;
+  const match = existing.find((e) => similarPlaybook(e, candidate)) ?? null;
+  if (match) return { action: "bump", match, newCall: !(candidate.callSid && match.sourceCallSids.includes(candidate.callSid)), threshold };
+  const auto = env.PLAYBOOK_AUTO_ACTIVATE !== "0" && overall < threshold;
+  return { action: auto ? "create-active" : "create-proposed", match: null, newCall: true, threshold };
+}
+
+/** Seen again: timesSeen + 1 (once per call), sources and evidence unioned, updatedAt. Never touches status or the text. */
+export function mergePlaybookEntry(existing: PlaybookEntry, incoming: PlaybookEntry, now = new Date()): PlaybookEntry {
+  const already = incoming.sourceCallSids.every((s) => existing.sourceCallSids.includes(s));
+  return {
+    ...existing,
+    timesSeen: already ? existing.timesSeen : existing.timesSeen + 1,
+    sourceCallSids: [...new Set([...existing.sourceCallSids, ...incoming.sourceCallSids])],
+    evidence: already ? existing.evidence : [...existing.evidence, ...incoming.evidence.filter((e) => !existing.evidence.some((x) => x.quote === e.quote))].slice(0, 6),
+    updatedAt: now.toISOString(),
+  };
+}
+
+/** The improvements document that mirrors a playbook outcome. Type "prompt" but no op/rule_id: it never touches rules or config. */
+export function playbookImprovement(
+  callSid: string, n: number, entry: Pick<PlaybookEntry, "id" | "when" | "handling">, evidenceTurns: number[],
+  status: ImprovementDoc["status"], reason: string, now = new Date(), rejectedReason?: string,
+): ImprovementDoc {
+  return {
+    _id: `${callSid}_imp${n}`, source_call_ids: [callSid], type: "prompt", status,
+    payload: { text: `When ${entry.when}: ${entry.handling}`, ...(entry.id ? { playbook_id: entry.id } : {}) },
+    evidence_turns: evidenceTurns, reason, ...(rejectedReason ? { rejected_reason: rejectedReason } : {}), created_at: now,
+  };
 }

@@ -5,7 +5,7 @@ import {
   EndSensitivity,
   type LiveServerMessage,
 } from "@google/genai";
-import { createDataStore, type ConfigVersion, type DataStore, type ToolProposal } from "../data/store";
+import { createDataStore, type ConfigVersion, type DataStore, type PlaybookEntry, type ToolProposal } from "../data/store";
 import type { CallRecorder } from "../calls/recorder";
 import { TOOLS, executeTool, executeCustomTool, buildCustomToolDeclarations, BUILTIN_TOOL_NAMES } from "./tools";
 import { buildSystemPrompt, type CallerProfile } from "./systemPrompt";
@@ -45,8 +45,12 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
   const store = await getStore();
 
   // Config, profile and orders are independent MongoDB reads: fetch them together, not one after another
-  const [activeConfig, enabledTools, profile] = await Promise.all([
+  const [activeConfig, playbook, enabledTools, profile] = await Promise.all([
     store.getActiveConfig() as Promise<ConfigVersion>,
+    store.listActivePlaybook().catch((err): PlaybookEntry[] => {
+      console.error("[playbook] could not load playbook, continuing without it:", err);
+      return [];
+    }),
     store.listEnabledTools().catch((err): ToolProposal[] => {
       console.error("[tools] could not load custom tools, continuing without them:", err);
       return [];
@@ -66,6 +70,7 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
       : Promise.resolve(undefined),
   ]);
   recorder?.setConfigVersion(activeConfig.version);
+  if (playbook.length > 0) console.log(`[playbook] ${playbook.length} active ${playbook.length === 1 ? "entry" : "entries"}`);
   const customDecls = buildCustomToolDeclarations(enabledTools);
   const customSpecs = new Map(enabledTools.filter((s) => customDecls.some((d) => d.name === s.name)).map((s) => [s.name, s]));
   if (customSpecs.size) console.log(`[tools] ${customSpecs.size} custom tool(s) enabled: ${[...customSpecs.keys()].join(", ")}`);
@@ -87,7 +92,7 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
     model: MODEL,
     config: {
       responseModalities: [Modality.AUDIO],
-      systemInstruction: { parts: [{ text: buildSystemPrompt(today, callerPhone, activeConfig, profile) }] },
+      systemInstruction: { parts: [{ text: buildSystemPrompt(today, callerPhone, activeConfig, profile, playbook) }] },
       temperature: 0,
       speechConfig: {
         voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },

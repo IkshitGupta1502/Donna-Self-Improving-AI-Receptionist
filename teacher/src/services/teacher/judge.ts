@@ -49,6 +49,13 @@ export const JudgeOutput = z.object({
       response: z.record(z.string(), z.unknown()),
     }).nullish(),
   }).nullish(),
+  // At most one per call; null/absent when nothing is worth recording. Lenient here: plan.ts validates it in code.
+  playbook_entry: z.object({
+    title: z.string(),
+    when: z.string(),
+    handling: z.string(),
+    evidence: z.array(z.object({ turn: z.coerce.number().int(), quote: z.string() })).default([]),
+  }).nullish(),
 });
 export type JudgeOutput = z.infer<typeof JudgeOutput>;
 
@@ -121,16 +128,23 @@ Three worked examples (shortened):
 {"steps":[{"do":"require","when":{"ref":"confirmed"},"else":"Please confirm the details with the caller first."},{"do":"require","when":{"op":"lte","args":[{"ref":"amount"},200]},"else":"Claims over $200 need the owner; offer to take a message."},{"do":"save","fields":{"order_id":{"ref":"order_id"},"description":{"ref":"description"},"amount":{"ref":"amount"}}}],"response":{"filed":true,"claim_id":{"ref":"record_id"}}}
 ${EXAMPLE3}
 
+PLAYBOOK_ENTRY (optional, at most ONE per call, null when nothing is worth recording): a short "when this specific situation happens, do this" note for an EDGE CASE the transcript shows. Record one only when the caller's situation was unusual and repeatable, or the agent handled it badly or only took a message because it had no guidance.
+It is NOT a rule (a rule is an always-on principle that applies to every call), NOT a context question (a missing business fact) and NOT a tool proposal (a missing capability). Do not record routine calls that went well.
+Fields: title (max 80 chars), when (the situation, max 200 chars), handling (what the receptionist should do or say, max 300 chars), evidence [{turn, quote}] with at least one quote copied EXACTLY from the transcript.
+Handling may ONLY use what the receptionist can really do: answer from BUSINESS KNOWLEDGE, use its existing tools, take a message, offer a callback. It must NOT contain prices, fees, hours, numbers or policies that are not already in BUSINESS KNOWLEDGE, must not promise outcomes, and must not mention email, text messages, transferring the call, payments, links or credentials.
+Example: the caller asks to hold a finished order until next Tuesday and the agent just takes a message. playbook_entry: {"title":"Caller wants an order held until a later date","when":"The caller asks to keep or hold a finished order and collect it on a later date.","handling":"Say you will note the request for staff, take a message with the order number and the date they want, and do not promise the hold is confirmed.","evidence":[{"turn":3,"quote":"Can you hold it until next Tuesday?"}]}
+
 Reply with ONLY a JSON object:
 {"scores":{"accuracy":0,"tool_use":0,"task_completion":0,"tone":0,"brevity":0},"frustration":0,"rationale":"2-3 sentences",
  "issues":[{"type":"invented_fact|missed_question|rule_violation|tool_error|tone|verbosity|other","turn":0,"quote":"","explanation":""}],
  "improvements":[{"type":"prompt","op":"add","rule_kind":"guardrail","text":"","evidence_turns":[0],"reason":""},
                  {"type":"prompt","op":"modify","rule_id":"r0","text":"","evidence_turns":[0],"reason":""},
                  {"type":"context","question":"","evidence_turns":[0],"reason":""}],
- "tool_proposal":null}
+ "tool_proposal":null, "playbook_entry":null}
 or, when there is a capability gap, "tool_proposal":{"name":"","description":"","params":[{"name":"","type":"string","description":"","required":true}],"write":true,"why":"",
  "mockup":{"sampleDialogue":[{"role":"caller","text":""},{"role":"agent","text":""},{"role":"tool","text":""},{"role":"agent","text":""}],"exampleArgs":{},"exampleResult":{}},
- "evidence":[{"turn":0,"quote":""}],"recipe":null}  (recipe: omit or null for a plain save/look-up tool, otherwise the recipe object described above)`;
+ "evidence":[{"turn":0,"quote":""}],"recipe":null}  (recipe: omit or null for a plain save/look-up tool, otherwise the recipe object described above)
+and, when there is an edge case worth recording, "playbook_entry":{"title":"","when":"","handling":"","evidence":[{"turn":0,"quote":""}]}`;
 
 export function buildJudgeInput(call: CallDoc, cfg: ConfigVersionDoc): string {
   const rules = cfg.rules.map((r) => `${r.id} [${r.kind}${r.locked ? ", locked" : ""}]: ${r.text}`).join("\n");

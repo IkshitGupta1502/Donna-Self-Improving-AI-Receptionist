@@ -13,6 +13,7 @@
     "rollback": "tsx scripts/cli.ts rollback",
     "trend": "tsx scripts/cli.ts trend",
     "tools": "tsx scripts/cli.ts tools",
+    "playbook": "tsx scripts/cli.ts playbook",
     "context": "tsx scripts/cli.ts context"
   },
   "dependencies": {

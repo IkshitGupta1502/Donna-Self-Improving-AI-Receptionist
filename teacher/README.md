@@ -20,7 +20,7 @@ GEMINI_TEACHER_MODEL=gemini-3.8-flash
 ```
 
 Other commands: `npm run teach <callId>`, `npm run answer <improvementId> <answer>`,
-`npm run rollback`, `npm run trend`, `npm run tools` (list tool proposals), `npm run context`, `npm run watch`.
+`npm run rollback`, `npm run trend`, `npm run tools` (list tool proposals), `npm run playbook` (list playbook entries), `npm run context`, `npm run watch`.
 
 ## Running with the voice bridge
 No code change is needed in the bridge (the repo root). Point both at the same
@@ -67,3 +67,12 @@ then a self-check (`selfCheckRecipe`) runs the recipe on the proposal's own `exa
 When the receptionist lacked business knowledge (pricing, hours/scheduling, delivery area, policies), the judge asks the owner at most 2 short questions per call (`context` improvements, status `proposed`).
 `plan.ts` enforces max 2 per call, under 160 characters, and rejects a question that repeats one already open or answered (same text after normalisation, or word overlap above 0.8; `buildPlan` takes the existing questions as `extra.existingQuestions`).
 The owner's answer is appended to the company text as `Owner answer: <question> <answer>` by `answerOwnerQuestion`.
+
+## Scenario playbook (edge cases)
+After a call the judge may add one optional `playbook_entry`: a specific, repeatable situation the receptionist met or fumbled and how to handle it next time ("when this happens, do this").
+It is not a rule (always-on principle), not a tool (capability) and not an owner question (missing fact). The bridge puts every `active` entry in the receptionist's prompt; the owner can add entries and change status from the dashboard.
+Collection `playbook` (`_id` = `id` = `PB-` + 6 digits; shape `PlaybookEntry` in `src/services/mongo/types.ts`): title (80), when (200), handling (300), source `teacher|owner`, status `active|proposed|disabled`, timesSeen, sourceCallSids, evidence, createdAt, updatedAt.
+- `validatePlaybookEntry` (plan.ts): limits, every evidence quote must be in the transcript, no URLs/credentials/payments (same list as tools), no number or amount in `handling` that is not in the business knowledge (same guard as rules, whole numbers only), nothing the receptionist cannot do (email, text message, transfer). Rejections are stored as an `improvements` document with `rejected_reason`.
+- `decidePlaybookStatus`: new entry is `active` when the call's overall grade is below `PLAYBOOK_GRADE_THRESHOLD` (default `7`) and `PLAYBOOK_AUTO_ACTIVATE` is not `0` (default ON), else `proposed` for the owner. A similar existing entry of any status (same normalised title, or word overlap above 0.7 on title + when) is only bumped (`timesSeen` once per call, sources unioned, `updatedAt`); the teacher never changes the status of an existing entry and never reactivates a `disabled` one.
+- Each outcome also adds an `improvements` document (type `prompt`, `payload { text: "When <when>: <handling>", playbook_id }`, no `op`, no `rule_id`, no `applied_in_config_id`): status `applied` (created active, or seen again while active), `proposed`, or `rejected`. It never creates a config version or changes the learned rules.
+- `npm run playbook` lists entries. `npm run demo` includes `fake_call_6` (hold an order until next Tuesday; the agent only takes a message), which should produce an entry (needs `GEMINI_API_KEY`).

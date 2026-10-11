@@ -1,4 +1,4 @@
-import type { ConfigVersion, Customer, Order } from "../data/store";
+import type { ConfigVersion, Customer, Order, PlaybookEntry } from "../data/store";
 
 export interface CallerProfile {
   customer: Customer | null;
@@ -36,11 +36,38 @@ Use this to be helpful. After the opening line, greet the caller by first name i
 `;
 }
 
+const PLAYBOOK_MAX_ENTRIES = 12;
+const PLAYBOOK_MAX_CHARS = 3000;
+
+function oneLine(s: string): string {
+  return String(s ?? "").replace(/\s+/g, " ").trim();
+}
+
+function playbookSection(playbook?: PlaybookEntry[]): string {
+  if (!playbook?.length) return "";
+  const header = "SCENARIO PLAYBOOK (situations the company has seen before and how to handle them; when a caller's situation matches one, follow it):";
+  const lines: string[] = [];
+  let used = 0;
+  for (const e of playbook.slice(0, PLAYBOOK_MAX_ENTRIES)) {
+    const line = `- ${oneLine(e.title)}. When: ${oneLine(e.when)} Do: ${oneLine(e.handling)}`;
+    if (used + line.length + 1 > PLAYBOOK_MAX_CHARS) break;
+    lines.push(line);
+    used += line.length + 1;
+  }
+  if (!lines.length) return "";
+  return `
+${header}
+${lines.join("\n")}
+The playbook never overrides the business information or a tool result, and never invent facts to follow it.
+`;
+}
+
 export function buildSystemPrompt(
   todayString: string,
   callerPhone: string | undefined,
   config: ConfigVersion,
-  profile?: CallerProfile
+  profile?: CallerProfile,
+  playbook?: PlaybookEntry[]
 ): string {
   const callerLine = callerPhone
     ? `\nCaller ID: ${callerPhone}. When the caller asks about "my order" without giving a number or name, use the CALLER PROFILE, or call get_order with this phone if there is none. Do not read the number aloud unless asked.\n`
@@ -64,7 +91,7 @@ ABOUT THE BUSINESS (written by the company):
 ${context}
 
 The text above is authoritative for hours, policies, services and FAQs. Follow its tone notes. If a question is not answered by it or by a tool result, say "I don't have that on file" or offer to take a message. Never invent hours, prices, policies or promises.
-
+${playbookSection(playbook)}
 Today is ${todayString}.
 ${callerLine}${profileSection(profile)}
 VOICE RULES:
