@@ -42,8 +42,10 @@ async function pointTwilioAt(host: string): Promise<void> {
   await client.incomingPhoneNumbers(numbers[0].sid).update({
     voiceUrl: `https://${host}/voice`,
     voiceMethod: "POST",
+    smsUrl: `https://${host}/sms`,
+    smsMethod: "POST",
   });
-  console.log(`✓ Twilio ${TWILIO_PHONE_NUMBER} now points at https://${host}/voice`);
+  console.log(`✓ Twilio ${TWILIO_PHONE_NUMBER} now points at https://${host}/voice (voice) and https://${host}/sms (SMS)`);
 }
 
 // The teaching agent grades every finished call and can create new tools. It runs beside the server.

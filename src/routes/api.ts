@@ -4,6 +4,8 @@ import { config } from "../config";
 import { getStore } from "../services/gemini/liveSession";
 import { getActiveCalls } from "../services/calls/recorder";
 import { BUILTIN_TOOL_NAMES } from "../services/gemini/tools";
+import { stripeConfigured } from "../services/payments/stripe";
+import { smsConfigured } from "../services/sms/twilio";
 import type { CallRecord } from "../services/data/store";
 
 export const apiRouter = Router();
@@ -64,7 +66,7 @@ function wrap(fn: (req: Request, res: Response) => Promise<void>) {
 }
 
 apiRouter.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
+  res.json({ status: "ok", payments: { stripe: stripeConfigured(), sms: smsConfigured() } });
 });
 
 apiRouter.get(
@@ -175,17 +177,87 @@ apiRouter.get(
   })
 );
 
+// The teacher writes grades/improvements in its own Mongo shape (snake_case,
+// 0-10 scales, config ids like "v3"); these map them to what the dashboard renders.
+function versionFromConfigId(id: unknown): number | null {
+  const m = typeof id === "string" ? /^v(\d+)$/.exec(id) : null;
+  return m ? Number(m[1]) : null;
+}
+
+function toFivePoint(n: unknown): number {
+  const v = Number(n);
+  return Number.isFinite(v) ? Math.max(0, Math.min(5, Math.round(v / 2))) : 0;
+}
+
+function mapGrade(doc: Record<string, unknown>) {
+  const scores = (doc.scores as Record<string, unknown>) || {};
+  const overall = Number(doc.overall);
+  const frustration = Number(doc.frustration);
+  return {
+    callSid: (doc.call_id as string) || (doc._id as string),
+    configVersion: versionFromConfigId(doc.config_version_id),
+    outcome: doc.outcome,
+    score: Number.isFinite(overall) ? Math.round(overall * 10) : null,
+    frustration: Number.isFinite(frustration) ? frustration / 10 : null,
+    dims: {
+      accuracy: toFivePoint(scores.accuracy),
+      tools: toFivePoint(scores.tool_use),
+      completion: toFivePoint(scores.task_completion),
+      tone: toFivePoint(scores.tone),
+      brevity: toFivePoint(scores.brevity),
+    },
+    summary: (doc.rationale as string) || "",
+    createdAt: doc.created_at,
+  };
+}
+
+const IMPROVEMENT_TITLE: Record<string, (payload: Record<string, unknown>) => string> = {
+  tool: (p) => `New tool: ${(p.tool_name as string) || "unnamed"}`,
+  context: (p) => (p.question as string) || "Knowledge gap noticed",
+  prompt: (p) =>
+    (p.op === "remove" ? "Removed a rule" : p.op === "modify" ? "Changed a rule" : "Added a rule") +
+    (p.rule_kind ? ` (${p.rule_kind as string})` : ""),
+  schema: () => "Schema change proposed",
+};
+
+function mapImprovement(doc: Record<string, unknown>, calls: CallRecord[]) {
+  const payload = (doc.payload as Record<string, unknown>) || {};
+  const type = String(doc.type || "context");
+  const sourceSid = ((doc.source_call_ids as string[]) || [])[0];
+  const call = calls.find((c) => c.callSid === sourceSid);
+  const evidence = ((doc.evidence_turns as number[]) || [])
+    .map((turn) => {
+      const msg = call?.transcript?.[turn - 1];
+      return msg ? { callSid: sourceSid, quote: msg.text } : null;
+    })
+    .filter((e): e is { callSid: string; quote: string } => !!e);
+  return {
+    id: doc._id,
+    type,
+    status: doc.status === "rejected" ? "dismissed" : (doc.status as string),
+    title: (IMPROVEMENT_TITLE[type] || IMPROVEMENT_TITLE.schema)(payload),
+    rationale: (doc.reason as string) || (doc.rejected_reason as string) || "",
+    change: type === "prompt" ? (payload.text as string) : undefined,
+    evidence,
+    fromVersion: null,
+    toVersion: versionFromConfigId(doc.applied_in_config_id),
+    createdAt: doc.created_at,
+  };
+}
+
 apiRouter.get(
   "/grades",
   wrap(async (_req, res) => {
-    res.json(await (await getStore()).listGrades());
+    const grades = await (await getStore()).listGrades();
+    res.json(grades.map(mapGrade));
   })
 );
 
 apiRouter.get(
   "/improvements",
   wrap(async (_req, res) => {
-    res.json(await (await getStore()).listImprovements());
+    const [improvements, calls] = await Promise.all([(await getStore()).listImprovements(), allCalls(100000)]);
+    res.json(improvements.map((d) => mapImprovement(d, calls)));
   })
 );
 

@@ -4,6 +4,7 @@ import bodyParser from "body-parser";
 import { WebSocketServer } from "ws";
 import { config } from "./config";
 import { voiceRouter } from "./routes/voice";
+import { smsRouter } from "./routes/sms";
 import { apiRouter } from "./routes/api";
 import { handleMediaStream } from "./routes/mediaStream";
 
@@ -17,6 +18,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/voice", voiceRouter);
+app.use("/sms", smsRouter);
 app.use("/api", apiRouter);
 
 const server = http.createServer(app);

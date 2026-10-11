@@ -12,7 +12,10 @@ const optionalString = z
 const schema = z.object({
   PORT: z.coerce.number().default(3000),
   GEMINI_API_KEY: z.string().min(1),
+  TWILIO_ACCOUNT_SID: optionalString,
   TWILIO_AUTH_TOKEN: optionalString,
+  TWILIO_PHONE_NUMBER: optionalString,
+  STRIPE_SECRET_KEY: optionalString,
   PUBLIC_HOST: optionalString,
   DASHBOARD_TOKEN: optionalString,
   ALLOWED_ORIGINS: optionalString,
@@ -30,4 +33,7 @@ export const config = parsed.data;
 
 if (!config.TWILIO_AUTH_TOKEN) {
   console.warn("TWILIO_AUTH_TOKEN not set: skipping Twilio signature validation");
+}
+if (!config.STRIPE_SECRET_KEY) {
+  console.warn("STRIPE_SECRET_KEY not set: send_payment_request will report itself unavailable");
 }

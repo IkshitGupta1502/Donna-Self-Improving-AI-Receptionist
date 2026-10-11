@@ -89,7 +89,7 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .brand-mark{width:26px;height:26px;border-radius:7px;background:var(--ink);color:var(--bg);display:grid;place-items:center}
 .brand-mark svg{width:16px;height:16px;stroke-width:2.4}
 .seg{display:inline-flex;background:var(--fill);border-radius:9px;padding:2px;gap:2px}
-.seg a,.seg button{position:relative;display:inline-flex;align-items:center;gap:6px;padding:5px 14px;font-size:13px;font-weight:500;
+.seg a,.seg button{position:relative;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;font-size:13px;font-weight:500;
   color:var(--ink);border-radius:7px;white-space:nowrap;transition:background .15s}
 .seg a:hover{text-decoration:none;background:var(--hover)}
 .seg [aria-current="page"],.seg [aria-pressed="true"]{background:var(--seg-on);box-shadow:var(--seg-shadow)}
@@ -105,7 +105,7 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .icon-btn:hover{background:var(--fill)}
 
 /* bottom tab bar (phones) */
-.tabbar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:50;grid-template-columns:repeat(6,1fr);
+.tabbar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:50;grid-template-columns:repeat(7,1fr);
   padding:6px max(4px,env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom));
   background:var(--bar);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:.5px solid var(--hairline-2)}
 .tabbar a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0;font-size:11px;font-weight:500;color:var(--muted);position:relative}
@@ -515,6 +515,15 @@ dialog.wide{width:min(760px,calc(100vw - 32px))}
     <div id="learning"></div>
   </section>
 
+  <!-- Tools -->
+  <section class="view" id="v-tools" aria-labelledby="t-tools">
+    <div class="head"><div>
+      <h1 class="title" id="t-tools">Tools</h1>
+      <p class="lede">When a caller asks for something no tool covers, the teacher proposes one here, with a mock conversation showing how it would go. Nothing runs until you enable it.</p>
+    </div></div>
+    <div id="tools"></div>
+  </section>
+
   <!-- Knowledge -->
   <section class="view" id="v-knowledge" aria-labelledby="t-knowledge">
     <div class="head"><div>
@@ -610,6 +619,10 @@ dialog.wide{width:min(760px,calc(100vw - 32px))}
         <div style="display:flex;gap:12px;align-items:center;margin-top:12px"><button class="btn sm" type="button" id="btn-test">Test connection</button><span class="test-res" id="test-res" role="status" aria-live="polite"></span></div>
       </div>
       <div>
+        <div class="lbl">Card payments by text</div>
+        <div id="cap-status" class="hint"></div>
+      </div>
+      <div>
         <div class="lbl" id="theme-l">Appearance</div>
         <div class="seg" role="group" aria-labelledby="theme-l" id="theme-seg">
           <button type="button" data-theme="auto">Automatic</button><button type="button" data-theme="light">Light</button><button type="button" data-theme="dark">Dark</button>
@@ -654,7 +667,7 @@ const S = {
   view: "line", sel: null, liveSel: null,
   health: null,
   calls: null, orders: null, messages: null,
-  grades: null, imps: null,   // null = teacher API not available
+  grades: null, imps: null, tools: null, payments: null,   // null = teacher API not available
   callQ: "", callF: "all", orderQ: "",
   h: {}, seenLive: {},
 };
@@ -714,6 +727,7 @@ const ICON = {
   line: '<path d="M3 12h1.5M7 8.5v7M11 5v14M15 8v8M19 10.5v3M21.5 12h0"/>',
   calls: '<path d="M5 4h3l2 5-2.5 1.5a11 11 0 0 0 6 6L15 14l5 2v3a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
   learning: '<path d="M4 18l5-5 4 3 7-8"/><path d="M15 8h5v5"/>',
+  tools: '<path d="M5 8h3a2 2 0 1 1 4 0h3v3a2 2 0 1 0 0 4v3h-3a2 2 0 1 1-4 0H5v-3a2 2 0 1 0 0-4z"/>',
   knowledge: '<path d="M5 5.5A2.5 2.5 0 0 1 7.5 3H19v15H7.5A2.5 2.5 0 0 0 5 20.5z"/><path d="M5 20.5A2.5 2.5 0 0 1 7.5 18H19v3H7.5"/>',
   orders: '<path d="M12 8.5a2 2 0 1 1 2-2"/><path d="M12 8.5v1.5L3 17h18l-9-7"/>',
   messages: '<path d="M4 5h16v11H10l-5 4v-4H4z"/>',
@@ -758,6 +772,10 @@ function describeTool(tc) {
     case "take_message":
       what = "Took a message from " + (a.name || "the caller");
       if (!bad) res = r.saved ? "saved for staff" : "";
+      break;
+    case "send_payment_request":
+      what = "Texted a " + money(a.amount) + " payment link" + (a.description ? " for “" + a.description + "”" : "");
+      if (!bad) res = r.sent ? "sent" : "";
       break;
   }
   return { what, res, bad };
@@ -877,6 +895,30 @@ const Demo = (function () {
     { name: "Hannah Cole", phone: "+14155550134", message: "Leather jacket cleaning, wants a quote.", createdAt: ago(2759) },
   ];
 
+  const tools = [
+    { name: "reschedule_pickup", description: "Move an order's expected pickup date to a new day.",
+      params: [{ name: "orderId", type: "string", description: "The order to move.", required: true }, { name: "newDate", type: "string", description: "New pickup date, YYYY-MM-DD.", required: true }],
+      write: true, why: "A caller asked to hold an order until Tuesday. The only tool on hand was taking a message for staff to call back.",
+      mockup: { sampleDialogue: [{ role: "caller", text: "Can you just hold it till Tuesday then?" }, { role: "agent", text: "Let me move that for you." },
+        { role: "tool", text: 'reschedule_pickup({ orderId: "ORD-0007", newDate: "2026-10-14" })' }, { role: "agent", text: "Done, it'll be ready Tuesday instead." }],
+        exampleArgs: { orderId: "ORD-0007", newDate: "2026-10-14" }, exampleResult: { saved: true, orderId: "ORD-0007", expectedDate: "2026-10-14" } },
+      status: "proposed", requestCount: 1, sourceCallSids: ["CA6d4407"], evidence: [{ turn: 7, quote: "Can you just hold it till Tuesday then?" }], createdAt: ago(306), updatedAt: ago(306) },
+    { name: "check_loyalty_punches", description: "Look up how many punches a caller has on their loyalty card.",
+      params: [{ name: "phone", type: "string", description: "Caller's phone number.", required: true }],
+      write: false, why: "A low-scoring call where the caller asked about a punch-card balance and Snoopy had no way to check it.",
+      mockup: { sampleDialogue: [{ role: "caller", text: "How many punches do I have on my card?" }, { role: "agent", text: "Let me check." },
+        { role: "tool", text: 'check_loyalty_punches({ phone: "+14155550161" })' }, { role: "agent", text: "You're at 7 of 10 punches." }],
+        exampleArgs: { phone: "+14155550161" }, exampleResult: { punches: 7, needed: 10 } },
+      status: "enabled", requestCount: 3, sourceCallSids: ["CA8b9e03"], evidence: [{ turn: 3, quote: "How many punches do I have on my card?" }], createdAt: ago(1200), updatedAt: ago(40), enabledAt: ago(40), enabledBy: "teacher" },
+    { name: "text_photo_link", description: "Text the caller a link to upload a photo of a stain or damaged item.",
+      params: [{ name: "phone", type: "string", description: "Where to send the link.", required: true }],
+      write: true, why: "Proposed after a stain call, but it needs an SMS provider Snoopy doesn't have yet, so the owner turned it off.",
+      mockup: { sampleDialogue: [{ role: "caller", text: "Can I just send you a picture of the stain?" }, { role: "agent", text: "I'll text you a link to upload one." },
+        { role: "tool", text: 'text_photo_link({ phone: "+14155550111" })' }, { role: "agent", text: "Sent! Staff will take a look before you drop it off." }],
+        exampleArgs: { phone: "+14155550111" }, exampleResult: { saved: true } },
+      status: "declined", requestCount: 1, sourceCallSids: ["CA7c2f18"], evidence: [{ turn: 2, quote: "wine stain on a silk shirt" }], createdAt: ago(2000), updatedAt: ago(1900) },
+  ];
+
   /* a scripted live call that plays out on a loop */
   const SCRIPTS = [
     { from: "+14155550199", grade: ["answered", 95, 0.03, [5, 5, 5, 5, 5], "Found the order from caller ID, gave the ready date, and quoted expedited correctly."], steps: [
@@ -940,6 +982,7 @@ const Demo = (function () {
       if (p === "/api/config") return snapCfg();
       if (p === "/api/grades") return grades;
       if (p === "/api/improvements") return imps;
+      if (p === "/api/tools") return tools.slice().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
       return fail(404, "Not found");
     }
     if (method === "PUT" && p === "/api/config") {
@@ -972,6 +1015,16 @@ const Demo = (function () {
       }
       return imp;
     }
+    const tm = /^\/api\/tools\/([^/]+)\/(enable|disable|decline)$/.exec(p);
+    if (method === "POST" && tm) {
+      const tool = tools.find((x) => x.name === decodeURIComponent(tm[1]));
+      if (!tool) fail(404, "tool not found");
+      const now = new Date().toISOString();
+      tool.status = { enable: "enabled", disable: "disabled", decline: "declined" }[tm[2]];
+      tool.updatedAt = now;
+      if (tm[2] === "enable") { tool.enabledAt = now; tool.enabledBy = "owner"; }
+      return tool;
+    }
     return fail(404, "Not found");
   }
   return {
@@ -983,7 +1036,7 @@ const Demo = (function () {
 })();
 
 /* ── navigation ───────────────────────────────────────────────────────── */
-const VIEWS = [["line", "Line"], ["calls", "Calls"], ["learning", "Learning"], ["knowledge", "Knowledge"], ["orders", "Orders"], ["messages", "Messages"]];
+const VIEWS = [["line", "Line"], ["calls", "Calls"], ["learning", "Learning"], ["tools", "Tools"], ["knowledge", "Knowledge"], ["orders", "Orders"], ["messages", "Messages"]];
 $("nav-top").innerHTML = VIEWS.map((v) => '<a href="#/' + v[0] + '" data-v="' + v[0] + '">' + (v[0] === "line" ? '<span class="live-dot" hidden></span>' : "") + v[1] + "</a>").join("");
 $("nav-bottom").innerHTML = VIEWS.map((v) => '<a href="#/' + v[0] + '" data-v="' + v[0] + '">' + svg(v[0]) + (v[0] === "line" ? '<span class="live-dot" hidden></span>' : "") + "<span>" + v[1] + "</span></a>").join("");
 
@@ -1247,7 +1300,8 @@ function changeHtml(i) {
   const isLive = i.status === "applied" && cfg && cfg.version === i.toVersion;
   const superseded = i.status === "applied" && !isLive;
   let act = "";
-  if (i.status === "proposed") act = '<button class="btn primary sm" type="button" data-imp="approve" data-id="' + esc(i.id) + '">' + (i.type === "tool" || i.type === "schema" ? "Approve" : "Apply") + '</button><button class="btn sm" type="button" data-imp="dismiss" data-id="' + esc(i.id) + '">Dismiss</button>';
+  if (i.status === "proposed" && i.type === "tool") act = '<a class="btn sm" href="#/tools">Review in Tools</a>';
+  else if (i.status === "proposed") act = '<button class="btn primary sm" type="button" data-imp="approve" data-id="' + esc(i.id) + '">' + (i.type === "schema" ? "Approve" : "Apply") + '</button><button class="btn sm" type="button" data-imp="dismiss" data-id="' + esc(i.id) + '">Dismiss</button>';
   else if (i.status === "applied") act = (i.toVersion ? '<button class="btn sm" type="button" data-sheet="' + esc(i.toVersion) + '">See the change</button>' : "") + (isLive && i.fromVersion ? '<button class="btn sm danger" type="button" data-imp="undo" data-id="' + esc(i.id) + '">Undo</button>' : "");
   return '<article class="card change"><div class="change-top">' + (i.type === "tool" || i.type === "schema" ? '<span class="chip">' : '<span class="chip teacher">' + SPARK) + esc(TYPE[i.type] || i.type) + "</span>" + st + (superseded ? '<span class="chip">Not the live version</span>' : "") + "</div>" +
     "<div><h4>" + esc(i.title) + "</h4><p>" + esc(i.rationale) + "</p>" +
@@ -1354,6 +1408,77 @@ async function impAction(kind, id) {
       toast(kind === "dismiss" ? "Dismissed." : i.type === "tool" || i.type === "schema" ? "Approved. It needs building before it goes live." : "Applied. It answers the next call.");
     }
     await refresh();
+  } catch (e) { toast(errText(e)); }
+}
+
+/* ── Tools (declarative custom tools) ────────────────────────────────── */
+const TS = { name: null };
+function toolLabel(n) { const s = String(n || "").replace(/_/g, " "); return s.charAt(0).toUpperCase() + s.slice(1); }
+function toolStatusChip(p) {
+  if (p.status === "enabled") return '<span class="chip live">Enabled</span>';
+  if (p.status === "disabled") return '<span class="chip">Disabled</span>';
+  if (p.status === "declined") return '<span class="chip bad">Declined</span>';
+  return '<span class="chip accent">Proposed</span>';
+}
+function toolRow(p) {
+  const auto = p.status === "enabled" && p.enabledBy === "teacher" ? '<span class="chip teacher">' + SPARK + "Auto-enabled</span>" : "";
+  return '<button type="button" class="row" data-tool-sheet="' + esc(p.name) + '"><div class="row-l">' +
+    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:1px"><span class="row-v" style="font-size:16px">' + esc(toolLabel(p.name)) + "</span>" + toolStatusChip(p) + auto + "</div>" +
+    '<div class="row-sub">' + esc(p.description) + "</div></div>" +
+    (p.requestCount > 1 ? '<span class="chip" style="flex:none">' + plural(p.requestCount, "request") + "</span>" : "") + CHEV + "</button>";
+}
+function renderTools() {
+  if (!configured()) { setH("tools", setupEmpty()); return; }
+  if (S.tools === null) {
+    setH("tools", '<div class="card empty"><h3>The teacher isn’t connected yet</h3><p>Once the backend serves <span class="mono">/api/tools</span>, capability gaps it finds show up here, each with a mock conversation.</p><button class="btn" type="button" data-demo>See it with demo data</button></div>');
+    return;
+  }
+  const list = arr(S.tools);
+  if (!list.length) { setH("tools", '<div class="card empty"><h3>No proposals yet</h3><p>When a caller asks for something ' + esc(BRAND) + " can’t do, a new tool shows up here.</p></div>"); return; }
+  const pending = list.filter((p) => p.status === "proposed"), rest = list.filter((p) => p.status !== "proposed");
+  setH("tools",
+    (pending.length ? '<div class="group-t">Waiting for you</div><div class="group">' + pending.map(toolRow).join("") + "</div>" : "") +
+    (rest.length ? '<div class="group-t" style="margin-top:' + (pending.length ? "28px" : "0") + '">All proposals</div><div class="group">' + rest.map(toolRow).join("") + "</div>" : ""));
+}
+function toolActions(p) {
+  if (p.status === "proposed") return '<button class="btn" type="button" data-tool-act="decline" data-name="' + esc(p.name) + '">Decline</button><button class="btn primary" type="button" data-tool-act="enable" data-name="' + esc(p.name) + '">Enable</button>';
+  if (p.status === "enabled") return '<button class="btn danger" type="button" data-tool-act="disable" data-name="' + esc(p.name) + '">Disable</button>';
+  if (p.status === "disabled") return '<button class="btn primary" type="button" data-tool-act="enable" data-name="' + esc(p.name) + '">Enable</button>';
+  return '<button class="btn" type="button" data-tool-act="enable" data-name="' + esc(p.name) + '">Reconsider &amp; enable</button>';
+}
+function toolDialogueHtml(p) {
+  const turns = arr(p.mockup && p.mockup.sampleDialogue);
+  if (!turns.length) return '<p class="muted">No sample conversation.</p>';
+  return '<div class="script">' + turns.map((t) => t.role === "tool"
+    ? '<div class="dir"><span class="arr" aria-hidden="true">↳</span><span class="what mono">' + esc(t.text) + "</span></div>"
+    : '<div class="who' + (t.role === "agent" ? " agent" : "") + '">' + (t.role === "agent" ? esc(BRAND) : "Caller") + '</div><div class="say ' + (t.role === "agent" ? "agent" : "caller") + '">' + esc(t.text) + "</div>"
+  ).join("") + "</div>";
+}
+function renderToolSheet() {
+  const p = arr(S.tools).find((x) => x.name === TS.name);
+  if (!p) { closeDlg($("sheet")); return; }
+  const params = arr(p.params);
+  const paramsTbl = params.length ? '<table class="tbl"><thead><tr><th>Argument</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>' +
+    params.map((a) => "<tr><td class=\"mono\">" + esc(a.name) + "</td><td>" + esc(a.type) + "</td><td>" + (a.required ? "Yes" : "No") + "</td><td>" + esc(a.description) + "</td></tr>").join("") + "</tbody></table>"
+    : '<p class="muted">No arguments.</p>';
+  const evid = arr(p.evidence).map((e) => '<div class="quote">“' + esc(e.quote) + "”</div>").join("");
+  $("sheet-body").innerHTML = '<div class="dlg-h"><h2 id="sheet-t">' + esc(toolLabel(p.name)) + '</h2><button class="icon-btn" type="button" data-close aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
+    '<div class="dlg-b">' +
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' + toolStatusChip(p) + '<span class="chip">' + (p.write ? "Saves a record" : "Looks something up") + "</span><span class=\"card-s\">" + esc(plural(p.requestCount || 1, "request")) + "</span></div>" +
+    '<p style="margin:0">' + esc(p.description) + "</p>" +
+    (p.why ? '<div><div class="group-t" style="margin:0 0 4px">Why the teacher proposed this</div><p class="muted" style="margin:0">' + esc(p.why) + "</p></div>" : "") +
+    '<div><div class="group-t" style="margin:0 0 8px">A call that needed it</div>' + toolDialogueHtml(p) + "</div>" +
+    '<div><div class="group-t" style="margin:0 0 8px">Arguments</div>' + paramsTbl + "</div>" +
+    (evid ? '<div><div class="group-t" style="margin:0 0 4px">From these calls</div>' + evid + "</div>" : "") +
+    "</div><div class=\"dlg-f\">" + toolActions(p) + "</div>";
+}
+function openToolSheet(name) { TS.name = name; renderToolSheet(); openDlg($("sheet")); }
+async function toolAct(name, action) {
+  try {
+    await api("/api/tools/" + encodeURIComponent(name) + "/" + action, { method: "POST" });
+    toast(action === "enable" ? "Enabled. It answers the next call that needs it." : action === "disable" ? "Disabled." : "Declined.");
+    await refresh();
+    if ($("sheet").open) renderToolSheet();
   } catch (e) { toast(errText(e)); }
 }
 
@@ -1571,6 +1696,7 @@ function renderAll() {
   if (S.view === "line") renderLine();
   else if (S.view === "calls") renderCalls();
   else if (S.view === "learning") renderLearning();
+  else if (S.view === "tools") renderTools();
   else if (S.view === "knowledge") renderKnowledge();
   else if (S.view === "orders") renderOrders();
   else if (S.view === "messages") renderMessages();
@@ -1587,18 +1713,20 @@ async function refresh() {
   try {
     const h = await api("/api/health");
     S.health = !!(h && h.status === "ok");
+    S.payments = (h && h.payments) || null;
     if (!S.health) throw new Error("bad health");
     const keep = (p, prev) => p.catch(() => prev);
     const teacher = (p) => p.then(arr, (e) => (e && e.status === 404 ? null : undefined));
-    const [calls, orders, messages, cfg, grades, imps] = await Promise.all([
+    const [calls, orders, messages, cfg, grades, imps, tools] = await Promise.all([
       keep(api("/api/calls?limit=50"), S.calls), keep(api("/api/orders"), S.orders), keep(api("/api/messages"), S.messages),
       api("/api/config").catch((e) => { if (e && e.status === 404) K.missing = true; else K.err = errText(e); return undefined; }),
-      teacher(api("/api/grades")), teacher(api("/api/improvements")),
+      teacher(api("/api/grades")), teacher(api("/api/improvements")), teacher(api("/api/tools")),
     ]);
     S.calls = calls ? arr(calls) : S.calls; S.orders = orders ? arr(orders) : S.orders; S.messages = messages ? arr(messages) : S.messages;
     if (cfg && gen === K.gen) { K.missing = false; K.err = ""; const vs = arr(cfg.versions).slice().sort((a, b) => b.version - a.version); S.cfg = { active: cfg.active || vs[0] || null, versions: vs }; }
     if (grades !== undefined) S.grades = grades;
     if (imps !== undefined) S.imps = imps;
+    if (tools !== undefined) S.tools = tools;
     // announce new live calls for screen readers
     liveCalls().forEach((c) => { if (!S.seenLive[c.callSid]) { S.seenLive[c.callSid] = 1; announce("New call from " + callerName(c)); } });
   } catch (e) { S.health = false; }
@@ -1608,10 +1736,10 @@ let timer = null;
 function schedule() { clearInterval(timer); timer = setInterval(() => { if (!document.hidden) refresh(); }, POLL_MS); }
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
 function resetData() {
-  S.health = null; S.calls = S.orders = S.messages = S.grades = S.imps = null; S.cfg = null; S.h = {}; S.seenLive = {};
+  S.health = null; S.calls = S.orders = S.messages = S.grades = S.imps = S.tools = S.payments = null; S.cfg = null; S.h = {}; S.seenLive = {};
   K.gen++; K.base = null; K.seen = null; K.msg = null; K.err = ""; K.missing = false; K.dc = {};
   ["k-name", "k-greet", "k-ctx", "k-note"].forEach((i) => { $(i).value = ""; });
-  ["now", "strip", "line-aside", "call-list", "detail", "learning", "orders", "messages", "k-hist"].forEach((i) => { $(i).innerHTML = ""; });
+  ["now", "strip", "line-aside", "call-list", "detail", "learning", "tools", "orders", "messages", "k-hist"].forEach((i) => { $(i).innerHTML = ""; });
   $("now").removeAttribute("data-mode"); $("detail").removeAttribute("data-sid");
 }
 
@@ -1633,7 +1761,14 @@ function syncSettings() {
   $("conn-fields").style.opacity = $("in-demo").checked ? ".45" : "1";
   document.querySelectorAll("#theme-seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.getAttribute("data-theme") === S.theme)));
 }
-function openSettings() { $("in-api").value = S.api; $("in-token").value = S.token; $("in-demo").checked = S.demo; $("test-res").textContent = ""; syncSettings(); openDlg($("settings")); }
+function capChip(ok) { return ok ? '<span class="chip live">Ready</span>' : '<span class="chip">Not set up</span>'; }
+function openSettings() {
+  $("in-api").value = S.api; $("in-token").value = S.token; $("in-demo").checked = S.demo; $("test-res").textContent = "";
+  $("cap-status").innerHTML = S.payments
+    ? "Stripe " + capChip(S.payments.stripe) + "  ·  Texting " + capChip(S.payments.sms) + (S.payments.stripe && S.payments.sms ? "" : '<br>Set <span class="mono">STRIPE_SECRET_KEY</span> and the <span class="mono">TWILIO_*</span> vars on the server, then restart it.')
+    : (S.demo ? "Demo data only; connect a backend to see status." : "Connect to the backend to see status.");
+  syncSettings(); openDlg($("settings"));
+}
 $("in-demo").addEventListener("change", syncSettings);
 $("theme-seg").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; S.theme = b.getAttribute("data-theme"); sset("snoopy_theme", S.theme); applyTheme(); syncSettings(); if (S.view === "learning") renderChart(); });
 $("settings-form").addEventListener("submit", (e) => {
@@ -1662,6 +1797,8 @@ document.addEventListener("click", (e) => {
   if (t.closest("[data-play]")) { Demo.playCall(); refresh(); return; }
   if ((el = t.closest("[data-live]"))) { S.liveSel = el.getAttribute("data-live"); S.h["now-head"] = null; renderLine(); return; }
   if ((el = t.closest("[data-sheet]"))) { openSheet(Number(el.getAttribute("data-sheet"))); return; }
+  if ((el = t.closest("[data-tool-sheet]"))) { openToolSheet(el.getAttribute("data-tool-sheet")); return; }
+  if ((el = t.closest("[data-tool-act]"))) { toolAct(el.getAttribute("data-name"), el.getAttribute("data-tool-act")); return; }
   if ((el = t.closest("[data-mode]"))) { K.mode = el.getAttribute("data-mode"); renderSheet(); return; }
   if ((el = t.closest("[data-edit]"))) { kEditFrom(Number(el.getAttribute("data-edit"))); return; }
   if ((el = t.closest("[data-activate]"))) { kActivate(Number(el.getAttribute("data-activate"))); return; }

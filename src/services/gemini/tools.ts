@@ -10,6 +10,8 @@ import {
   type Speed,
   type ToolProposal,
 } from "../data/store";
+import { createPaymentRequestLink, stripeConfigured } from "../payments/stripe";
+import { sendSms, smsConfigured } from "../sms/twilio";
 
 const CONFIRM_ERROR = "Read the details back to the caller and get a yes first.";
 
@@ -171,6 +173,21 @@ export const TOOLS: FunctionDeclaration[] = [
       },
     },
   },
+  {
+    name: "send_payment_request",
+    description:
+      "Text the caller a secure Stripe link to pay by card, for a balance or deposit. Use when the caller wants to pay over the phone instead of at pickup, or staff asked you to collect money. State the amount and that you'll text their number, get a yes, then call with confirmed=true. Never ask for or accept a card number yourself.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        amount: { type: Type.NUMBER, description: "Amount to charge, in dollars, e.g. 32.50" },
+        description: { type: Type.STRING, description: "What it's for, e.g. 'Balance for ORD-0007'" },
+        orderId: { type: Type.STRING, description: "Related order number, if any" },
+        confirmed: { type: Type.BOOLEAN, description: "Must be true, and only after the caller said yes" },
+      },
+      required: ["amount", "description", "confirmed"],
+    },
+  },
 ];
 
 type Args = Record<string, unknown>;
@@ -187,6 +204,7 @@ export const BUILTIN_TOOL_NAMES: ReadonlySet<string> = new Set([
   "cancel_order",
   "schedule_appointment",
   "quote_turnaround",
+  "send_payment_request",
 ]);
 
 const SNAKE = /^[a-z][a-z0-9_]*$/;
@@ -464,6 +482,38 @@ export async function executeTool(
       }
       const saved = await store.upsertCustomer(ctx.callerPhone, patch);
       return { saved: true, customer: saved };
+    }
+
+    case "send_payment_request": {
+      if (args.confirmed !== true) return { error: CONFIRM_ERROR };
+      if (!stripeConfigured()) return { error: "Card payments are not set up yet. Take a message for staff instead." };
+      if (!smsConfigured()) return { error: "Texting is not set up yet. Take a message for staff instead." };
+      const amount = Number(args.amount);
+      if (!Number.isFinite(amount) || amount <= 0) return { error: "Provide a positive amount in dollars." };
+      const description = str(args, "description") || "Payment request";
+      const phone = ctx.callerPhone;
+      if (!phone) return { error: "No phone number is available on this call to text." };
+      const orderId = str(args, "orderId");
+
+      let url: string;
+      try {
+        url = await createPaymentRequestLink({
+          amountCents: Math.round(amount * 100),
+          description,
+          ...(orderId ? { metadata: { orderId } } : {}),
+        });
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : "Could not create the payment link." };
+      }
+
+      try {
+        await sendSms(phone, `${description}: $${amount.toFixed(2)}. Pay securely here: ${url}`);
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : "Could not send the text." };
+      }
+
+      if (orderId) await store.appendOrderNote(orderId, `Payment request texted: $${amount.toFixed(2)}.`).catch(() => {});
+      return { sent: true, amount, description, phone };
     }
 
     default:
