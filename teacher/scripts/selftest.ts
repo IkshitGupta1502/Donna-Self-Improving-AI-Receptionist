@@ -1,7 +1,7 @@
 // Offline test of the guardrail layer. No Atlas, no Gemini key needed.
 import assert from "node:assert/strict";
 import { JudgeOutput } from "../src/services/teacher/judge.js";
-import { buildPlan, overallScore, regression } from "../src/services/teacher/plan.js";
+import { buildPlan, decideToolStatus, mergeToolProposal, overallScore, regression, validateToolProposal } from "../src/services/teacher/plan.js";
 import { deriveOutcome, fromConfig, splitContext, toCall, toConfig } from "../src/services/mongo/bridge.js";
 import { demoCalls, demoConfig } from "../fixtures/seed.js";
 
@@ -12,7 +12,7 @@ assert.deepEqual(configV1.rules.map((r) => [r.id, r.kind, !!r.locked]), [["r1", 
 assert.ok(!configV1.context.includes("LEARNED RULES"), "rules are split out of the company text");
 assert.equal(fromConfig(configV1).context, demoConfig.context, "config round-trips to the bridge's text");
 assert.deepEqual([call._id, call.config_version_id, call.transcript[3]!.turn], ["fake_call_1", "v1", 4]);
-assert.deepEqual(demoCalls.map((d) => toCall(d).outcome), ["answered", "answered", "message_taken"]);
+assert.deepEqual(demoCalls.map((d) => toCall(d).outcome), ["answered", "answered", "message_taken", "message_taken"]);
 assert.equal(deriveOutcome([{ name: "get_order", result: { error: "Provide orderId, customerName, or phone." } }]), "failed");
 // A line a manager typed inside the rules block is kept as company text, not dropped.
 const edited = splitContext(demoConfig.context.replace("END OF LEARNED RULES", "We also sell gift cards.\nEND OF LEARNED RULES"));
@@ -80,5 +80,85 @@ assert.equal(afterRollback.nextConfig!._id, "v3");
 assert.equal(afterRollback.nextConfig!.version, 3);
 assert.equal(afterRollback.nextConfig!.parent_id, configV1._id);
 assert.equal(afterRollback.improvements[0]!.applied_in_config_id, "v3");
+
+// ---- Tool proposals (capability gaps) ----
+const dry = toCall(demoCalls[3]!);
+const goodRaw = {
+  name: "record_delivery_instructions",
+  description: "Call when a caller wants a gate code, doorman note or other delivery instructions saved for their deliveries.",
+  params: [
+    { name: "customer_name", type: "string", description: "Caller's name", required: true },
+    { name: "instructions", type: "string", description: "Gate code and where to leave the bag", required: true },
+  ],
+  write: true,
+  why: "The caller asked to save a gate code for deliveries and the agent could only take a message.",
+  mockup: {
+    sampleDialogue: [
+      { role: "caller", text: "Can you save my gate code for deliveries?" },
+      { role: "agent", text: "Sure, what is the code and where should the driver leave the bag?" },
+      { role: "caller", text: "4471, with the doorman." },
+      { role: "tool", text: "record_delivery_instructions saved" },
+      { role: "agent", text: "Saved. Your driver will see the gate code and the doorman note." },
+    ],
+    exampleArgs: { customer_name: "Dana", instructions: "Gate code 4471, leave with doorman" },
+    exampleResult: { saved: true },
+  },
+  evidence: [{ turn: 3, quote: "Can you save my gate code for deliveries?" }],
+};
+const withTool = (patch: Record<string, unknown>) => JudgeOutput.parse({ ...out, improvements: [], tool_proposal: { ...goodRaw, ...patch } });
+const rejectWhy = (patch: Record<string, unknown>) => {
+  const o = withTool(patch), r = validateToolProposal(o.tool_proposal!, dry);
+  assert.equal(r.ok, false); return r.ok ? "" : r.reason;
+};
+
+const good = buildPlan(withTool({}), dry, configV1, "mock");
+assert.ok(good.toolProposal, "good proposal accepted");
+assert.deepEqual([good.toolProposal.status, good.toolProposal.requestCount, good.toolProposal.sourceCallSids], ["proposed", 1, ["fake_call_4"]]);
+assert.equal(good.toolProposal.evidence[0]!.turn, 3);
+const toolImp = good.improvements.at(-1)!;
+assert.deepEqual([toolImp.type, toolImp.status, toolImp.payload.tool_name, toolImp.payload.text], ["tool", "proposed", "record_delivery_instructions", goodRaw.description]);
+assert.equal(good.nextConfig, null, "a tool proposal never changes the config");
+assert.equal(JudgeOutput.parse({ ...out, tool_proposal: null }).tool_proposal, null);
+assert.equal(buildPlan(JudgeOutput.parse(out), dry, configV1, "mock").toolProposal, null, "no proposal, no tool");
+
+assert.match(rejectWhy({ name: "take_message" }), /built-in/);
+assert.match(rejectWhy({ name: "Bad Name" }), /snake_case/);
+assert.match(rejectWhy({ name: "ab" }), /3-40/);
+assert.match(rejectWhy({ params: [{ name: "x", type: "date", description: "d", required: true }], mockup: { ...goodRaw.mockup, exampleArgs: {} } }), /type "date"/);
+const seven = Array.from({ length: 7 }, (_, i) => ({ name: `f${i}`, type: "string", description: "d", required: false }));
+assert.match(rejectWhy({ params: seven, mockup: { ...goodRaw.mockup, exampleArgs: {} } }), /more than 6/);
+assert.match(rejectWhy({ evidence: [{ turn: 3, quote: "Please file a damage claim for my coat" }] }), /not found in transcript/);
+assert.match(rejectWhy({ description: "Takes a card number and processes the payment for the order." }), /payments/);
+assert.match(rejectWhy({ description: "Posts the details to https://example.com/hook." }), /external/);
+assert.match(rejectWhy({ description: "x".repeat(300) }), /under 300/);
+assert.match(rejectWhy({ mockup: { ...goodRaw.mockup, sampleDialogue: goodRaw.mockup.sampleDialogue.slice(0, 1) } }), /2 to 8/);
+assert.match(rejectWhy({ mockup: { ...goodRaw.mockup, sampleDialogue: [...goodRaw.mockup.sampleDialogue, ...goodRaw.mockup.sampleDialogue] } }), /2 to 8/);
+assert.match(rejectWhy({ mockup: { ...goodRaw.mockup, sampleDialogue: [{ role: "robot", text: "hi" }, { role: "agent", text: "hi" }] } }), /role/);
+assert.match(rejectWhy({ mockup: { ...goodRaw.mockup, exampleArgs: { nope: 1 } } }), /not params/);
+const rejectedPlan = buildPlan(withTool({ name: "take_message" }), dry, configV1, "mock");
+assert.equal(rejectedPlan.toolProposal, null);
+const rejImp = rejectedPlan.improvements.at(-1)!;
+assert.deepEqual([rejImp.type, rejImp.status], ["tool", "rejected"]);
+assert.match(rejImp.rejected_reason!, /built-in/);
+
+// Status decision (pure): auto-enable below the threshold (default 7), owner decisions win.
+assert.deepEqual(decideToolStatus(5, null, {}), { action: "create", status: "enabled", promote: true, threshold: 7 });
+assert.deepEqual(decideToolStatus(7, null, {}), { action: "create", status: "proposed", promote: false, threshold: 7 }, "not below the threshold");
+assert.equal(decideToolStatus(9, null, {}).status, "proposed");
+assert.equal(decideToolStatus(5, null, { TEACHER_AUTO_ENABLE_TOOLS: "0" }).status, "proposed", "auto-enable switched off");
+assert.equal(decideToolStatus(8, null, { TOOL_GRADE_THRESHOLD: "9" }).status, "enabled", "custom threshold");
+assert.equal(decideToolStatus(5, "declined", {}).action, "skip", "declined is never reopened");
+assert.equal(decideToolStatus(1, "disabled", {}).action, "skip", "disabled is never re-enabled");
+assert.deepEqual(decideToolStatus(1, "enabled", {}), { action: "bump", status: "enabled", promote: false, threshold: 7 });
+assert.equal(decideToolStatus(9, "enabled", {}).status, "enabled", "enabled stays enabled");
+assert.equal(decideToolStatus(9, "proposed", {}).status, "proposed");
+assert.equal(decideToolStatus(3, "proposed", {}).promote, true);
+
+// Repeat request: count + sources bump, status untouched, same call twice is not counted twice.
+const first = good.toolProposal;
+const second = { ...first, sourceCallSids: ["other_call"], evidence: [{ turn: 1, quote: "Can you save my gate code for deliveries?" }] };
+const merged = mergeToolProposal({ ...first, status: "enabled" }, second, new Date(Date.now() + 1000));
+assert.deepEqual([merged.requestCount, merged.sourceCallSids, merged.status], [2, ["fake_call_4", "other_call"], "enabled"]);
+assert.equal(mergeToolProposal(merged, second).requestCount, 2, "idempotent per call");
 
 console.log("selftest passed");

@@ -107,6 +107,73 @@ function cleanPatch(patch: CustomerPatch): CustomerPatch {
   return out;
 }
 
+export type ToolParamType = "string" | "number" | "boolean";
+export type ToolStatus = "proposed" | "enabled" | "disabled" | "declined";
+
+export interface ToolProposal {
+  name: string;
+  description: string;
+  params: { name: string; type: ToolParamType; description: string; required: boolean }[];
+  write: boolean;
+  why: string;
+  mockup: {
+    sampleDialogue: { role: "caller" | "agent" | "tool"; text: string }[];
+    exampleArgs: Record<string, unknown>;
+    exampleResult: Record<string, unknown>;
+  };
+  status: ToolStatus;
+  requestCount: number;
+  sourceCallSids: string[];
+  evidence: { turn: number; quote: string }[];
+  createdAt: string;
+  updatedAt: string;
+  enabledAt?: string;
+  enabledBy?: "teacher" | "owner";
+}
+
+export interface CustomRecord {
+  id: string;
+  tool: string;
+  phone?: string;
+  callSid?: string;
+  fields: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface CustomRecordInput {
+  tool: string;
+  phone?: string;
+  callSid?: string;
+  fields: Record<string, unknown>;
+}
+
+export interface CustomRecordQuery {
+  tool?: string;
+  phone?: string;
+  limit?: number;
+}
+
+function mergeProposal(existing: ToolProposal, incoming: ToolProposal): ToolProposal {
+  return {
+    ...existing,
+    requestCount: (existing.requestCount || 1) + 1,
+    sourceCallSids: [...new Set([...(existing.sourceCallSids ?? []), ...(incoming.sourceCallSids ?? [])])],
+    evidence: [...(existing.evidence ?? []), ...(incoming.evidence ?? [])].slice(-10),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function newRecord(input: CustomRecordInput): CustomRecord {
+  return {
+    id: `REC-${String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0")}`,
+    tool: input.tool,
+    ...(input.phone ? { phone: normalizePhone(input.phone) } : {}),
+    ...(input.callSid ? { callSid: input.callSid } : {}),
+    fields: input.fields,
+    createdAt: new Date().toISOString(),
+  };
+}
+
 export type AppointmentKind = "pickup" | "delivery" | "dropoff";
 
 export interface Appointment {
@@ -330,6 +397,15 @@ export interface DataStore {
   scheduleAppointment(input: AppointmentInput): Promise<AppointmentResult>;
   listAppointments(): Promise<Appointment[]>;
   listAppointmentsByPhone(phone: string): Promise<Appointment[]>;
+  upsertToolProposal(p: ToolProposal): Promise<ToolProposal>;
+  listToolProposals(): Promise<ToolProposal[]>;
+  getToolProposal(name: string): Promise<ToolProposal | null>;
+  setToolStatus(name: string, status: "enabled" | "disabled" | "declined"): Promise<ToolProposal | null>;
+  listEnabledTools(): Promise<ToolProposal[]>;
+  saveCustomRecord(input: CustomRecordInput): Promise<CustomRecord>;
+  listCustomRecords(q?: CustomRecordQuery): Promise<CustomRecord[]>;
+  listGrades(): Promise<Record<string, unknown>[]>;
+  listImprovements(): Promise<Record<string, unknown>[]>;
 }
 
 export function normalizePhone(input: string): string {
@@ -377,6 +453,8 @@ export function createMemoryStore(): DataStore {
   const appointments: Appointment[] = structuredClone(SEED_APPOINTMENTS);
   const calls = new Map<string, CallRecord>();
   const configs: ConfigVersion[] = [structuredClone(SEED_CONFIG)];
+  const proposals = new Map<string, ToolProposal>();
+  const records: CustomRecord[] = [];
   let activeVersion = SEED_CONFIG.version;
   const findOrder = (orderId: string) => {
     const id = orderId.trim().toUpperCase();
@@ -525,6 +603,59 @@ export function createMemoryStore(): DataStore {
       const p = normalizePhone(phone);
       return appointments.filter((a) => a.phone === p).reverse().map((a) => ({ ...a }));
     },
+    async upsertToolProposal(p) {
+      const existing = proposals.get(p.name);
+      if (!existing) {
+        proposals.set(p.name, structuredClone(p));
+        return structuredClone(p);
+      }
+      if (existing.status === "declined") return structuredClone(existing);
+      const merged = mergeProposal(existing, p);
+      proposals.set(p.name, merged);
+      return structuredClone(merged);
+    },
+    async listToolProposals() {
+      return structuredClone([...proposals.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
+    },
+    async getToolProposal(name) {
+      const p = proposals.get(name);
+      return p ? structuredClone(p) : null;
+    },
+    async setToolStatus(name, status) {
+      const p = proposals.get(name);
+      if (!p) return null;
+      const now = new Date().toISOString();
+      p.status = status;
+      p.updatedAt = now;
+      if (status === "enabled") {
+        p.enabledAt = now;
+        p.enabledBy = "owner";
+      }
+      return structuredClone(p);
+    },
+    async listEnabledTools() {
+      return structuredClone([...proposals.values()].filter((p) => p.status === "enabled"));
+    },
+    async saveCustomRecord(input) {
+      const rec = newRecord(input);
+      records.push(rec);
+      return structuredClone(rec);
+    },
+    async listCustomRecords(q = {}) {
+      const phone = q.phone ? normalizePhone(q.phone) : undefined;
+      return structuredClone(
+        records
+          .filter((r) => (!q.tool || r.tool === q.tool) && (!phone || r.phone === phone))
+          .reverse()
+          .slice(0, q.limit ?? 100)
+      );
+    },
+    async listGrades() {
+      return [];
+    },
+    async listImprovements() {
+      return [];
+    },
   };
 }
 
@@ -561,6 +692,11 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
   await appointments.createIndex({ phone: 1 });
   await appointments.createIndex({ id: 1 }, { unique: true });
   await seedIfEmpty(appointments, SEED_APPOINTMENTS);
+  const proposalsCol = db.collection<ToolProposal & { _id: string }>("tool_proposals");
+  const recordsCol = db.collection<CustomRecord>("custom_records");
+  await proposalsCol.createIndex({ name: 1 }, { unique: true });
+  await recordsCol.createIndex({ tool: 1, phone: 1 });
+  await recordsCol.createIndex({ id: 1 }, { unique: true });
   console.log(`[data] MongoDB connected: db=${dbName}`);
 
   const proj = { projection: { _id: 0 } } as const;
@@ -759,6 +895,76 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
     },
     async listAppointmentsByPhone(phone) {
       return appointments.find({ phone: normalizePhone(phone) }, proj).sort({ createdAt: -1, id: -1 }).toArray();
+    },
+    async upsertToolProposal(p) {
+      const doc = { ...structuredClone(p), _id: p.name };
+      const inserted = await proposalsCol
+        .insertOne(doc as never)
+        .then(() => true)
+        .catch((err: unknown) => {
+          if ((err as { code?: number })?.code === 11000) return false;
+          throw err;
+        });
+      if (inserted) return structuredClone(p);
+      const existing = await proposalsCol.findOne({ name: p.name }, proj);
+      if (!existing) return structuredClone(p);
+      if (existing.status === "declined") return existing;
+      await proposalsCol.updateOne(
+        { name: p.name },
+        {
+          $inc: { requestCount: 1 },
+          $addToSet: { sourceCallSids: { $each: p.sourceCallSids ?? [] } },
+          $set: { updatedAt: new Date().toISOString() },
+        }
+      );
+      return (await proposalsCol.findOne({ name: p.name }, proj)) ?? existing;
+    },
+    async listToolProposals() {
+      return proposalsCol.find({}, proj).sort({ updatedAt: -1 }).toArray();
+    },
+    async getToolProposal(name) {
+      return proposalsCol.findOne({ name }, proj);
+    },
+    async setToolStatus(name, status) {
+      const now = new Date().toISOString();
+      const res = await proposalsCol.updateOne(
+        { name },
+        { $set: { status, updatedAt: now, ...(status === "enabled" ? { enabledAt: now, enabledBy: "owner" as const } : {}) } }
+      );
+      if (res.matchedCount === 0) return null;
+      return proposalsCol.findOne({ name }, proj);
+    },
+    async listEnabledTools() {
+      return proposalsCol.find({ status: "enabled" }, proj).toArray();
+    },
+    async saveCustomRecord(input) {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const rec = newRecord(input);
+        try {
+          await recordsCol.insertOne({ ...rec });
+        } catch (err) {
+          if ((err as { code?: number })?.code === 11000) continue;
+          throw err;
+        }
+        return rec;
+      }
+      throw new Error("could not allocate record id");
+    },
+    async listCustomRecords(q = {}) {
+      const filter: Record<string, unknown> = {};
+      if (q.tool) filter.tool = q.tool;
+      if (q.phone) filter.phone = normalizePhone(q.phone);
+      return recordsCol
+        .find(filter, proj)
+        .sort({ createdAt: -1 })
+        .limit(q.limit ?? 100)
+        .toArray();
+    },
+    async listGrades() {
+      return db.collection("grades").find({}).sort({ created_at: 1 }).toArray() as unknown as Record<string, unknown>[];
+    },
+    async listImprovements() {
+      return db.collection("improvements").find({}).sort({ created_at: -1 }).toArray() as unknown as Record<string, unknown>[];
     },
   };
 }

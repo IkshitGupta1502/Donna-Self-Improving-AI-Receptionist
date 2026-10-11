@@ -3,7 +3,7 @@
 
 import { configId } from "../mongo/bridge.js";
 import type {
-  CallDoc, ConfigVersionDoc, GradeDoc, ImprovementDoc, Issue, Rule, Scores,
+  CallDoc, ConfigVersionDoc, GradeDoc, ImprovementDoc, Issue, Rule, Scores, ToolProposal,
 } from "../mongo/types.js";
 import type { JudgeOutput } from "./judge.js";
 
@@ -45,6 +45,7 @@ function inventedNumbers(text: string, cfg: ConfigVersionDoc): string[] {
 }
 
 export interface Plan {
+  toolProposal: ToolProposal | null; // validated proposal (status "proposed"); null if none or rejected
   grade: GradeDoc;
   improvements: ImprovementDoc[]; // every proposal, with final status
   nextConfig: ConfigVersionDoc | null; // null when nothing was applied
@@ -117,10 +118,139 @@ export function buildPlan(
     return { ...doc, status: "applied" as const, applied_in_config_id: nextId };
   });
 
+  // Capability gap: at most one tool proposal per call, validated in code. Always stored as an improvement of type "tool".
+  let toolProposal: ToolProposal | null = null;
+  if (out.tool_proposal) {
+    const v = validateToolProposal(out.tool_proposal, call, now);
+    const tp = out.tool_proposal;
+    const doc: ImprovementDoc = {
+      _id: `${call._id}_imp${improvements.length + 1}`, source_call_ids: [call._id], type: "tool", status: "proposed",
+      payload: { text: tp.description, tool_name: tp.name },
+      evidence_turns: v.ok ? v.proposal.evidence.map((e) => e.turn) : [],
+      reason: tp.why, created_at: now,
+    };
+    if (v.ok) { toolProposal = v.proposal; improvements.push(doc); }
+    else improvements.push({ ...doc, status: "rejected", rejected_reason: `tool proposal: ${v.reason}` });
+  }
+
   const nextConfig: ConfigVersionDoc | null = applied === 0 ? null : {
     ...cfg, _id: nextId, version: nextVersion, rules, parent_id: cfg._id,
     created_by: "teacher", source_call_id: call._id, created_at: now,
     note: `Teacher: ${applied} rule change${applied === 1 ? "" : "s"} after call ${call._id}`,
   };
-  return { grade, improvements, nextConfig };
+  return { grade, improvements, nextConfig, toolProposal };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Tool proposals (capability gaps). Tools are declarative: the bridge saves the args as a record
+// (write) or lists that caller's records (read). This validation is the safety gate.
+
+export const BUILTIN_TOOLS = [
+  "get_order", "lookup_price", "list_prices", "add_order_note", "take_message", "update_customer_profile",
+  "create_order", "set_order_type", "cancel_order", "schedule_appointment", "quote_turnaround",
+];
+export const TOOL_LIMITS = { maxParams: 6, minDialogue: 2, maxDialogue: 8, maxDescription: 300, maxParamDescription: 200 };
+const SNAKE = /^[a-z][a-z0-9]*(_[a-z0-9]+)*$/;
+const PARAM_TYPES = ["string", "number", "boolean"];
+const DIALOGUE_ROLES = ["caller", "agent", "tool"];
+// External systems, credentials, payments: not expressible as "save these fields", so never allowed.
+const FORBIDDEN = [
+  /https?:/i, /www\./i, /\.(com|net|org|io)\b/i, /\burls?\b/i, /\bwebhooks?\b/i,
+  /password/i, /credential/i, /api[ _-]?key/i, /\bsecrets?\b/i, /\btokens?\b/i, /\bssn\b/i, /social security/i,
+  /payment/i, /\bpay(s|ing)?\b/i, /credit/i, /debit/i, /card[ _-]?(number|no|num)/i, /\bcvv\b/i, /billing/i, /\bcharge[sd]?\b/i,
+];
+
+export type ToolValidation = { ok: true; proposal: ToolProposal } | { ok: false; reason: string };
+
+export function validateToolProposal(
+  p: NonNullable<JudgeOutput["tool_proposal"]>, call: CallDoc, now = new Date(),
+): ToolValidation {
+  const no = (reason: string): ToolValidation => ({ ok: false, reason });
+  const name = p.name.trim(), description = p.description.trim(), why = p.why.trim();
+  if (!SNAKE.test(name) || name.length < 3 || name.length > 40) return no("name must be snake_case, 3-40 characters");
+  if (BUILTIN_TOOLS.includes(name)) return no(`${name} is a built-in tool`);
+  if (!description || description.length >= TOOL_LIMITS.maxDescription) return no("description must be non-empty and under 300 characters");
+  if (!why) return no("why is empty");
+  if (p.params.length > TOOL_LIMITS.maxParams) return no(`more than ${TOOL_LIMITS.maxParams} params`);
+  const seen = new Set<string>();
+  for (const q of p.params) {
+    if (!SNAKE.test(q.name)) return no(`param name "${q.name}" is not snake_case`);
+    if (seen.has(q.name)) return no(`duplicate param "${q.name}"`);
+    seen.add(q.name);
+    if (!PARAM_TYPES.includes(q.type)) return no(`param "${q.name}" has type "${q.type}", allowed: string, number, boolean`);
+    const d = q.description.trim();
+    if (!d || d.length >= TOOL_LIMITS.maxParamDescription) return no(`param "${q.name}" description must be non-empty and under 200 characters`);
+  }
+  const m = p.mockup;
+  if (!m) return no("mockup is missing");
+  if (m.sampleDialogue.length < TOOL_LIMITS.minDialogue || m.sampleDialogue.length > TOOL_LIMITS.maxDialogue)
+    return no("sample dialogue must have 2 to 8 turns");
+  if (m.sampleDialogue.some((t) => !DIALOGUE_ROLES.includes(t.role) || !t.text.trim()))
+    return no("sample dialogue turns need role caller, agent or tool and non-empty text");
+  const stray = Object.keys(m.exampleArgs).filter((k) => !seen.has(k));
+  if (stray.length) return no(`exampleArgs has keys that are not params: ${stray.join(", ")}`);
+
+  // Evidence: every quote must be in the transcript (same normalization as issues). Turn is corrected to where it is found.
+  if (!p.evidence.length) return no("no evidence quote");
+  const evidence: ToolProposal["evidence"] = [];
+  for (const e of p.evidence) {
+    const q = norm(e.quote);
+    const hits = call.transcript.filter((t) => q.length > 0 && norm(t.text).includes(q));
+    if (!hits.length) return no(`evidence quote not found in transcript: "${e.quote.slice(0, 60)}"`);
+    evidence.push({ turn: (hits.find((t) => t.turn === e.turn) ?? hits[0]!).turn, quote: e.quote.trim() });
+  }
+
+  const scanned = JSON.stringify([name, description, why, p.params, m]);
+  const bad = FORBIDDEN.find((re) => re.test(scanned));
+  if (bad) return no(`mentions an external system, credentials or payments (${bad.source}); tools may only save or look up fields`);
+
+  const iso = now.toISOString();
+  return { ok: true, proposal: {
+    name, description, write: p.write, why,
+    params: p.params.map((q) => ({ name: q.name, type: q.type as "string" | "number" | "boolean", description: q.description.trim(), required: q.required })),
+    mockup: {
+      sampleDialogue: m.sampleDialogue.map((t) => ({ role: t.role as "caller" | "agent" | "tool", text: t.text.trim() })),
+      exampleArgs: m.exampleArgs, exampleResult: m.exampleResult,
+    },
+    status: "proposed", requestCount: 1, sourceCallSids: [call._id], evidence, createdAt: iso, updatedAt: iso,
+  } };
+}
+
+export const TOOL_DEFAULTS = { gradeThreshold: 7 };
+
+export interface ToolDecision {
+  action: "create" | "bump" | "skip"; // create = insert new; bump = existing, only count/sources/updatedAt (plus status if promoted); skip = owner decided no
+  status: ToolProposal["status"]; // status the stored proposal ends up with
+  promote: boolean; // true when status becomes "enabled" now (by the teacher)
+  threshold: number;
+}
+
+/**
+ * Pure decision: what to do with a validated proposal. Auto-enable (declarative tools only; validateToolProposal is the
+ * safety gate) when TEACHER_AUTO_ENABLE_TOOLS is not "0" and the call's overall grade is below TOOL_GRADE_THRESHOLD
+ * (default 7). A "disabled" or "declined" tool is never touched. An already enabled tool only gets its counters bumped.
+ */
+export function decideToolStatus(
+  overall: number, existing: ToolProposal["status"] | null,
+  env: { TEACHER_AUTO_ENABLE_TOOLS?: string; TOOL_GRADE_THRESHOLD?: string } = {},
+): ToolDecision {
+  const t = Number(env.TOOL_GRADE_THRESHOLD);
+  const threshold = env.TOOL_GRADE_THRESHOLD?.trim() && Number.isFinite(t) ? t : TOOL_DEFAULTS.gradeThreshold;
+  const auto = env.TEACHER_AUTO_ENABLE_TOOLS !== "0" && overall < threshold;
+  if (existing === "disabled" || existing === "declined") return { action: "skip", status: existing, promote: false, threshold };
+  if (existing === "enabled") return { action: "bump", status: "enabled", promote: false, threshold };
+  if (existing === "proposed") return { action: "bump", status: auto ? "enabled" : "proposed", promote: auto, threshold };
+  return { action: "create", status: auto ? "enabled" : "proposed", promote: auto, threshold };
+}
+
+/** Merges a repeat request into the stored proposal. Never touches status here; see decideToolStatus. Idempotent per call. */
+export function mergeToolProposal(existing: ToolProposal, incoming: ToolProposal, now = new Date()): ToolProposal {
+  const already = incoming.sourceCallSids.every((s) => existing.sourceCallSids.includes(s));
+  return {
+    ...existing,
+    requestCount: already ? existing.requestCount : existing.requestCount + 1,
+    sourceCallSids: [...new Set([...existing.sourceCallSids, ...incoming.sourceCallSids])],
+    evidence: already ? existing.evidence : [...existing.evidence, ...incoming.evidence].slice(0, 6),
+    updatedAt: now.toISOString(),
+  };
 }

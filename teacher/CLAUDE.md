@@ -29,7 +29,7 @@ All paths below are relative to this `teacher/` folder. Team status and open dec
 | `scripts/cli.ts` | `seed`, `demo`, `teach`, `answer`, `rollback`, `trend`, `context`, `watch` |
 | `scripts/selftest.ts` | Offline assertions for `buildPlan`, `regression` and the bridge conversion. Must keep passing. |
 
-Commands: `npm run typecheck`, `npm run selftest`, `npm run demo`, `npm run watch`.
+Commands: `npm run tools` (list tool proposals), `npm run typecheck`, `npm run selftest`, `npm run demo`, `npm run watch`.
 Environment: `MONGODB_URI`, `MONGODB_DB` (default `snoopy`, must be the same database the bridge uses), `GEMINI_API_KEY`, `GEMINI_TEACHER_MODEL` (default `gemini-3.8-flash`).
 
 `npm run seed` and `npm run demo` always use the database `snoopy_demo`, and `seed` refuses any database whose name does not end in `_demo`, because it wipes the collections. To run other commands on the demo data: `MONGODB_DB=snoopy_demo npm run answer ...`.
@@ -43,6 +43,7 @@ Owned by the bridge (shapes in its `src/services/data/store.ts`):
 
 Owned by the teacher (string `_id`):
 - `grades`: `{ _id = callSid, call_id, config_version_id: "v<N>"|null, outcome, scores{accuracy, tool_use, task_completion, tone, brevity}, overall, frustration, rationale, issues[{type, turn, quote, explanation}], model, created_at }`
+- `tool_proposals`: `_id` = tool name; `ToolProposal` in `types.ts` (name, description, params, write, why, mockup, status proposed|enabled|disabled|declined, requestCount, sourceCallSids, evidence, createdAt, updatedAt, enabledAt?, enabledBy? teacher|owner). Read by the bridge/dashboard.
 - `improvements`: `{ _id: "<callSid>_imp<N>", source_call_ids[], type: prompt|context|tool|schema, status: proposed|applied|rejected|rolled_back, payload{op?, rule_id?, rule_kind?, text?, question?, answer?}, evidence_turns[], reason, rejected_reason?, rolled_back_reason?, applied_in_config_id?, created_at }`
 
 How the teacher's model maps onto the bridge's documents (`bridge.ts`):
@@ -89,7 +90,10 @@ How the teacher's model maps onto the bridge's documents (`bridge.ts`):
   - no number in the rule text that is absent from the current config (blocks smuggled prices and hours)
   - `locked` rules cannot be modified or removed
 - `context` improvements are never auto-applied. They carry a `question` for the owner and stay `proposed`.
-- `tool` and `schema` improvements stay `proposed` (shown, never executed).
+- `tool` and `schema` improvements stay `proposed` (shown, never executed). A `tool` improvement from a `tool_proposal` only mirrors the proposal in the timeline.
+- **Tool proposals** (`validateToolProposal`, `decideToolStatus`, `mergeToolProposal` in `plan.ts`, written by `saveToolProposal` in `index.ts`): at most one per call, only for a proven capability gap, never a built-in tool.
+  Code checks: snake_case name 3-40 chars; max 6 params (snake_case, string|number|boolean, description 1-199 chars); description < 300; 2-8 dialogue turns (caller|agent|tool); exampleArgs keys are params; every evidence quote is in the transcript;
+  no URLs, credentials, payments, card numbers. Rejections go on the `improvements` doc. Existing `disabled`/`declined` proposals are never touched. Auto-enable (status `enabled`, `enabledBy: "teacher"`) when `TEACHER_AUTO_ENABLE_TOOLS` != `0` and overall < `TOOL_GRADE_THRESHOLD` (default 7); otherwise `proposed` for the owner. Tools are declarative (save fields / list a caller's records), so the validation is the safety gate.
 - **The teacher can never add or change the company text.** Only `answerOwnerQuestion` can.
 - The teacher cannot edit its own rubric, weights, or limits. They are constants in code.
 - If at least one prompt change is applied, produce a new immutable config version (`author: "teacher"`, `parentVersion` set, a `note` naming the call). Otherwise `nextConfig` is null.
