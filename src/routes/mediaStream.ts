@@ -30,6 +30,15 @@ export function handleMediaStream(ws: WebSocket): void {
   }
 
   ws.on("message", async (raw: WebSocket.RawData) => {
+    try {
+      await onMessage(raw);
+    } catch (err) {
+      // One bad frame or a failed step must not crash the server (and every other call with it)
+      console.error(`[${callSid ?? "no-call"}] media stream error:`, err instanceof Error ? err.message : err);
+    }
+  });
+
+  async function onMessage(raw: WebSocket.RawData): Promise<void> {
     let frame: TwilioFrame;
     try {
       frame = JSON.parse(raw.toString());
@@ -109,7 +118,7 @@ export function handleMediaStream(ws: WebSocket): void {
         // "connected", "mark" and "clear" need no action
         return;
     }
-  });
+  }
 
   ws.on("close", () => teardown());
 

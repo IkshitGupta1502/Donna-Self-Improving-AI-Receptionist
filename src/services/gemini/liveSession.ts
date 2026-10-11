@@ -87,6 +87,7 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
   });
 
   let liveSession!: Awaited<ReturnType<typeof ai.live.connect>>;
+  let sessionClosed = false;
 
   liveSession = await ai.live.connect({
     model: MODEL,
@@ -151,12 +152,21 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
                 responses.push({ id: fc.id, name, response: { error: message } });
               }
             }
-            liveSession.sendToolResponse({ functionResponses: responses });
+            // The caller may have hung up (or Gemini closed) while the tool ran: sending then throws, and an
+            // unhandled rejection here would take the whole server down.
+            if (sessionClosed) return;
+            try {
+              liveSession.sendToolResponse({ functionResponses: responses });
+            } catch (err) {
+              sessionClosed = true;
+              console.warn("[gemini] could not send the tool result (session already closed):", err instanceof Error ? err.message : err);
+            }
           })();
         }
       },
       onerror: (err: unknown) => onError(err instanceof Error ? err : new Error(String(err))),
       onclose: (e?: { code?: number; reason?: string }) => {
+        sessionClosed = true;
         console.log(`[gemini] session closed code=${e?.code ?? "?"} reason=${e?.reason || "(none)"}`);
         onClose();
       },
@@ -172,11 +182,19 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
   return {
     configVersion: activeConfig.version,
     sendAudio: (base64Mulaw: string) => {
-      liveSession.sendRealtimeInput({
-        audio: { data: twilioToGemini(base64Mulaw), mimeType: "audio/pcm;rate=16000" },
-      });
+      // Twilio can send a few more frames after Gemini has closed; dropping them is correct, throwing is not.
+      if (sessionClosed) return;
+      try {
+        liveSession.sendRealtimeInput({
+          audio: { data: twilioToGemini(base64Mulaw), mimeType: "audio/pcm;rate=16000" },
+        });
+      } catch (err) {
+        sessionClosed = true;
+        console.warn("[gemini] could not send caller audio (session already closed):", err instanceof Error ? err.message : err);
+      }
     },
     close: () => {
+      sessionClosed = true;
       try {
         liveSession.close();
       } catch (_) {}

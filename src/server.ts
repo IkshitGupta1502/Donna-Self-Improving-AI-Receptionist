@@ -19,6 +19,15 @@ app.get("/health", (_req, res) => {
 app.use("/voice", voiceRouter);
 app.use("/api", apiRouter);
 
+// Last line of defence: a stray error in one call (a database hiccup, a closed socket) is logged, not fatal. Without
+// this Node exits, which ends every call and, under `npm run live`, takes ngrok and the teacher down too.
+process.on("unhandledRejection", (reason) => {
+  console.error("[server] unhandled rejection (still running):", reason instanceof Error ? reason.stack ?? reason.message : reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("[server] uncaught exception (still running):", err.stack ?? err.message);
+});
+
 const server = http.createServer(app);
 
 const wss = new WebSocketServer({ server, path: "/media-stream" });
