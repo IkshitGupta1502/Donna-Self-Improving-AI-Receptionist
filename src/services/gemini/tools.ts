@@ -10,6 +10,7 @@ import {
   type Speed,
   type ToolProposal,
 } from "../data/store";
+import { CALLABLE_TOOLS, runRecipe, validateRecipe, type CallableTool, type RecipeIO } from "../tools/recipe";
 
 const CONFIRM_ERROR = "Read the details back to the caller and get a yes first.";
 
@@ -209,6 +210,13 @@ export function buildCustomToolDeclarations(enabled: ToolProposal[]): FunctionDe
       console.warn(`[tools] skipping custom tool "${spec?.name}" (invalid or collides with a built-in)`);
       continue;
     }
+    if (spec.recipe) {
+      const bad = validateRecipe(spec.recipe, spec.params.map((p) => p.name), spec.write);
+      if (bad) {
+        console.warn(`[tools] skipping custom tool "${spec.name}" (invalid recipe: ${bad})`);
+        continue;
+      }
+    }
     const properties: Record<string, { type: Type; description: string }> = {};
     for (const p of spec.params) properties[p.name] = { type: GEMINI_TYPES[p.type], description: p.description || p.name };
     const required = spec.params.filter((p) => p.required).map((p) => p.name);
@@ -254,15 +262,47 @@ export async function executeCustomTool(
       }
     }
 
-    if (spec.write) {
+    const takeWriteSlot = (): string | null => {
       const key = ctx.callSid ?? "";
-      if (key) {
-        const used = customWrites.get(key) ?? 0;
-        if (used >= MAX_CUSTOM_WRITES_PER_CALL) {
-          return { error: "Too many records saved on this call. Take a message for staff instead." };
-        }
-        customWrites.set(key, used + 1);
-      }
+      if (!key) return null;
+      const used = customWrites.get(key) ?? 0;
+      if (used >= MAX_CUSTOM_WRITES_PER_CALL) return "Too many records saved on this call. Take a message for staff instead.";
+      customWrites.set(key, used + 1);
+      return null;
+    };
+
+    if (spec.recipe) {
+      // Never trust stored data: re-check the recipe every time it runs
+      const bad = validateRecipe(spec.recipe, spec.params.map((p) => p.name), spec.write);
+      if (bad) return { error: `This tool is not available (invalid recipe: ${bad}).` };
+      const io: RecipeIO = {
+        async save(fields) {
+          const full = takeWriteSlot();
+          if (full) throw new Error(full);
+          const rec = await store.saveCustomRecord({ tool: spec.name, phone: ctx.callerPhone, callSid: ctx.callSid, fields });
+          return { recordId: rec.id };
+        },
+        async lookup(query) {
+          const all = await store.listCustomRecords({ tool: spec.name, phone: ctx.callerPhone, limit: 100 });
+          const q = query ? query.toLowerCase() : "";
+          const matched = q ? all.filter((r) => JSON.stringify(r.fields).toLowerCase().includes(q)) : all;
+          return matched.map((r) => ({ ...r.fields }));
+        },
+        async call(tool: CallableTool, callArgs) {
+          if (!CALLABLE_TOOLS.includes(tool)) return { error: `Tool ${String(tool)} cannot be called from a recipe.` };
+          // Recipe argument names must be snake_case but the built-ins use camelCase (orderId): convert
+          const mapped: Record<string, unknown> = {};
+          for (const [k, v] of Object.entries(callArgs)) mapped[k.replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase())] = v;
+          return executeTool(tool, mapped, store, { callerPhone: ctx.callerPhone });
+        },
+      };
+      const out = await runRecipe(spec.recipe, clean, io);
+      return out.ok ? out.result : { error: out.error };
+    }
+
+    if (spec.write) {
+      const full = takeWriteSlot();
+      if (full) return { error: full };
       const rec = await store.saveCustomRecord({
         tool: spec.name,
         phone: ctx.callerPhone,

@@ -189,6 +189,25 @@ apiRouter.get(
   })
 );
 
+const answerSchema = z.object({ answer: z.string().trim().min(1).max(600) });
+
+apiRouter.post(
+  "/improvements/:id/answer",
+  wrap(async (req, res) => {
+    const parsed = answerSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return badRequest(res, parsed.error);
+    const id = String(req.params.id);
+    const store = await getStore();
+    const result = await store.answerImprovement(id, parsed.data.answer);
+    if (!result.ok) {
+      const missing = /not found/i.test(result.error);
+      res.status(missing || result.error === "needs MongoDB" ? 404 : 400).json({ error: result.error });
+      return;
+    }
+    res.json(result);
+  })
+);
+
 const configSchema = z.object({
   companyName: z.string().trim().min(1).max(80),
   greeting: z.string().trim().min(1).max(300),

@@ -1,4 +1,5 @@
 import { MongoClient, type Collection, type OptionalUnlessRequiredId } from "mongodb";
+import type { Recipe } from "../tools/recipe";
 import { SEED_APPOINTMENTS, SEED_CONFIG, SEED_CUSTOMERS, SEED_ORDERS, SEED_PRICING } from "./seed";
 
 export type Speed = "Regular" | "Expedited";
@@ -129,6 +130,9 @@ export interface ToolProposal {
   updatedAt: string;
   enabledAt?: string;
   enabledBy?: "teacher" | "owner";
+  /** Optional declarative implementation written by the teacher; see src/services/tools/recipe.ts */
+  recipe?: Recipe;
+  recipeVerified?: boolean;
 }
 
 export interface CustomRecord {
@@ -153,9 +157,20 @@ export interface CustomRecordQuery {
   limit?: number;
 }
 
+export type AnswerImprovementResult =
+  | { ok: true; version: number; improvementId: string }
+  | { ok: false; error: string };
+
 function mergeProposal(existing: ToolProposal, incoming: ToolProposal): ToolProposal {
+  const replaceRecipe = !!incoming.recipe && existing.status === "proposed";
   return {
     ...existing,
+    ...(replaceRecipe
+      ? {
+          recipe: structuredClone(incoming.recipe),
+          ...(incoming.recipeVerified !== undefined ? { recipeVerified: incoming.recipeVerified } : { recipeVerified: undefined }),
+        }
+      : {}),
     requestCount: (existing.requestCount || 1) + 1,
     sourceCallSids: [...new Set([...(existing.sourceCallSids ?? []), ...(incoming.sourceCallSids ?? [])])],
     evidence: [...(existing.evidence ?? []), ...(incoming.evidence ?? [])].slice(-10),
@@ -406,6 +421,7 @@ export interface DataStore {
   listCustomRecords(q?: CustomRecordQuery): Promise<CustomRecord[]>;
   listGrades(): Promise<Record<string, unknown>[]>;
   listImprovements(): Promise<Record<string, unknown>[]>;
+  answerImprovement(id: string, answer: string): Promise<AnswerImprovementResult>;
 }
 
 export function normalizePhone(input: string): string {
@@ -656,6 +672,9 @@ export function createMemoryStore(): DataStore {
     async listImprovements() {
       return [];
     },
+    async answerImprovement() {
+      return { ok: false, error: "needs MongoDB" };
+    },
   };
 }
 
@@ -701,7 +720,7 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
 
   const proj = { projection: { _id: 0 } } as const;
 
-  return {
+  const self: DataStore = {
     async getActiveConfig() {
       const state = await configState.findOne({ _id: "active" });
       const active = state ? await configVersions.findOne({ version: state.version }, proj) : null;
@@ -897,7 +916,9 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
       return appointments.find({ phone: normalizePhone(phone) }, proj).sort({ createdAt: -1, id: -1 }).toArray();
     },
     async upsertToolProposal(p) {
-      const doc = { ...structuredClone(p), _id: p.name };
+      const doc = Object.fromEntries(
+        Object.entries({ ...structuredClone(p), _id: p.name }).filter(([, v]) => v !== undefined)
+      );
       const inserted = await proposalsCol
         .insertOne(doc as never)
         .then(() => true)
@@ -917,6 +938,14 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
           $set: { updatedAt: new Date().toISOString() },
         }
       );
+      if (p.recipe && existing.status === "proposed") {
+        await proposalsCol.updateOne(
+          { name: p.name, status: "proposed" },
+          p.recipeVerified === undefined
+            ? { $set: { recipe: structuredClone(p.recipe) }, $unset: { recipeVerified: "" } }
+            : { $set: { recipe: structuredClone(p.recipe), recipeVerified: p.recipeVerified } }
+        );
+      }
       return (await proposalsCol.findOne({ name: p.name }, proj)) ?? existing;
     },
     async listToolProposals() {
@@ -966,7 +995,36 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
     async listImprovements() {
       return db.collection("improvements").find({}).sort({ created_at: -1 }).toArray() as unknown as Record<string, unknown>[];
     },
+    async answerImprovement(id, answer) {
+      const col = db.collection<{ _id: string; type?: string; status?: string; payload?: { question?: string } }>("improvements");
+      const imp = await col.findOne({ _id: id });
+      if (!imp) return { ok: false, error: "improvement not found" };
+      if (imp.type !== "context" || imp.status !== "proposed") return { ok: false, error: `${id} is not an open owner question` };
+      // Claim it first so two concurrent answers cannot both apply
+      const claim = await col.updateOne({ _id: id, status: "proposed" }, { $set: { status: "applying" } });
+      if (claim.matchedCount === 0) return { ok: false, error: `${id} is not an open owner question` };
+      try {
+        const cfg = await self.getActiveConfig();
+        const question = imp.payload?.question ?? "";
+        const saved = await self.saveConfigVersion({
+          companyName: cfg.companyName,
+          greeting: cfg.greeting,
+          context: `${cfg.context}\n${question} ${answer.trim()}`.trim(),
+          author: "manager",
+          note: `Owner answered: ${question}`.slice(0, 300),
+        });
+        await col.updateOne(
+          { _id: id },
+          { $set: { status: "applied", "payload.answer": answer, applied_in_config_id: `v${saved.version}` } }
+        );
+        return { ok: true, version: saved.version, improvementId: id };
+      } catch (err) {
+        await col.updateOne({ _id: id, status: "applying" }, { $set: { status: "proposed" } }).catch(() => undefined);
+        throw err;
+      }
+    },
   };
+  return self;
 }
 
 export async function createDataStore(): Promise<DataStore> {
