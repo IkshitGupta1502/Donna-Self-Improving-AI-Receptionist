@@ -6,7 +6,7 @@ All paths below are relative to this `teacher/` folder. Team status and open dec
 
 ## 1. Context
 
-- Project: Snoopy AI voice receptionist with recursive self-improvement. Hackathon build, submission due 5:00 PM PT on 2026-10-11. Favor small, working changes over refactors.
+- Project: Donna AI voice receptionist with recursive self-improvement. Hackathon build, submission due 5:00 PM PT on 2026-10-11. Favor small, working changes over refactors.
 - Problem statement: "Recursive Harnessing", a self-improving agent harness that evolves its own rules, guardrails, context and tool access.
 - Two agents:
   - **Receptionist / bridge** (Aayush's code, https://github.com/gandhiaayush/mongodb_hack, branch `claude/mongodb-harness-hackathon-7hdril`): Twilio Media Streams -> voice bridge -> Gemini Live. A dry cleaner demo ("Charlie's Cleaners"). Loads the active config version at call start.
@@ -32,7 +32,7 @@ All paths below are relative to this `teacher/` folder. Team status and open dec
 Commands: `npm run tools` (list tool proposals), `npm run playbook` (list playbook entries), `npm run typecheck`, `npm run selftest`, `npm run demo`, `npm run watch`.
 Environment: `MONGODB_URI`, `MONGODB_DB` (default `snoopy`, must be the same database the bridge uses), `GEMINI_API_KEY`, `GEMINI_TEACHER_MODEL` (default `gemini-3.8-flash`).
 
-`npm run seed` and `npm run demo` always use the database `snoopy_demo`, and `seed` refuses any database whose name does not end in `_demo`, because it wipes the collections. To run other commands on the demo data: `MONGODB_DB=snoopy_demo npm run answer ...`.
+`npm run seed` and `npm run demo` always use the database `donna_demo`, and `seed` refuses any database whose name does not end in `_demo`, because it wipes the collections. To run other commands on the demo data: `MONGODB_DB=donna_demo npm run answer ...`.
 
 ## 3. Collections
 

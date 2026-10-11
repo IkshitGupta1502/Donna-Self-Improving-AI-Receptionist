@@ -1,4 +1,4 @@
-// Adapts the teacher's documents (grades, improvements) to the shape the Snoopy dashboard (web/snoopy) reads.
+// Adapts the teacher's documents (grades, improvements) to the shape the Donna dashboard (web/donna) reads.
 // Opt-in with ?shape=ui, so the bundled dashboard and any other client keep the raw documents.
 import type { CallRecord, ConfigVersion, PlaybookEntry, ToolProposal } from "../services/data/store";
 

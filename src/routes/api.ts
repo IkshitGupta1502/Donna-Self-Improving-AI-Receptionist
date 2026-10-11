@@ -275,7 +275,7 @@ apiRouter.get(
   })
 );
 
-// The Snoopy dashboard (web/snoopy) approves or dismisses a change with { action }.
+// The Donna dashboard (web/donna) approves or dismisses a change with { action }.
 apiRouter.post(
   "/improvements/:id",
   wrap(async (req, res) => {

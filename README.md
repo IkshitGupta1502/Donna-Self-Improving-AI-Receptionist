@@ -1,4 +1,4 @@
-# Snoopy Voice Receptionist
+# Donna Voice Receptionist
 
 Customers call a Twilio number and talk to a Gemini Live voice agent for a dry cleaner
 ("CJ's Cleaning Company"). The agent looks up orders and prices and takes messages or order
@@ -23,7 +23,7 @@ npm install
 npm run live
 ```
 
-This also serves both dashboards at `http://localhost:8080` (Ops at `/`, Snoopy at `/snoopy/`; change the port with `DASHBOARD_PORT`, turn it off with `DASHBOARD=off`) and prints the links to open. It starts ngrok, sets `PUBLIC_HOST`, points the Twilio number's voice webhook at the tunnel, and
+This also serves both dashboards at `http://localhost:8080` (Ops at `/`, Donna at `/donna/`; change the port with `DASHBOARD_PORT`, turn it off with `DASHBOARD=off`) and prints the links to open. It starts ngrok, sets `PUBLIC_HOST`, points the Twilio number's voice webhook at the tunnel, and
 starts the server. Then call the number from a verified phone.
 
 ## Run locally
@@ -90,3 +90,7 @@ The teaching agent lives in [teacher/](teacher/). It grades every finished call 
 config versions (author `teacher`) that the next call loads. It runs as a separate process next to
 this server, against the same MongoDB database: `cd teacher && npm install && npm run watch`.
 Team status, data shapes for the dashboard, and known issues: [docs/TEAM_HANDOFF.md](docs/TEAM_HANDOFF.md).
+
+## Naming
+
+The product is **Donna**. The Donna dashboard is `web/donna/` (served at `/donna/`; the old `/snoopy/` address redirects there). The MongoDB database keeps its original name, `snoopy` (`MONGODB_DB`), so existing data stays visible; changing it means copying the data to a new database. Two remote branches still carry the old name (`snoopy-ui`, `snoopy-mongodb-theme`).
