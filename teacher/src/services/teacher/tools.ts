@@ -4,7 +4,10 @@
 import type { ToolParam, ToolParamType, ToolSpec } from "../mongo/types.js";
 
 /** The tools the bridge ships with (src/services/gemini/tools.ts). A request may not reuse these names. */
-export const BUILT_IN_TOOLS = ["get_order", "lookup_price", "list_prices", "add_order_note", "take_message"];
+export const BUILT_IN_TOOLS = [
+  "get_order", "lookup_price", "list_prices", "add_order_note", "take_message",
+  "get_hours", "quote_estimate", "check_turnaround", "create_order", "schedule_pickup", "get_customer",
+];
 
 export const TOOL_LIMITS = { maxParams: 6, maxEnabled: 8, descriptionLength: 400 };
 
