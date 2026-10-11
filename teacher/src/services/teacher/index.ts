@@ -1,8 +1,9 @@
 import { fromConfig, renderContext, toCall, versionOf } from "../mongo/bridge.js";
 import { cols, getActiveConfig, getConfig } from "../mongo/client.js";
-import type { BridgeCall, ConfigVersionDoc, GradeDoc, ImprovementDoc } from "../mongo/types.js";
+import { TOOL_NAMES } from "../mongo/types.js";
+import type { BridgeCall, ConfigVersionDoc, GradeDoc, ImprovementDoc, Permission, ToolName } from "../mongo/types.js";
 import { geminiJudge, teacherModel, type Judge } from "./judge.js";
-import { buildPlan, LIMITS, regression } from "./plan.js";
+import { buildPlan, LIMITS, NO_STATS, regression, type ToolStats } from "./plan.js";
 
 export interface TeachResult {
   grade: GradeDoc;
@@ -62,14 +63,45 @@ export async function teach(callId: string, judge: Judge = geminiJudge): Promise
   const rolledBack = call.config_version_id === cfg._id ? await autoRollback(cfg) : null;
   const base = rolledBack?.parent ?? cfg;
 
+  const stats = await toolStats(grade._id);
   const plan = await insertVersion(
-    (version) => buildPlan(out, call, base, teacherModel(), now, version), (p) => p.nextConfig);
+    (version) => buildPlan(out, call, base, teacherModel(), now, version, stats), (p) => p.nextConfig);
   if (plan.improvements.length) await c.improvements.insertMany(plan.improvements);
   if (plan.nextConfig) await setActive(plan.nextConfig.version);
   return {
     grade, improvements: plan.improvements, newConfig: plan.nextConfig, alreadyGraded: false,
     rolledBack: rolledBack && { from: rolledBack.from, to: rolledBack.to, reason: rolledBack.reason },
   };
+}
+
+/**
+ * Per calendar tool: earlier graded calls that used it without an error and scored tool_use >= 8,
+ * counted since that tool's permission last changed, so a demotion resets the record.
+ */
+async function toolStats(exceptCallId: string): Promise<ToolStats> {
+  const c = await cols();
+  const stats = { ...NO_STATS };
+  for (const tool of TOOL_NAMES) {
+    const last = await c.improvements.find({ "payload.tool": tool, status: "applied" }).sort({ created_at: -1 }).limit(1).next();
+    stats[tool] = await c.grades.countDocuments({
+      _id: { $ne: exceptCallId }, tools_used: tool, tools_failed: { $ne: tool },
+      "scores.tool_use": { $gte: LIMITS.cleanToolUseScore }, ...(last ? { created_at: { $gt: last.created_at } } : {}),
+    });
+  }
+  return stats;
+}
+
+/** Owner sets a tool permission directly. This is the only way up from "disabled", and it skips the clean-call rule. */
+export async function setToolPermission(tool: ToolName, permission: Permission) {
+  const cfg = await getActiveConfig();
+  if (cfg.tools[tool] === permission) return cfg;
+  const next = await insertVersion<ConfigVersionDoc>((version) => ({
+    ...cfg, _id: `v${version}`, version, tools: { ...cfg.tools, [tool]: permission },
+    parent_id: cfg._id, created_by: "manager", source_call_id: null,
+    note: `Owner set ${tool} to ${permission}`, created_at: new Date(),
+  }), (n) => n);
+  await setActive(next.version);
+  return next;
 }
 
 async function setActive(version: number) {
@@ -179,8 +211,11 @@ export function printResult(r: TeachResult) {
   if (r.rolledBack) console.log(`  ROLLED BACK ${r.rolledBack.from} -> ${r.rolledBack.to} (${r.rolledBack.reason})`);
   for (const i of g.issues) console.log(`  issue [turn ${i.turn}] ${i.type}: "${i.quote}"`);
   for (const m of r.improvements) {
-    const what = m.payload.question ?? `${m.payload.op ?? ""} ${m.payload.rule_id ?? ""} ${m.payload.text ?? ""}`;
-    console.log(`  ${m.status.toUpperCase()} ${m.type}: ${what.trim()}${m.rejected_reason ? ` (${m.rejected_reason})` : ""}`);
+    const what = m.payload.question
+      ?? (m.payload.tool ? `${m.payload.tool}: ${m.payload.from_permission} -> ${m.payload.permission}`
+        : `${m.payload.op ?? ""} ${m.payload.rule_id ?? ""} ${m.payload.text ?? ""}`);
+    const why = m.rejected_reason ?? m.held_reason;
+    console.log(`  ${m.status.toUpperCase()} ${m.type}: ${what.trim()}${why ? ` (${why})` : ""}`);
   }
   if (r.newConfig) console.log(`  -> new active config: ${r.newConfig._id} (${r.newConfig.rules.length} rules)`);
 }

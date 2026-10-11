@@ -2,7 +2,7 @@ import "dotenv/config";
 import { MongoClient, type Db } from "mongodb";
 import { toConfig } from "./bridge.js";
 import type {
-  BridgeCall, BridgeConfig, BridgeConfigState, ConfigVersionDoc, GradeDoc, ImprovementDoc,
+  AppointmentDoc, BridgeCall, BridgeConfig, BridgeConfigState, ConfigVersionDoc, GradeDoc, ImprovementDoc, WorkspaceDoc,
 } from "./types.js";
 
 let client: MongoClient | null = null;
@@ -34,6 +34,9 @@ export async function cols() {
     // Owned by the teacher.
     grades: db.collection<GradeDoc>("grades"),
     improvements: db.collection<ImprovementDoc>("improvements"),
+    // Calendar integration: settings and the gateway's bookings.
+    workspaces: db.collection<WorkspaceDoc>("workspaces"),
+    appointments: db.collection<AppointmentDoc>("appointments"),
   };
 }
 
@@ -50,4 +53,9 @@ export async function getActiveConfig(): Promise<ConfigVersionDoc> {
   const cfg = await getConfig(state.version);
   if (!cfg) throw new Error(`config version ${state.version} not found`);
   return cfg;
+}
+
+/** Calendar settings for the business, or null if the calendar has not been set up. */
+export async function getWorkspace(): Promise<WorkspaceDoc | null> {
+  return (await cols()).workspaces.findOne({ _id: "default" });
 }

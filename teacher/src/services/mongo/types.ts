@@ -37,7 +37,7 @@ export interface BridgeConfigState {
 }
 
 export type Turn = { turn: number; role: "caller" | "agent"; text: string };
-export type ToolCall = { name: string; args?: unknown; result?: unknown };
+export type ToolCall = { name: string; args?: unknown; result?: unknown; error?: string };
 export type Outcome = "booked" | "message_taken" | "answered" | "escalated" | "failed";
 
 /** A finished call as the teacher sees it. `_id` is the callSid. */
@@ -50,6 +50,14 @@ export interface CallDoc {
   duration_sec?: number;
   created_at: Date;
 }
+
+/** Calendar tools the voice agent can call through the gateway. The teacher sets the permission, never calls them. */
+export const TOOL_NAMES = ["check_availability", "book_appointment"] as const;
+export type ToolName = (typeof TOOL_NAMES)[number];
+/** Ordered lowest to highest. */
+export const PERMISSIONS = ["disabled", "requires_approval", "auto"] as const;
+export type Permission = (typeof PERMISSIONS)[number];
+export type ToolPermissions = Record<ToolName, Permission>;
 
 export interface Rule {
   id: string;
@@ -66,6 +74,7 @@ export interface ConfigVersionDoc {
   greeting: string;
   context: string; // company-written text only. The teacher never changes it.
   rules: Rule[];
+  tools: ToolPermissions; // all "disabled" until the config has a BOOKING TOOLS block
   parent_id: string | null; // null for versions the teacher did not create
   created_by: "manager" | "teacher" | "system";
   source_call_id: string | null;
@@ -98,6 +107,8 @@ export interface GradeDoc {
   frustration: number; // 0 calm .. 10 very frustrated (transcript estimate)
   rationale: string;
   issues: Issue[];
+  tools_used: string[]; // tool names called during the call
+  tools_failed: string[]; // those that returned an error at least once
   model: string;
   created_at: Date;
 }
@@ -117,11 +128,46 @@ export interface ImprovementDoc {
     text?: string;
     question?: string; // context: question for the owner
     answer?: string; // filled in when the owner replies
+    tool?: ToolName; // tool: permission change
+    permission?: Permission;
+    from_permission?: Permission;
   };
   evidence_turns: number[];
   reason: string;
   rejected_reason?: string;
+  held_reason?: string; // why a permission change is waiting as "proposed" instead of applied
   rolled_back_reason?: string; // why the version that applied it was rolled back
   applied_in_config_id?: string;
+  created_at: Date;
+}
+
+export type Weekday = "sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat";
+/** Opening and closing time per weekday as "HH:MM" in the workspace time zone. null = closed. */
+export type BusinessHours = Record<Weekday, [string, string] | null>;
+
+/** `workspaces` collection: one document, `_id: "default"`. Calendar settings for the business. */
+export interface WorkspaceDoc {
+  _id: string;
+  timezone: string; // IANA name, default America/Los_Angeles
+  business_hours: BusinessHours;
+  staff: { id: string; name: string; calendar_id: string }[];
+}
+
+/** `appointments` collection, written by the gateway. `start` and `end` are local times in the workspace time zone. */
+export interface AppointmentDoc {
+  _id: string; // "<callId>_apt<N>"
+  call_id: string;
+  staff_id: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email?: string;
+  service: string;
+  start: string; // "YYYY-MM-DDTHH:MM"
+  end: string;
+  status: "awaiting_approval" | "booked" | "failed" | "rejected";
+  event_id?: string;
+  event_link?: string;
+  error?: string;
+  config_version_id: string;
   created_at: Date;
 }

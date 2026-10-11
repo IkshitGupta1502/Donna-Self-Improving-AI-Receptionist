@@ -1,13 +1,22 @@
 // Pure logic, no database and no model. This is the guardrail layer between
 // what the teacher proposes and what is allowed to reach the receptionist.
 
-import { configId } from "../mongo/bridge.js";
+import { configId, toolFailed } from "../mongo/bridge.js";
+import { PERMISSIONS, TOOL_NAMES } from "../mongo/types.js";
 import type {
-  CallDoc, ConfigVersionDoc, GradeDoc, ImprovementDoc, Issue, Rule, Scores,
+  CallDoc, ConfigVersionDoc, GradeDoc, ImprovementDoc, Issue, Permission, Rule, Scores, ToolName,
 } from "../mongo/types.js";
 import type { JudgeOutput } from "./judge.js";
 
-export const LIMITS = { maxPromptChangesPerCall: 3, maxRules: 20, maxRuleLength: 300, rollbackWindow: 2 };
+export const LIMITS = {
+  maxPromptChangesPerCall: 3, maxRules: 20, maxRuleLength: 300, rollbackWindow: 2,
+  promotionCleanCalls: 3, // clean uses of a tool needed before its permission can go up one level
+  cleanToolUseScore: 8, // a use is clean when the tool did not error and the call's tool_use score is at least this
+};
+
+/** Per tool: graded calls so far where it was used cleanly (not counting the call being graded). */
+export type ToolStats = Record<ToolName, number>;
+export const NO_STATS: ToolStats = { check_availability: 0, book_appointment: 0 };
 
 const WEIGHTS: Record<keyof Scores, number> = {
   accuracy: 0.35, task_completion: 0.25, tool_use: 0.15, tone: 0.15, brevity: 0.1,
@@ -53,6 +62,7 @@ export interface Plan {
 export function buildPlan(
   out: JudgeOutput, call: CallDoc, cfg: ConfigVersionDoc, model: string, now = new Date(),
   nextVersion = cfg.version + 1, // higher after a rollback, when cfg is not the newest version
+  toolStats: ToolStats = NO_STATS,
 ): Plan {
   const turns = new Map(call.transcript.map((t) => [t.turn, t]));
 
@@ -66,12 +76,19 @@ export function buildPlan(
     _id: call._id, call_id: call._id,
     config_version_id: call.config_version_id, outcome: call.outcome,
     scores: out.scores, overall: overallScore(out.scores), frustration: out.frustration,
-    rationale: out.rationale, issues, model, created_at: now,
+    rationale: out.rationale, issues,
+    tools_used: [...new Set(call.tool_trace.map((t) => t.name))],
+    tools_failed: [...new Set(call.tool_trace.filter(toolFailed).map((t) => t.name))],
+    model, created_at: now,
   };
+  // This call counts as a clean use of a tool if the tool ran without error and tool use was graded well.
+  const cleanUses = (tool: ToolName) => toolStats[tool] + Number(
+    grade.tools_used.includes(tool) && !grade.tools_failed.includes(tool) && out.scores.tool_use >= LIMITS.cleanToolUseScore);
 
   const nextId = configId(nextVersion);
   let rules: Rule[] = cfg.rules.map((r) => ({ ...r }));
-  let applied = 0;
+  const tools = { ...cfg.tools };
+  let applied = 0, permissionChanges = 0;
 
   const improvements: ImprovementDoc[] = out.improvements.map((p, i) => {
     const doc: ImprovementDoc = {
@@ -87,6 +104,25 @@ export function buildPlan(
 
     // context = a question for the owner; tool/schema = proposal only. Never auto-applied.
     if (p.type === "context") return p.question?.trim() ? doc : reject("context needs a question for the owner");
+    // tool + permission = a request to change what the voice agent may do with a calendar tool.
+    if (p.type === "tool" && (p.tool || p.permission)) {
+      const tool = TOOL_NAMES.find((t) => t === p.tool), permission = PERMISSIONS.find((x) => x === p.permission);
+      if (!tool || !permission) return reject(`permission change needs a known tool and permission (got ${p.tool} / ${p.permission})`);
+      const from: Permission = tools[tool];
+      doc.payload = { ...doc.payload, tool, permission, from_permission: from };
+      const step = PERMISSIONS.indexOf(permission) - PERMISSIONS.indexOf(from);
+      if (step === 0) return reject(`${tool} is already ${from}`);
+      const hold = (why: string) => ({ ...doc, held_reason: why }); // stays "proposed" for the owner
+      if (step > 0) { // promotion: one level at a time, and only on a record of clean use
+        if (step > 1) return hold("a permission can only go up one level at a time");
+        const clean = cleanUses(tool);
+        if (clean < LIMITS.promotionCleanCalls)
+          return hold(`needs ${LIMITS.promotionCleanCalls} graded calls with clean use of ${tool}, has ${clean}`);
+      }
+      tools[tool] = permission; // demotion is always allowed
+      permissionChanges++;
+      return { ...doc, status: "applied" as const, applied_in_config_id: nextId };
+    }
     if (p.type !== "prompt") return p.text?.trim() ? doc : reject("proposal needs a description");
 
     if (applied >= LIMITS.maxPromptChangesPerCall) return reject("per-call change cap reached");
@@ -117,10 +153,14 @@ export function buildPlan(
     return { ...doc, status: "applied" as const, applied_in_config_id: nextId };
   });
 
-  const nextConfig: ConfigVersionDoc | null = applied === 0 ? null : {
-    ...cfg, _id: nextId, version: nextVersion, rules, parent_id: cfg._id,
+  const changes = [
+    ...(applied ? [`${applied} rule change${applied === 1 ? "" : "s"}`] : []),
+    ...(permissionChanges ? [`${permissionChanges} tool permission change${permissionChanges === 1 ? "" : "s"}`] : []),
+  ];
+  const nextConfig: ConfigVersionDoc | null = changes.length === 0 ? null : {
+    ...cfg, _id: nextId, version: nextVersion, rules, tools, parent_id: cfg._id,
     created_by: "teacher", source_call_id: call._id, created_at: now,
-    note: `Teacher: ${applied} rule change${applied === 1 ? "" : "s"} after call ${call._id}`,
+    note: `Teacher: ${changes.join(", ")} after call ${call._id}`,
   };
   return { grade, improvements, nextConfig };
 }
