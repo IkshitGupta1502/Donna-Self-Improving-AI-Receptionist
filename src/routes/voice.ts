@@ -28,5 +28,6 @@ function validateTwilioSignature(req: Request, res: Response, next: NextFunction
 
 voiceRouter.post("/", validateTwilioSignature, (req: Request, res: Response): void => {
   const host = config.PUBLIC_HOST ?? req.headers.host ?? "";
-  res.type("text/xml").send(buildStreamTwiml(host));
+  const from = typeof req.body?.From === "string" ? req.body.From : undefined;
+  res.type("text/xml").send(buildStreamTwiml(host, from));
 });

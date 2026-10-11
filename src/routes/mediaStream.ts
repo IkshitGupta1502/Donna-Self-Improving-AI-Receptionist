@@ -3,7 +3,7 @@ import { openGeminiSession } from "../services/gemini/liveSession";
 
 interface TwilioFrame {
   event: string;
-  start?: { callSid: string; streamSid: string };
+  start?: { callSid: string; streamSid: string; customParameters?: { from?: string } };
   media?: { payload: string };
 }
 
@@ -14,6 +14,9 @@ export function handleMediaStream(ws: WebSocket): void {
   let streamSid: string | null = null;
   let gemini: GeminiHandle | null = null;
   let closed = false;
+  // Caller audio that arrives while Gemini is still connecting (capped at ~10s of 20ms frames)
+  const pending: string[] = [];
+  const MAX_PENDING_FRAMES = 500;
 
   function teardown(): void {
     if (closed) return;
@@ -39,6 +42,7 @@ export function handleMediaStream(ws: WebSocket): void {
         console.log(`[${callSid}] media stream started`);
 
         const handle = await openGeminiSession({
+          callerPhone: frame.start.customParameters?.from,
           onAudio: (base64Mulaw: string) => {
             if (ws.readyState === WebSocket.OPEN && streamSid) {
               ws.send(JSON.stringify({ event: "media", streamSid, media: { payload: base64Mulaw } }));
@@ -61,11 +65,14 @@ export function handleMediaStream(ws: WebSocket): void {
           return;
         }
         gemini = handle;
+        for (const payload of pending.splice(0)) handle.sendAudio(payload);
         return;
       }
 
       case "media":
-        if (frame.media && gemini) gemini.sendAudio(frame.media.payload);
+        if (!frame.media) return;
+        if (gemini) gemini.sendAudio(frame.media.payload);
+        else if (pending.length < MAX_PENDING_FRAMES) pending.push(frame.media.payload);
         return;
 
       case "stop":

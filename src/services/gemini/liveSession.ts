@@ -22,6 +22,7 @@ function getStore(): Promise<DataStore> {
 }
 
 export interface GeminiSessionOptions {
+  callerPhone?: string;
   onAudio: (base64Mulaw: string) => void;
   onError: (err: Error) => void;
   onClose: () => void;
@@ -33,7 +34,7 @@ export interface GeminiSessionHandle {
 }
 
 export async function openGeminiSession(opts: GeminiSessionOptions): Promise<GeminiSessionHandle> {
-  const { onAudio, onError, onClose } = opts;
+  const { onAudio, onError, onClose, callerPhone } = opts;
   const store = await getStore();
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const today = new Date().toLocaleDateString("en-US", {
@@ -49,7 +50,7 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
     model: MODEL,
     config: {
       responseModalities: [Modality.AUDIO],
-      systemInstruction: { parts: [{ text: buildSystemPrompt(today) }] },
+      systemInstruction: { parts: [{ text: buildSystemPrompt(today, callerPhone) }] },
       temperature: 0,
       speechConfig: {
         voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
