@@ -26,6 +26,23 @@ export const JudgeOutput = z.object({
     evidence_turns: z.array(z.coerce.number().int()).default([]),
     reason: z.string().default(""),
   })).default([]),
+  // At most one per call; null/absent when there is no capability gap. Kept lenient here (strings, not enums):
+  // plan.ts validates it in code, so a sloppy proposal is rejected and recorded instead of failing the whole judgement.
+  tool_proposal: z.object({
+    name: z.string(),
+    description: z.string(),
+    params: z.array(z.object({
+      name: z.string(), type: z.string(), description: z.string().default(""), required: z.boolean().default(false),
+    })).default([]),
+    write: z.boolean(),
+    why: z.string().default(""),
+    mockup: z.object({
+      sampleDialogue: z.array(z.object({ role: z.string(), text: z.string() })).default([]),
+      exampleArgs: z.record(z.string(), z.unknown()).default({}),
+      exampleResult: z.record(z.string(), z.unknown()).default({}),
+    }).nullish(),
+    evidence: z.array(z.object({ turn: z.coerce.number().int(), quote: z.string() })).default([]),
+  }).nullish(),
 });
 export type JudgeOutput = z.infer<typeof JudgeOutput>;
 
@@ -50,16 +67,26 @@ IMPROVEMENTS (at most 3, fewer is better, zero is fine for a good call):
   rule_id must be the id of a rule listed in CURRENT RULES, for example "r2". Locked rules cannot be modified or removed.
   Rules describe BEHAVIOR and must generalize beyond this one call. A rule must NEVER contain a business fact (price, hour, address, policy).
 - type "context": the agent lacked a fact. Do NOT guess the fact. Put the question the OWNER must answer in "question".
-- type "tool" / "schema": a missing tool or data field. Describe it in "text". These are proposals only.
+- type "schema": a missing data field. Describe it in "text". This is a proposal only. For a missing TOOL, use "tool_proposal" (below), not an improvement.
 Every improvement needs evidence_turns (turn numbers) and a one-sentence reason. Do not add a rule that duplicates an existing one; modify it instead.
 When the agent got something wrong, propose the rule that would have prevented it, saying exactly what to do in that situation. Do this even if a broader rule already exists, because it was not enough: modify that rule if it is not locked, otherwise add a more specific one. Do not propose rules for things the agent did well.
+
+TOOL_PROPOSAL (optional, at most ONE per call, null when there is no capability gap):
+Propose a NEW TOOL only when the transcript PROVES a capability gap: the caller made a clear request and no existing tool covered it, and the agent said it cannot do it, deflected, or only took a message for something a tool could have handled. Do not propose a tool for a call that went fine, for a missing business fact (that is a "context" question), or for a mistake the agent made with a tool it already had.
+Existing built-in tools (never propose a duplicate or a variant of these): get_order, lookup_price, list_prices, add_order_note, take_message, update_customer_profile, create_order, set_order_type, cancel_order, schedule_appointment, quote_turnaround.
+Tools are declarative: a "write" tool (write=true) only saves the given fields as a record the owner can see later; a read tool (write=false) only looks up that caller's earlier saved records. So the tool must be expressible as "save these fields" or "look up this caller's saved fields". NEVER propose tools that need external systems, payments, card numbers, credentials, URLs or custom code.
+Fields: name (snake_case verb phrase, 3-40 chars, e.g. record_delivery_instructions, file_damage_claim); description (1-2 sentences, under 300 chars, when the agent should call it); params (at most 6, each {name snake_case, type "string"|"number"|"boolean", description under 200 chars, required}); write; why (plain English, cite what happened in the call); mockup: sampleDialogue (4 to 8 turns, roles "caller" | "agent" | "tool", showing the tool used correctly and ENDING with the agent confirming to the caller), exampleArgs (only keys that are in params), exampleResult (what the tool returns, e.g. {"saved": true, ...}); evidence: one or two {turn, quote} where quote is copied EXACTLY, word for word, from that caller turn of the transcript.
 
 Reply with ONLY a JSON object:
 {"scores":{"accuracy":0,"tool_use":0,"task_completion":0,"tone":0,"brevity":0},"frustration":0,"rationale":"2-3 sentences",
  "issues":[{"type":"invented_fact|missed_question|rule_violation|tool_error|tone|verbosity|other","turn":0,"quote":"","explanation":""}],
  "improvements":[{"type":"prompt","op":"add","rule_kind":"guardrail","text":"","evidence_turns":[0],"reason":""},
                  {"type":"prompt","op":"modify","rule_id":"r0","text":"","evidence_turns":[0],"reason":""},
-                 {"type":"context","question":"","evidence_turns":[0],"reason":""}]}`;
+                 {"type":"context","question":"","evidence_turns":[0],"reason":""}],
+ "tool_proposal":null}
+or, when there is a capability gap, "tool_proposal":{"name":"","description":"","params":[{"name":"","type":"string","description":"","required":true}],"write":true,"why":"",
+ "mockup":{"sampleDialogue":[{"role":"caller","text":""},{"role":"agent","text":""},{"role":"tool","text":""},{"role":"agent","text":""}],"exampleArgs":{},"exampleResult":{}},
+ "evidence":[{"turn":0,"quote":""}]}`;
 
 export function buildJudgeInput(call: CallDoc, cfg: ConfigVersionDoc): string {
   const rules = cfg.rules.map((r) => `${r.id} [${r.kind}${r.locked ? ", locked" : ""}]: ${r.text}`).join("\n");

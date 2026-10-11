@@ -62,4 +62,19 @@ export const demoCalls: BridgeCall[] = [
     name: "take_message", args: { name: "Priya", phone: "415-555-0134", message: "Call back about color, for Maya" },
     result: { saved: true, message: { name: "Priya", phone: "+14155550134", message: "Call back about color, for Maya" } },
   }]),
+  // 4. Dry cleaner: capability gap. The caller wants delivery instructions saved, no tool exists, the agent only takes a message.
+  //    (The demo config above is still the salon's; the transcript names the dry cleaner. Should produce a tool proposal.)
+  call("fake_call_4", [
+    ["caller", "Hi, this is Dana. You're delivering my suits on Thursday and I won't be home."],
+    ["agent", "Hi Dana, thanks for calling CJ's Cleaning Company. How can I help?"],
+    ["caller", "Can you save my gate code for deliveries? It's 4471, and the driver should leave the bag with the doorman."],
+    ["agent", "I'm sorry, I can't save delivery instructions on your account. I can take a message for the team instead."],
+    ["caller", "Okay, please do that."],
+    ["agent", "Done. I've left a message with your gate code and the doorman note for the team. Anything else?"],
+    ["caller", "No, that's all. Thank you!"],
+    ["agent", "You're welcome, Dana. Have a great day!"],
+  ], [{
+    name: "take_message", args: { name: "Dana", phone: "415-555-0134", message: "Delivery Thursday: gate code 4471, leave the bag with the doorman" },
+    result: { saved: true, message: { name: "Dana", phone: "+14155550134", message: "Delivery Thursday: gate code 4471, leave the bag with the doorman" } },
+  }]),
 ];
