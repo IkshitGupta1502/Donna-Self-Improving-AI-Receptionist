@@ -16,7 +16,23 @@ export type Step =
   | { do: "compute"; as: string; expr: Expr }
   | { do: "require"; when: Expr; else: string }
   | { do: "save"; fields: Record<string, Expr> }
-  | { do: "lookup"; as: string; query?: Expr };
+  | { do: "lookup"; as: string; query?: Expr }
+  // Calls one of the receptionist's own built-in tools (calendar, rush, quotes) and keeps its result
+  | { do: "call"; tool: CallableTool; args: Record<string, Expr>; as: string };
+
+export type CallableTool =
+  | "get_order"
+  | "lookup_price"
+  | "quote_turnaround"
+  | "schedule_appointment"
+  | "set_order_type"
+  | "create_order";
+
+/** Built-in tools a recipe may call. The ones in WRITE_CALLS change data (and still enforce `confirmed`). */
+export const CALLABLE_TOOLS: CallableTool[] = [
+  "get_order", "lookup_price", "quote_turnaround", "schedule_appointment", "set_order_type", "create_order",
+];
+export const WRITE_CALLS: CallableTool[] = ["schedule_appointment", "set_order_type", "create_order"];
 
 export interface Recipe {
   steps: Step[];
@@ -26,6 +42,7 @@ export interface Recipe {
 export interface RecipeIO {
   save(fields: Record<string, unknown>): Promise<{ recordId: string }>;
   lookup(query?: string): Promise<Record<string, unknown>[]>;
+  call(tool: CallableTool, args: Record<string, unknown>): Promise<Record<string, unknown>>;
 }
 
 const MAX_STEPS = 12;
@@ -38,7 +55,7 @@ const OPS: Record<string, number | "n"> = {
   add: "n", sub: 2, mul: "n", div: 2, min: "n", max: "n", round: "n", abs: 1,
   concat: "n", upper: 1, lower: 1, len: 1, contains: 2, coalesce: "n",
   eq: 2, neq: 2, gt: 2, gte: 2, lt: 2, lte: 2, and: "n", or: "n", not: 1, if: 3,
-  today: 0, addDays: 2,
+  today: 0, addDays: 2, get: 2,
 };
 
 const SNAKE = /^[a-z][a-z0-9_]{0,39}$/;
@@ -85,6 +102,8 @@ export function validateRecipe(recipe: unknown, paramNames: string[], write: boo
   const count = { n: 0 };
   let saves = 0;
   let lookups = 0;
+  let calls = 0;
+  let writeCalls = 0;
   for (const s of r.steps) {
     if (!s || typeof s !== "object") return "invalid step";
     switch (s.do) {
@@ -126,11 +145,27 @@ export function validateRecipe(recipe: unknown, paramNames: string[], write: boo
         known.add("count");
         break;
       }
+      case "call": {
+        if (!CALLABLE_TOOLS.includes(s.tool)) return `cannot call "${s.tool}"`;
+        if (++calls > 3) return "at most 3 call steps";
+        if (WRITE_CALLS.includes(s.tool) && ++writeCalls > 2) return "at most 2 call steps may change data";
+        if (WRITE_CALLS.includes(s.tool) && !write) return `a read tool cannot call ${s.tool}`;
+        if (!SNAKE.test(s.as ?? "")) return "call needs a snake_case name";
+        const keys = Object.keys(s.args ?? {});
+        if (keys.length > 8) return "call takes at most 8 arguments";
+        for (const k of keys) {
+          if (!SNAKE.test(k)) return `invalid argument name "${k}"`;
+          const err = checkExpr(s.args[k], known, 0, count);
+          if (err) return `call ${s.tool} ${k}: ${err}`;
+        }
+        known.add(s.as);
+        break;
+      }
       default:
         return "unknown step type";
     }
   }
-  if (write && saves === 0) return "a write tool needs a save step";
+  if (write && saves === 0 && writeCalls === 0) return "a write tool needs a save step or a call that changes data";
   const keys = Object.keys(r.response);
   if (keys.length === 0 || keys.length > MAX_RESPONSE_KEYS) return `response needs 1 to ${MAX_RESPONSE_KEYS} keys`;
   for (const k of keys) {
@@ -141,7 +176,7 @@ export function validateRecipe(recipe: unknown, paramNames: string[], write: boo
   return null;
 }
 
-type Val = string | number | boolean | null | Record<string, unknown>[];
+type Val = string | number | boolean | null | Record<string, unknown> | Record<string, unknown>[];
 
 function num(v: Val): number {
   const n = typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : NaN;
@@ -187,6 +222,11 @@ function evalExpr(e: Expr, vars: Map<string, Val>, now: Date): Val {
     case "or": return a.some((_, i) => truthy(v(i)));
     case "not": return !truthy(v(0));
     case "if": return truthy(v(0)) ? v(1) : v(2);
+    case "get": {
+      const o = v(0);
+      const key = str(v(1));
+      return o !== null && typeof o === "object" && !Array.isArray(o) ? ((o as Record<string, unknown>)[key] as Val) ?? null : null;
+    }
     case "today": return now.toISOString().slice(0, 10);
     case "addDays": {
       const d = new Date(`${str(v(0))}T00:00:00Z`);
@@ -222,6 +262,12 @@ export async function runRecipe(
         for (const [k, e] of Object.entries(s.fields)) fields[k] = evalExpr(e, vars, now);
         const saved = await io.save(fields);
         vars.set("record_id", saved.recordId);
+      } else if (s.do === "call") {
+        const callArgs: Record<string, unknown> = {};
+        for (const [k, e] of Object.entries(s.args)) callArgs[k] = evalExpr(e, vars, now);
+        const out = await io.call(s.tool, callArgs);
+        if (typeof out.error === "string") return { ok: false, error: out.error };
+        vars.set(s.as, out);
       } else if (s.do === "lookup") {
         const q = s.query === undefined ? undefined : str(evalExpr(s.query, vars, now));
         const rows = await io.lookup(q);

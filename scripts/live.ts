@@ -85,7 +85,10 @@ async function main(): Promise<void> {
   // config.ts reads process.env at import time, so start the server only now
   await import("../src/server");
   startTeacher();
-  console.log(`\n✓ Ready. Call ${process.env.TWILIO_PHONE_NUMBER ?? "your Twilio number"} from a verified phone.\n`);
+  console.log(`\n✓ Ready. Call ${process.env.TWILIO_PHONE_NUMBER ?? "your Twilio number"} from a verified phone.`);
+  const dashboard = process.env.DASHBOARD_URL ?? "http://localhost:8080";
+  console.log(`  Dashboard API:  ${url}${process.env.DASHBOARD_TOKEN ? "   (token: your DASHBOARD_TOKEN)" : ""}`);
+  console.log(`  Open dashboard: ${dashboard}/?api=${url}\n`);
 }
 
 main().catch((err) => fail(err instanceof Error ? err.message : String(err)));
