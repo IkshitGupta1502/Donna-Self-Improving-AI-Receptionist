@@ -1,0 +1,28 @@
+{
+  "name": "snoopy-teacher",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "selftest": "tsx scripts/selftest.ts",
+    "seed": "MONGODB_DB=snoopy_demo tsx scripts/cli.ts seed",
+    "teach": "tsx scripts/cli.ts teach",
+    "demo": "MONGODB_DB=snoopy_demo tsx scripts/cli.ts demo",
+    "watch": "tsx scripts/cli.ts watch",
+    "answer": "tsx scripts/cli.ts answer",
+    "rollback": "tsx scripts/cli.ts rollback",
+    "trend": "tsx scripts/cli.ts trend",
+    "context": "tsx scripts/cli.ts context"
+  },
+  "dependencies": {
+    "@google/genai": "latest",
+    "dotenv": "latest",
+    "mongodb": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "tsx": "latest",
+    "typescript": "latest"
+  }
+}
