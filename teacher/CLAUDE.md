@@ -29,12 +29,12 @@ All paths below are relative to this `teacher/` folder. Team status and open dec
 | `src/services/teacher/judge.ts` | Rubric prompt, `JudgeOutput` zod schema, `geminiJudge` (the only model call), `buildJudgeInput` |
 | `src/services/teacher/plan.ts` | Pure functions `buildPlan` (validation and guardrails) and `regression` (automatic rollback test). No database, no model. |
 | `src/services/teacher/index.ts` | `teach`, `answerOwnerQuestion`, `setToolPermission`, `rollback`, `scoreTrend`, `watch`, `printResult`, `activeContext` |
-| `fixtures/seed.ts` | Demo data in the bridge's shapes: a salon config v1, three fake calls, and the demo workspace (one staff member, Maya) |
-| `scripts/cli.ts` | `seed`, `demo`, `teach`, `answer`, `rollback`, `trend`, `context`, `watch`, `appointments`, `approve`, `reject`, `permission`, `calendar-setup` |
+| `fixtures/seed.ts` | Demo data in the bridge's shapes: a salon config v1, fake calls 1-5 (4 and 5 are dry cleaner calls; 5 asks for a rush plus pickup and a hem price), and the demo workspace (one staff member, Maya) |
+| `scripts/cli.ts` | `seed`, `demo`, `teach`, `answer`, `rollback`, `trend`, `tools`, `context`, `watch`, `appointments`, `approve`, `reject`, `permission`, `calendar-setup` |
 | `scripts/calendar-check.ts` | `npm run calendar:check`: live test of the Google connection. Reads free/busy for the next 3 hours and creates a real test event one hour from now. |
-| `scripts/selftest.ts` | Offline assertions for `buildPlan`, `regression`, the bridge conversion, the time rules and the permission rules. Must keep passing. |
+| `scripts/selftest.ts` | Offline assertions for `buildPlan`, `regression`, the bridge conversion, tool proposals and recipes, the time rules and the permission rules. Must keep passing. |
 
-Commands: `npm run typecheck`, `npm run selftest`, `npm run demo`, `npm run watch`.
+Commands: `npm run tools` (list tool proposals), `npm run typecheck`, `npm run selftest`, `npm run demo`, `npm run watch`.
 Environment: `MONGODB_URI`, `MONGODB_DB` (default `snoopy`, must be the same database the bridge uses), `GEMINI_API_KEY`, `GEMINI_TEACHER_MODEL` (default `gemini-3.8-flash`).
 Calendar environment: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` (OAuth2, scope `https://www.googleapis.com/auth/calendar`; not a service account, which cannot invite attendees), `GOOGLE_CALENDAR_ID` (calendar for the demo staff member, default `primary`). There is no `.env.example`; the variables are listed in README.md. Never log these values.
 
@@ -51,8 +51,9 @@ Owned by the bridge (shapes in its `src/services/data/store.ts`):
 
 Owned by the teacher's side (string `_id`):
 - `workspaces`: one document `{ _id: "default", timezone, business_hours: { sun..sat: ["HH:MM","HH:MM"] | null }, staff: [{ id, name, calendar_id }] }`. Calendar settings. Default time zone `America/Los_Angeles`. Created by `npm run calendar:setup <staff name> <calendar id>`.
-- `appointments` (written by the gateway): `{ _id: "<callSid>_apt<N>", call_id, staff_id, customer_name, customer_phone, customer_email?, service, start, end, status: awaiting_approval|booked|failed|rejected, event_id?, event_link?, error?, config_version_id, created_at }`. `start` and `end` are local times `YYYY-MM-DDTHH:MM` in the workspace time zone.
+- `calendar_bookings` (written by the gateway; named so because the bridge owns a different `appointments` collection): `{ _id: "<callSid>_apt<N>", call_id, staff_id, customer_name, customer_phone, customer_email?, service, start, end, status: awaiting_approval|booked|failed|rejected, event_id?, event_link?, error?, config_version_id, created_at }`. `start` and `end` are local times `YYYY-MM-DDTHH:MM` in the workspace time zone.
 - `grades`: `{ _id = callSid, call_id, config_version_id: "v<N>"|null, outcome, scores{accuracy, tool_use, task_completion, tone, brevity}, overall, frustration, rationale, issues[{type, turn, quote, explanation}], tools_used[], tools_failed[], model, created_at }`
+- `tool_proposals`: `_id` = tool name; `ToolProposal` in `types.ts` (name, description, params, write, why, mockup, status proposed|enabled|disabled|declined, requestCount, sourceCallSids, evidence, createdAt, updatedAt, enabledAt?, enabledBy? teacher|owner). Read by the bridge/dashboard.
 - `improvements`: `{ _id: "<callSid>_imp<N>", source_call_ids[], type: prompt|context|tool|schema, status: proposed|applied|rejected|rolled_back, payload{op?, rule_id?, rule_kind?, text?, question?, answer?, tool?, permission?, from_permission?}, evidence_turns[], reason, rejected_reason?, held_reason?, rolled_back_reason?, applied_in_config_id?, created_at }`
 
 How the teacher's model maps onto the bridge's documents (`bridge.ts`):
@@ -110,11 +111,18 @@ How the teacher's model maps onto the bridge's documents (`bridge.ts`):
   - no number in the rule text that is absent from the current config (blocks smuggled prices and hours)
   - `locked` rules cannot be modified or removed
 - `context` improvements are never auto-applied. They carry a `question` for the owner and stay `proposed`.
-- `tool` and `schema` improvements stay `proposed` (shown, never executed), except a **tool permission change**: a `tool` improvement that carries `{ tool, permission }`. It is applied only when all of these hold, otherwise it stays `proposed` with a `held_reason`:
+- `tool` and `schema` improvements stay `proposed` (shown, never executed; a `tool` improvement from a `tool_proposal` only mirrors the proposal in the timeline), except a **tool permission change**: a `tool` improvement that carries `{ tool, permission }`. It is applied only when all of these hold, otherwise it stays `proposed` with a `held_reason`:
   - evidence turns exist (as for every improvement; without them it is rejected), and the tool and permission are known values
   - a demotion (towards `disabled`) is always allowed, any number of levels
   - a promotion moves one level at a time and needs at least 3 graded calls (`LIMITS.promotionCleanCalls`) where that tool was used with no tool error and `tool_use >= 8`. The count is passed into `buildPlan` as `toolStats` so it stays pure; `index.ts` counts earlier grades since that tool's permission last changed, and `buildPlan` adds the call being graded if it qualifies
   - a disabled tool cannot be used, so it can never earn a promotion: only the owner can re-enable it (`npm run permission`)
+- **Tool proposals** (`validateToolProposal`, `decideToolStatus`, `mergeToolProposal` in `plan.ts`, written by `saveToolProposal` in `index.ts`): at most one per call, only for a proven capability gap, never a built-in tool.
+  Code checks: snake_case name 3-40 chars; max 6 params (snake_case, string|number|boolean, description 1-199 chars); description < 300; 2-8 dialogue turns (caller|agent|tool); exampleArgs keys are params; every evidence quote is in the transcript;
+  no URLs, credentials, payments, card numbers. Rejections go on the `improvements` doc. Existing `disabled`/`declined` proposals are never touched. Auto-enable (status `enabled`, `enabledBy: "teacher"`) when `TEACHER_AUTO_ENABLE_TOOLS` != `0` and overall < `TOOL_GRADE_THRESHOLD` (default 7); otherwise `proposed` for the owner. Tools are declarative (save fields / list a caller's records), so the validation is the safety gate.
+- **Recipes** (optional `recipe` on a tool proposal, stored with `recipeVerified`): `checkRecipeStatic` (shared `validateRecipe` + a boolean param `confirmed` passed through in every call to `schedule_appointment`, `set_order_type` or `create_order`) and `selfCheckRecipe` (runs the recipe on `exampleArgs` against a mock io; `teach` calls `verifyToolRecipe` first and passes the result to `buildPlan` as `extra.recipeCheck`). A recipe without a passing self-check is rejected. `describeRecipe` gives plain-English step lines for `printResult`.
+  `src/services/teacher/recipe.ts` is a synced copy of `../src/services/tools/recipe.ts` (no imports, shared with the bridge). Do not edit it here; change the bridge copy and re-copy.
+  Known limit: it only accepts snake_case call-arg names, so camelCase built-in args (`orderId`, `customerName`) cannot be passed yet; the judge prompt adapts (see `CAMEL_ARGS_OK` in `judge.ts`).
+- **Owner questions** (`context` improvements): max 2 per call, under 160 characters, no repeat of an open or answered question (normalised equality or word Jaccard > 0.8, `extra.existingQuestions`); extra or repeated ones are stored as rejected with a reason. `answerOwnerQuestion` appends `Owner answer: <question> <answer>` (`ownerAnswerLine`).
 - **The teacher can never add or change the company text.** Only `answerOwnerQuestion` can.
 - The teacher cannot edit its own rubric, weights, or limits. They are constants in code.
 - If at least one prompt change or permission change is applied, produce a new immutable config version (`author: "teacher"`, `parentVersion` set, a `note` naming the call). Otherwise `nextConfig` is null.

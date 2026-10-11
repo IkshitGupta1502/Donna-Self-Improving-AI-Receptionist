@@ -13,7 +13,7 @@ Plan and rationale: [PLAN.md](PLAN.md). Run instructions: [../README.md](../READ
 
 ## What it is
 
-A phone number that answers as a dry cleaner ("Charlie's Cleaners"). Customers call; a Gemini
+A phone number that answers as a dry cleaner ("CJ's Cleaning Company"). Customers call; a Gemini
 Live voice agent looks up orders and prices, adds order notes, and takes messages. The end goal
 is a teaching agent that grades each call and improves the voice agent over time (RSI).
 Decisions already made: callers are customers, English only, 3-hour build, success judged by
@@ -98,3 +98,62 @@ Not verified:
    - Fill the dashboard's Improvements tab with a score and frustration timeline and the change log.
 5. Scripted demo: a call that fails, the teacher applies a fix, the next call succeeds.
 6. Optional: switch to Atlas (`MONGODB_URI`), then vector search and change streams as stretch goals.
+
+---
+
+## Update: where things stand now (supersedes "Next steps" above where they conflict)
+
+### New since the first handoff
+- `npm run live`: starts ngrok, sets `PUBLIC_HOST`, points the Twilio number's voice webhook at the tunnel (needs `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` in `.env`), then starts the server. `scripts/live.ts`.
+- `npm run doctor`: pre-flight check with no phone call. Checks `.env` names, Mongo connection, Twilio credentials and the number's webhook, and a real Gemini Live session using production settings. `scripts/doctor.ts`.
+- `npm run seed`: seeds demo data. Upserts 3 orders (ORD-0101..0103) for caller `+19255511546` and adds a richer company-context version ("Demo context", becomes the active config; roll back from the dashboard). Uses `MONGODB_URI` if set, otherwise runs against memory as a dry run. `scripts/seed-demo.ts`. Override the number with `--phone=...`. `DataStore` gained `upsertOrder`.
+- Company Context tab and versioned config (`config_versions`, `config_state`); every call records the `configVersion` used.
+- Gemini close reason is now logged: `[gemini] session closed code=... reason=...`.
+
+### The open problem: first live call connects then hangs up immediately
+- Twilio reached the server and the stream started, but the call dropped within ~1 s.
+- Reproduced locally: with an invalid Gemini key, `ai.live.connect()` never resolves, but the close callback fires (`code=1007 reason=API key not valid`), and the bridge closes the Twilio socket without logging. The close logging is now added.
+- Real cause on the owner's setup is NOT yet confirmed. Suspects, in order: Gemini key or model name (`MODEL` in `src/services/gemini/liveSession.ts`), Mongo connection failure, Twilio signature check (wrong `TWILIO_AUTH_TOKEN`).
+- Next action: on the laptop run `git pull && npm install && npm run doctor`, read the first `✗` line, fix it, then `npm run live` and call again.
+
+### Environment names (common mistakes)
+`TWILIO_PHONE_NUMBER` (not `TWILIO_NUMBER`), `TWILIO_ACCOUNT_SID` starts with `AC`. The owner's Twilio number is +1 605 476 1503 and the demo caller is +1 925 551 1546 (a verified caller; Twilio trial accounts only accept verified callers). ngrok domain: `bruising-boogieman-unreal.ngrok-free.dev`.
+
+### What the assistant can and cannot reach (why "before it could" is not true)
+- The cloud session container holds only a clone of this repo from GitHub. It has no access to the owner's laptop, `.env`, MongoDB Atlas, Twilio console or ngrok, and its network blocks most outside hosts.
+- Everything that touches those (keys, Atlas, Twilio, ngrok, live calls) has to run on the owner's laptop. A Claude Code session running locally (for example in VS Code) can do that directly.
+
+### Other work in flight
+- RSI / teaching agent is being built by another agent or teammate. It should write config versions with `saveConfigVersion({... author: "teacher"})` and roll back with `activateConfigVersion`. Pull this branch before starting so store/API changes don't conflict.
+- Planned, not started: generic tool registry (query/create records, SMS, Stripe payment links) and industry packs.
+- Pending admin: add `IkshitGupta1502` as a collaborator.
+
+### Resume checklist (laptop or VS Code)
+```bash
+git clone https://github.com/gandhiaayush/mongodb_hack && cd mongodb_hack
+git checkout claude/mongodb-harness-hackathon-7hdril && git pull
+cp .env.example .env       # fill in keys (never commit .env)
+npm install
+npm run doctor             # fix every ✗
+npm run seed               # once, with MONGODB_URI set
+npm run live               # then call the Twilio number from a verified phone
+```
+
+### Customer profiles (added)
+- `customers` collection, keyed by E.164 phone: name, email, preferences, notes, vip, firstSeenAt, lastCallAt, callCount. Seeded from the sample orders; `npm run seed` adds the demo caller (+19255511546).
+- At call start `liveSession.ts` loads the caller's profile and orders by caller ID and puts them in the system prompt (`CALLER PROFILE`). The terminal logs `[profile] +1...: <name>, N order(s), N previous call(s)`. Every call increments `callCount`; unknown numbers get a profile created.
+- New tool `update_customer_profile` lets the agent save a name, email, preference or note for the current caller. `GET /api/customers` serves the dashboard's Customers tab.
+- Company name is now "CJ's Cleaning Company". Rerun `npm run seed` to update the active config in an existing database.
+
+### Ordering and scheduling by phone (added)
+- New tools: `create_order`, `set_order_type`, `cancel_order`, `schedule_appointment`, `quote_turnaround` (writes need `confirmed=true`). The system prompt has a "WHAT YOU CAN DO" section so the agent no longer says it cannot take orders.
+- `DataStore` gained `createOrder` (next `ORD-XXXX`, price from the pricing table or 0 with a "Price to be confirmed" note, expected date = 3 days regular / 1 day expedited, skipping `CLOSED_DAYS`), `setOrderType`, `cancelOrder` (only Received/Sorting; returns `{ok, order?, reason?}`), `scheduleAppointment` (rejects past dates and closed days), `listAppointments`, `listAppointmentsByPhone`.
+- New `appointments` collection (`APT-XXXX`, indexes on `phone` and unique `id`), seeded with 4 demo rows. `GET /api/appointments`.
+- Overlaps with PR #5 (`calendar-integration`, pickup slot booking / Google Calendar sync): the appointments model here is deliberately small; reconcile before merging both.
+
+### Teacher builds tools (declarative, recipe-based) and asks the owner questions
+- After every call the teacher (`teacher/`, started by `npm run live`) grades the transcript. If the caller asked for something no tool covered, it proposes a **tool** in `tool_proposals` with a mockup (sample dialogue, example args and result). If the call scored below `TOOL_GRADE_THRESHOLD` (default 7) and `TEACHER_AUTO_ENABLE_TOOLS` is not `0`, the tool is created **enabled** (`enabledBy: "teacher"`); otherwise it waits for the owner (Approve / Decline in the dashboard's Improvements tab). An owner's decline or disable is never reopened.
+- A tool is data, not code. Simple tools save fields or list the caller's earlier records (`custom_records`). A tool can also carry a **recipe** (`src/services/tools/recipe.ts`, copied to `teacher/src/services/teacher/recipe.ts`; **keep the two identical**): JSON steps for calculations, rules and limits, saving or looking up records, and calling the built-in calendar, rush, order and quote tools. No code is ever executed.
+- Safety: the validator rejects a recipe that changes data (`schedule_appointment`, `set_order_type`, `create_order`) unless its first step is a `require` on `confirmed`, and each such call must pass `confirmed`. The teacher runs a recipe on its own example before enabling it (`recipeVerified`), the bridge re-validates it on every call, built-in tool names cannot be shadowed, and at most 20 records are saved per call.
+- **Owner questions**: when the agent lacked business knowledge (pricing, scheduling, policies) the teacher asks the owner at most 2 short questions per call, never repeating one. The owner answers in the Improvements tab (`POST /api/improvements/:id/answer`, needs MongoDB); the answer is appended to the company context as a new version, so the agent knows it from the next call.
+- Not verified: the real Gemini judge writing recipes, MongoDB paths (`answerImprovement`, tool upserts, grades) against Atlas, and a live call using an auto-created tool. The endpoints and shapes are in `docs/API.md`.

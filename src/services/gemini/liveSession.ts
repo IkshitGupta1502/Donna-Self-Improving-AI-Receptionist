@@ -5,13 +5,13 @@ import {
   EndSensitivity,
   type LiveServerMessage,
 } from "@google/genai";
-import { createDataStore, type ConfigVersion, type DataStore } from "../data/store";
+import { createDataStore, type ConfigVersion, type DataStore, type ToolProposal } from "../data/store";
 import type { CallRecorder } from "../calls/recorder";
-import { TOOLS, executeTool } from "./tools";
-import { buildSystemPrompt } from "./systemPrompt";
-import { twilioToGemini, geminiToTwilio } from "../audio/converter";
+import { TOOLS, executeTool, executeCustomTool, buildCustomToolDeclarations, BUILTIN_TOOL_NAMES } from "./tools";
+import { buildSystemPrompt, type CallerProfile } from "./systemPrompt";
+import { twilioToGemini, createGeminiToTwilio } from "../audio/converter";
 
-const MODEL = "gemini-3.1-flash-live-preview";
+export const MODEL = "gemini-3.1-flash-live-preview";
 
 let storePromise: Promise<DataStore> | null = null;
 export function getStore(): Promise<DataStore> {
@@ -23,7 +23,10 @@ export function getStore(): Promise<DataStore> {
 }
 
 export interface GeminiSessionOptions {
+  /** Called when the caller talks over the agent, so queued speech can be flushed */
+  onInterrupted?: () => void;
   callerPhone?: string;
+  callSid?: string;
   recorder?: CallRecorder;
   onAudio: (base64Mulaw: string) => void;
   onError: (err: Error) => void;
@@ -37,10 +40,39 @@ export interface GeminiSessionHandle {
 }
 
 export async function openGeminiSession(opts: GeminiSessionOptions): Promise<GeminiSessionHandle> {
-  const { onAudio, onError, onClose, callerPhone, recorder } = opts;
+  const { onAudio, onError, onClose, onInterrupted, callerPhone, callSid, recorder } = opts;
+  const t0 = Date.now();
   const store = await getStore();
-  const activeConfig: ConfigVersion = await store.getActiveConfig();
+
+  // Config, profile and orders are independent MongoDB reads: fetch them together, not one after another
+  const [activeConfig, enabledTools, profile] = await Promise.all([
+    store.getActiveConfig() as Promise<ConfigVersion>,
+    store.listEnabledTools().catch((err): ToolProposal[] => {
+      console.error("[tools] could not load custom tools, continuing without them:", err);
+      return [];
+    }),
+    callerPhone
+      ? Promise.all([store.getCustomerByPhone(callerPhone), store.getOrdersByPhone(callerPhone)])
+          .then(([customer, orders]): CallerProfile => {
+            console.log(
+              `[profile] ${callerPhone}: ${customer?.name ?? "unknown caller"}, ${orders.length} order(s), ${customer?.callCount ?? 0} previous call(s)`
+            );
+            return { customer, orders };
+          })
+          .catch((err): undefined => {
+            console.error("[profile] lookup failed, continuing without it:", err);
+            return undefined;
+          })
+      : Promise.resolve(undefined),
+  ]);
   recorder?.setConfigVersion(activeConfig.version);
+  const customDecls = buildCustomToolDeclarations(enabledTools);
+  const customSpecs = new Map(enabledTools.filter((s) => customDecls.some((d) => d.name === s.name)).map((s) => [s.name, s]));
+  if (customSpecs.size) console.log(`[tools] ${customSpecs.size} custom tool(s) enabled: ${[...customSpecs.keys()].join(", ")}`);
+  // The call counter is bookkeeping: do not make the caller wait for it
+  if (callerPhone) void store.recordCustomerCall(callerPhone).catch((err) => console.error("[profile] call count failed:", err));
+  const dbMs = Date.now() - t0;
+  const toTwilio = createGeminiToTwilio();
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -55,19 +87,19 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
     model: MODEL,
     config: {
       responseModalities: [Modality.AUDIO],
-      systemInstruction: { parts: [{ text: buildSystemPrompt(today, callerPhone, activeConfig) }] },
+      systemInstruction: { parts: [{ text: buildSystemPrompt(today, callerPhone, activeConfig, profile) }] },
       temperature: 0,
       speechConfig: {
         voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
         languageCode: "en-US",
       },
-      tools: [{ functionDeclarations: TOOLS }],
+      tools: [{ functionDeclarations: [...TOOLS, ...customDecls] }],
       realtimeInputConfig: {
         automaticActivityDetection: {
           disabled: false,
           startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_LOW,
           endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_LOW,
-          silenceDurationMs: 700,
+          silenceDurationMs: Number(process.env.GEMINI_SILENCE_MS) || 500,
         },
       },
       inputAudioTranscription: {},
@@ -76,8 +108,9 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
     callbacks: {
       onmessage: (msg: LiveServerMessage) => {
         if (msg.data) {
-          onAudio(geminiToTwilio(msg.data));
+          onAudio(toTwilio(msg.data));
         }
+        if (msg.serverContent?.interrupted) onInterrupted?.();
 
         const inText = msg.serverContent?.inputTranscription?.text;
         if (inText) {
@@ -98,7 +131,10 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
               const name = fc.name ?? "";
               const args = (fc.args as Record<string, unknown>) ?? {};
               try {
-                const result = await executeTool(name, args, store);
+                const custom = !BUILTIN_TOOL_NAMES.has(name) ? customSpecs.get(name) : undefined;
+                const result = custom
+                  ? await executeCustomTool(custom, args, store, { callerPhone, callSid })
+                  : await executeTool(name, args, store, { callerPhone });
                 const short = JSON.stringify(result).slice(0, 200);
                 console.log(`[tool] ${name} ${JSON.stringify(args)} -> ${short}`);
                 recorder?.addToolCall(name, args, result);
@@ -115,9 +151,14 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
         }
       },
       onerror: (err: unknown) => onError(err instanceof Error ? err : new Error(String(err))),
-      onclose: () => onClose(),
+      onclose: (e?: { code?: number; reason?: string }) => {
+        console.log(`[gemini] session closed code=${e?.code ?? "?"} reason=${e?.reason || "(none)"}`);
+        onClose();
+      },
     },
   });
+
+  console.log(`[latency] MongoDB context loaded in ${dbMs}ms, Gemini session ready in ${Date.now() - t0}ms`);
 
   liveSession.sendRealtimeInput({
     text: `Say exactly: "${activeConfig.greeting.replace(/"/g, "'")}" Then wait for the caller.`,

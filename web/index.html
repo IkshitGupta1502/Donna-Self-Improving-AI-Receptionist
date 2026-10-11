@@ -104,7 +104,7 @@ td.wrapcell{min-width:200px;max-width:420px}
 .td-name{font-weight:600}.td-name .td-mono{font-weight:400}
 
 .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:var(--r);font-size:.7rem;font-weight:700;letter-spacing:.04em;white-space:nowrap;border:1px solid var(--ink)}
-.b-solid{background:var(--ink);color:var(--inv-bg)}
+.b-solid{background:var(--ink);color:var(--inv-fg)}
 .b-line{background:transparent;color:var(--ink)}
 .b-mute{background:transparent;color:var(--muted);border-color:var(--border)}
 .b-live{background:var(--live);border-color:var(--live);color:#fff}
@@ -210,6 +210,155 @@ textarea.fi{min-height:260px;resize:vertical;line-height:1.55}
 .df-del .df-t{text-decoration:line-through;color:var(--muted)}
 .df-skip{padding:3px 10px;color:var(--muted);font-style:italic;font-size:.72rem;border-top:1px dashed var(--border);border-bottom:1px dashed var(--border)}
 
+/* ─── Customers ──────────────────────────────────────────────────────── */
+.cu-split{grid-template-columns:minmax(320px,540px) 1fr}
+.cu-split>*{min-width:0}
+.cu-search{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.cu-search .fi{flex:1;min-width:0;font-family:var(--fb);background:var(--surface)}
+.cu-list{background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);max-height:calc(100vh - 290px);overflow-y:auto;overflow-x:hidden}
+.cu-list tbody tr{cursor:pointer}
+.cu-list tbody tr.sel{background:var(--active-row);box-shadow:inset 3px 0 0 var(--ink)}
+.cu-list tbody tr:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
+.cu-name{font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap;overflow-wrap:anywhere}
+.cu-name.unk{font-weight:500;color:var(--muted)}
+.cu-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px}
+.cu-fields>div{min-width:0}
+.cu-fields .wide{grid-column:1/-1}
+.cu-v{font-size:.9rem;overflow-wrap:anywhere;white-space:pre-wrap}
+.cu-v.none{color:var(--muted)}
+.cu-sec{font-family:var(--fh);font-weight:700;font-size:1rem;border-bottom:1.5px solid var(--border);padding-bottom:6px;margin-top:8px;display:flex;justify-content:space-between;gap:8px}
+.cu-sec span{font-family:var(--fb);font-weight:400;font-size:.75rem;color:var(--muted)}
+.cu-item{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--border);padding:9px 2px;min-width:0}
+.cu-item:last-child{border-bottom:none}
+button.cu-item{cursor:pointer}
+button.cu-item:hover{background:var(--hover)}
+.cu-item .ci-top{flex-wrap:wrap}
+.cu-item .ci-top>span:first-child{min-width:0;overflow-wrap:anywhere}
+.cu-none{font-size:.84rem;color:var(--muted);padding:4px 2px}
+.cu-detail-hdr{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* ─── Improvements ───────────────────────────────────────────────────── */
+:root{--warn:#8a5a00;--warn-bg:rgba(176,112,0,.1)}
+@media (prefers-color-scheme: dark){:root{--warn:#f0b64c;--warn-bg:rgba(240,182,76,.12)}}
+.b-warn{background:var(--warn-bg);color:var(--warn);border-color:var(--warn)}
+.b-bad{background:transparent;color:var(--bad);border-color:var(--bad)}
+.im-h{font-family:var(--fh);font-weight:700;font-size:1.15rem;margin:26px 0 10px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.im-h small{font-family:var(--fb);font-weight:400;font-size:.76rem;color:var(--muted)}
+.im-sub{font-size:.72rem;margin-top:6px;font-family:var(--fm);color:var(--muted)}
+.im-sub.up{color:var(--good)}.im-sub.down{color:var(--bad)}
+.sc.warn .sc-val{color:var(--warn)}
+.im-note{font-size:.84rem;color:var(--muted);background:var(--surface);border:1px dashed var(--border);padding:16px 18px}
+.im-chart-wrap{position:relative;width:100%}
+.im-chart-wrap svg{display:block;width:100%;height:auto;touch-action:pan-y;outline-offset:2px;user-select:none;-webkit-user-select:none}
+.ch-grid{stroke:var(--border);stroke-width:1}
+.ch-axis{fill:var(--muted);font-family:var(--fm);font-size:11px}
+.ch-ov{fill:none;stroke:var(--ink);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round}
+.ch-fr{fill:none;stroke:var(--muted);stroke-width:1.8;stroke-dasharray:5 4;stroke-linejoin:round}
+.ch-frd{fill:var(--surface);stroke:var(--muted);stroke-width:1.6}
+.ch-d{stroke:var(--surface);stroke-width:1.8}
+.d-answered{fill:var(--good)}.d-message_taken{fill:var(--warn)}.d-failed{fill:var(--bad)}
+.ch-ver{stroke:var(--teacher);stroke-width:1.3;stroke-dasharray:3 3}
+.ch-vl{fill:var(--teacher);font-family:var(--fm);font-size:11px;font-weight:600}
+.ch-cur{stroke:var(--ink);stroke-width:1;opacity:.45}
+.im-tip{position:absolute;z-index:5;pointer-events:none;background:var(--inv-bg);color:var(--inv-fg);font-size:.74rem;line-height:1.5;padding:7px 10px;border-radius:var(--r);box-shadow:var(--shadow-lg);max-width:230px;white-space:nowrap}
+.im-tip .mono{opacity:.8}
+.im-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.74rem;color:var(--muted);padding:0 18px 4px}
+.im-legend span{display:inline-flex;align-items:center;gap:6px}
+.lg-l{width:18px;height:0;border-top:2.4px solid var(--ink);display:inline-block}
+.lg-l.fr{border-top:2px dashed var(--muted)}
+.lg-l.vr{border-top:2px dashed var(--teacher)}
+.lg-d{width:10px;height:10px;border-radius:50%;display:inline-block}
+.im-sum{font-size:.82rem;color:var(--muted);line-height:1.55;padding:6px 18px 16px}
+.imt .tw-hdr{flex-wrap:wrap;align-items:flex-start}
+.imt-meta{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:.76rem;color:var(--muted)}
+.imt-name{font-family:var(--fm);font-weight:500;font-size:1.02rem;overflow-wrap:anywhere}
+.imt-why{font-size:.92rem;line-height:1.55}
+.im-d{border:1px solid var(--border);background:var(--bg)}
+.im-d>summary{cursor:pointer;padding:8px 12px;font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);list-style:none;display:flex;gap:8px;align-items:center}
+.im-d>summary::-webkit-details-marker{display:none}
+.im-d>summary::before{content:"\25B8";font-size:.75rem}
+.im-d[open]>summary::before{content:"\25BE"}
+.im-d>summary:hover{color:var(--ink)}
+.im-d-body{padding:4px 12px 12px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.im-d table{background:var(--surface)}
+.im-d tbody td{padding:7px 10px;font-size:.8rem}
+.im-d thead th{padding:6px 10px}
+.mk{display:flex;flex-direction:column;gap:7px}
+.mk-m{max-width:84%;display:flex;flex-direction:column;gap:2px}
+.mk-m .who{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-family:var(--fm)}
+.mk-m .bubble{padding:8px 12px;font-size:.84rem;border-radius:14px}
+.mk-caller{align-self:flex-start}
+.mk-caller .bubble{background:var(--bubble-caller);border-bottom-left-radius:3px}
+.mk-agent{align-self:flex-end;align-items:flex-end}
+.mk-agent .bubble{background:var(--bubble-agent);color:var(--bubble-agent-fg);border-bottom-right-radius:3px}
+.mk-tool{align-self:center;max-width:100%;width:min(520px,100%);align-items:stretch}
+.mk-tool .bubble{background:var(--surface);border:1px dashed var(--muted);border-radius:var(--r);font-family:var(--fm);font-size:.74rem}
+.imj{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.imj>div{min-width:0}
+.im-pre{font-family:var(--fm);font-size:.74rem;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--surface);border:1px solid var(--border);padding:8px 10px;max-height:240px;overflow:auto}
+.im-q{border-left:3px solid var(--border);padding:2px 0 2px 12px;font-size:.84rem;font-style:italic;overflow-wrap:anywhere}
+.im-q small{font-style:normal;color:var(--muted);font-family:var(--fm);font-size:.7rem;margin-left:6px}
+.im-acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn.warn{background:var(--warn);border-color:var(--warn);color:var(--surface)}
+.btn.danger{background:transparent;color:var(--bad);border-color:var(--bad)}
+.btn.danger:hover{background:var(--bad);color:var(--surface)}
+.im-rec{border-top:1px solid var(--border);padding:7px 0;font-size:.8rem;overflow-wrap:anywhere}
+.im-rec:first-child{border-top:0}
+.im-rec dl{display:grid;grid-template-columns:max-content 1fr;gap:2px 12px;margin-top:4px}
+.im-rec dt{font-family:var(--fm);color:var(--muted);font-size:.74rem}
+.im-rec dd{min-width:0}
+.im-tl{display:flex;flex-direction:column;gap:10px}
+.im-ch{display:flex;gap:12px;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);padding:12px 14px;min-width:0}
+.im-ch.pin{border-left:3px solid var(--warn)}
+.im-ch.dim{opacity:.92}
+.im-ic{flex:none;width:28px;height:28px;border:1px solid var(--ink);display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:.72rem;font-weight:600}
+.im-cm{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.im-ct{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.im-ct .tw-meta{margin-left:auto;white-space:nowrap}
+.im-tx{font-size:.9rem;line-height:1.5;overflow-wrap:anywhere}
+.im-rs{font-size:.8rem;color:var(--muted);line-height:1.5;overflow-wrap:anywhere}
+.im-rs.bad{color:var(--bad)}
+.im-ans{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--bg);border:1px solid var(--border);padding:7px 10px;font-size:.8rem}
+.im-ans code{overflow-wrap:anywhere;min-width:0;flex:1 1 220px}
+.im-form{display:flex;flex-direction:column;gap:8px;background:var(--bg);border:1px solid var(--border);padding:10px 12px}
+.im-form label{font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.im-form textarea.fi{min-height:84px;width:100%}
+.im-form-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.im-form-bar .cnt{margin-left:auto;font-family:var(--fm);font-size:.72rem;color:var(--muted)}
+.im-form-bar .cnt.over{color:var(--bad)}
+.im-form .err{color:var(--bad);font-size:.8rem;overflow-wrap:anywhere}
+.im-answer{border-left:3px solid var(--good);padding:2px 0 2px 12px}
+.imt-tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tag{font-size:.68rem;font-family:var(--fm);border:1px solid var(--border);color:var(--muted);padding:1px 7px;border-radius:999px;white-space:nowrap}
+.rc-list{margin:0;padding-left:1.6em;display:flex;flex-direction:column;gap:7px;font-size:.86rem;line-height:1.5}
+.rc-list li{overflow-wrap:anywhere;padding-left:2px}
+.rc-list li.rc-end{list-style:none;margin-left:-1.6em;padding-left:0;color:var(--muted);border-top:1px solid var(--border);padding-top:7px}
+.rc-list code{font-size:.8rem}
+.rc-wr{font-size:.66rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--warn);border:1px solid var(--warn);padding:0 5px;margin-left:6px;white-space:nowrap}
+.im-lk{background:none;border:0;border-bottom:1px dotted var(--muted);cursor:pointer;font-family:var(--fm);font-size:.74rem;padding:0;color:var(--ink)}
+.im-lk:hover{border-bottom-style:solid}
+.gr tbody tr.gr-row{cursor:pointer}
+.gr tbody tr.gr-open{background:var(--active-row)}
+.gr tbody tr:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
+.gr td{vertical-align:middle}
+.mb{display:flex;align-items:center;gap:6px;min-width:62px}
+.mb i{display:block;height:6px;background:var(--ink);opacity:.85;border-radius:1px}
+.mb s{display:block;flex:1 1 auto;height:6px;background:var(--hover);position:relative;text-decoration:none}
+.mb s i{position:absolute;left:0;top:0}
+.mb b{font-family:var(--fm);font-size:.72rem;font-weight:500;min-width:2ch;text-align:right}
+.mb.fr i{background:var(--bad)}
+.gr-x td{background:var(--bg);padding:12px 18px!important;white-space:normal}
+.gr-iss{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+.im-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--inv-bg);color:var(--inv-fg);padding:10px 18px;font-size:.84rem;box-shadow:var(--shadow-lg);z-index:300;max-width:calc(100vw - 32px);border-left:4px solid var(--good)}
+.im-toast.bad{border-left-color:var(--bad)}
+@media (max-width:760px){
+  .imj{grid-template-columns:1fr}
+  .mk-m{max-width:94%}
+  .im-ch{padding:11px 12px;gap:10px}
+  .im-ct .tw-meta{margin-left:0;width:100%}
+  .im-h{margin-top:22px}
+}
+
 /* ─── Responsive ─────────────────────────────────────────────────────── */
 @media (max-width:900px){
   .stats-bar{grid-template-columns:repeat(3,1fr)}
@@ -221,7 +370,13 @@ textarea.fi{min-height:260px;resize:vertical;line-height:1.55}
   .call-list{max-height:none}
   .detail{max-height:none;min-height:0}
   .split.has-sel .call-list{display:none}
+  .cu-split.has-sel .cu-col{display:none}
+  .cu-list{max-height:none}
+  .cu-list thead th,.cu-list tbody td{padding-left:9px;padding-right:9px}
+  .cu-fields{grid-template-columns:1fr}
+  .cu-split .dt-body{max-height:none;min-height:0}
   .split:not(.has-sel) .detail{display:none}
+  .cu-split:not(.has-sel) .detail{display:none}
   .dt-hdr .back{display:inline-block}
   .dt-body{max-height:calc(100vh - 260px);min-height:240px}
   .msg{max-width:92%}
@@ -251,6 +406,7 @@ textarea.fi{min-height:260px;resize:vertical;line-height:1.55}
 <nav class="tab-bar" role="tablist" id="tabs">
   <button class="tab active" role="tab" data-tab="overview" type="button">Overview</button>
   <button class="tab" role="tab" data-tab="calls" type="button">Live Calls <span class="tab-badge hidden" id="live-badge">0</span></button>
+  <button class="tab" role="tab" data-tab="customers" type="button">Customers</button>
   <button class="tab" role="tab" data-tab="orders" type="button">Orders</button>
   <button class="tab" role="tab" data-tab="messages" type="button">Messages</button>
   <button class="tab" role="tab" data-tab="company" type="button">Company Context</button>
@@ -271,6 +427,17 @@ textarea.fi{min-height:260px;resize:vertical;line-height:1.55}
     <div class="split" id="split">
       <div class="call-list" id="call-list"></div>
       <div class="detail" id="detail"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-customers">
+    <div id="cu-status"></div>
+    <div class="split cu-split" id="cu-main">
+      <div class="cu-col">
+        <div class="cu-search"><input class="fi" id="cu-q" type="search" placeholder="Search name, phone, email, notes" aria-label="Search customers" autocomplete="off" spellcheck="false" /><span class="tw-meta" id="cu-count"></span></div>
+        <div class="cu-list" id="cu-list"></div>
+      </div>
+      <div class="detail" id="cu-detail"></div>
     </div>
   </section>
 
@@ -338,12 +505,27 @@ textarea.fi{min-height:260px;resize:vertical;line-height:1.55}
   </section>
 
   <section class="panel" id="panel-improvements">
-    <div class="coming">
-      <h3>Improvements</h3>
-      <p>Coming soon: the teaching agent's grades and changes will appear here.</p>
+    <div id="im-status"></div>
+    <div id="im-main" class="hidden">
+      <div id="im-err"></div>
+      <div class="stats-bar" id="im-stats"></div>
+      <div class="card" id="im-chart-card">
+        <div class="tw-hdr"><div class="tw-title">Score timeline</div><div class="tw-meta">one point per graded call, oldest to newest</div></div>
+        <div id="im-chart" style="padding:10px 12px 0"></div>
+        <div class="im-legend" id="im-legend"></div>
+        <div class="im-sum" id="im-ch-sum"></div>
+      </div>
+      <h2 class="im-h">Tool proposals <small>approve what the receptionist is allowed to do</small></h2>
+      <div id="im-tools"></div>
+      <h2 class="im-h">Changes the teacher made <small>newest first</small></h2>
+      <div id="im-changes"></div>
+      <h2 class="im-h">Recent grades <small id="im-grades-meta"></small></h2>
+      <div id="im-grades"></div>
     </div>
   </section>
 </main>
+
+<div class="im-toast hidden" id="im-toast" role="status" aria-live="polite"></div>
 
 <div class="ov hidden" id="settings-ov">
   <div class="modal" role="dialog" aria-modal="true" aria-label="Settings">
@@ -390,6 +572,7 @@ var S = {
   tab: "overview", sel: null,
   health: null, // true | false | null
   stats: null, calls: null, orders: null, messages: null,
+  customers: null, custMissing: false, csel: null, cq: "",
   sig: {}
 };
 
@@ -466,11 +649,22 @@ var Demo = (function(){
         {role:"agent",text:"Of course, I'll leave a message for the owner.",ts:ts(69,40)}
       ],
       toolCalls:[{name:"take_message",args:{name:"Devon",phone:"+14155550111",message:"Wants a callback about a stain on a silk shirt."},result:{ok:true},ts:ts(69,35)}] },
+    { callSid:"CA7b20d4c915e8a03", from:"+14155550142", startedAt:ts(60*24*3), endedAt:ts(60*24*3-2), durationSec:121, status:"completed",
+      transcript:[
+        {role:"caller",text:"Hi, it's Maria. Can I add starch to the coat order?",ts:ts(60*24*3,0)},
+        {role:"agent",text:"Of course, Maria. I noted light starch, as usual. Anything else?",ts:ts(60*24*3,-8)}
+      ], toolCalls:[] },
     { callSid:"CAe5a8801b2c93f7", from:"+14155550177", startedAt:ts(190), endedAt:ts(188), durationSec:96, status:"completed",
       transcript:[
         {role:"caller",text:"Is my suit ready yet?",ts:ts(190,0)},
         {role:"agent",text:"Let me check. Your suit is still in pressing and should be ready tomorrow afternoon.",ts:ts(189,50)}
       ], toolCalls:[] }
+  ];
+  var customers = [
+    {phone:"+14155550142",name:"Maria Lopez",email:"maria.lopez@example.com",preferences:"Light starch, no hangers (folded). Prefers pickup after 5pm.",notes:"Regular since 2023. Wool coat each fall.",vip:true,firstSeenAt:ts(60*24*210),lastCallAt:ts(2),callCount:9},
+    {phone:"+14155550199",name:"Priya Shah",email:"priya.shah@example.com",preferences:"Text before delivery.",notes:"Wedding dress drop-off, handle beading with care.",firstSeenAt:ts(26),lastCallAt:ts(26),callCount:1},
+    {phone:"+14155550177",name:"James O'Neil",preferences:"Express service on suits when possible.",notes:"Asks about order status before pickup.",firstSeenAt:ts(60*24*30),lastCallAt:ts(190),callCount:4},
+    {phone:"+14155550111",email:"devon.r@example.com",notes:"Called about a silk shirt stain. Wants a callback from the owner.",firstSeenAt:ts(70),lastCallAt:ts(70),callCount:1}
   ];
   var orders = [
     {orderId:"ORD-1043",customerName:"Priya Shah",phone:"+14155550199",garment:"Wedding dress",stage:"Received",orderType:"regular",price:145,payment:"unpaid",notes:"Beading, handle with care",expectedDate:"2026-10-18"},
@@ -512,6 +706,121 @@ var Demo = (function(){
     var vs = cfgV.slice().sort(function(a,b){return b.version-a.version;});
     return {active: vs.filter(function(v){return v.version===cfgActive;})[0], versions: vs};
   }
+  /* teacher data: grades, improvements, tool proposals, records */
+  var gMin=[4320,3600,3000,2400,1900,1300,900,300,190,70,26,8];
+  var gOv=[4.8,5.1,5.0,5.6,6.2,6.8,7.1,7.6,8.0,8.3,8.6,8.9];
+  var gFr=[7.5,7.0,7.2,6.1,5.4,4.2,3.6,2.9,2.4,1.8,1.5,1.2];
+  var gOut=["failed","message_taken","failed","message_taken","message_taken","answered","message_taken","answered","answered","message_taken","answered","answered"];
+  var gSid=["CA7b20d4c915e8a03","CA1a52f0e3c7d901","CA6d03b8a2e41f55","CA93e7c1d0b2a846","CA28f4a6b9d1c370","CA5c19d7e2f8a034","CA80b3e5a1c9d726","CA3e6f2b4d8a1c59","CAe5a8801b2c93f7","CA0cd2e77f19a604","CA41be90c2d813aa","CA2b7d9f0e6c4a18"];
+  var gOff={accuracy:[.6,-.4,.8,.3,.5,.2,-.2,.4,.3,.1,.2,.1],tool_use:[-1.6,-1.2,-1.4,-.6,-.3,.1,.3,.2,.4,.3,.2,.4],task_completion:[-.9,-.5,-1.1,-.3,.1,.2,.5,.3,.6,.4,.3,.5],tone:[1.4,1.2,1.5,1.1,.9,.8,.7,.8,.5,.6,.4,.5],brevity:[-.5,-.2,-.8,.2,.3,-.1,.4,.5,.2,.3,.2,.3]};
+  function cl(v){ return Math.max(0,Math.min(10,Math.round(v*10)/10)); }
+  var gRat=[
+    "The agent invented a Saturday closing time and never took a message when it could not answer. The caller hung up frustrated.",
+    "Agent did not know the wedding dress price and guessed. It did take a message, but only after the caller asked twice.",
+    "Wrong hours given, and the agent ignored the caller's request to leave a gate code. No tool could record it.",
+    "Mostly correct, but the agent talked at length before taking a message. Caller sounded impatient.",
+    "Correct answers, still too wordy. Message was captured with the right phone number.",
+    "Hours and prices were right and the answer was short. Tone was friendly.",
+    "Good call. The agent could not record delivery instructions, so it took a message instead.",
+    "Accurate and brief. Order lookup returned the right garment on the first try.",
+    "Clear status answer for the suit, no unnecessary filler.",
+    "Message taken cleanly with name and callback number; the caller thanked the agent.",
+    "Priya's drop-off was booked in one pass, price quoted correctly.",
+    "Closing time answered immediately from the hours; the call ended in under a minute."
+  ];
+  var gIss=[
+    [{type:"hallucination",turn:3,quote:"We close at 9pm on Saturdays.",explanation:"Saturday hours are 8am to 4pm. The agent made up a time."},{type:"missed_tool",turn:5,quote:"I'm sorry, I can't help with that.",explanation:"The caller wanted to leave information; the agent should have taken a message."}],
+    [{type:"hallucination",turn:2,quote:"Wedding gowns are around $90.",explanation:"The context says wedding dress cleaning starts at $145."}],
+    [{type:"unsupported_request",turn:4,quote:"Can you write down the gate code, it's 4471?",explanation:"No tool exists for saving delivery instructions."},{type:"hallucination",turn:2,quote:"We are open until 8pm.",explanation:"Weekday closing is 6pm."}],
+    [{type:"verbose",turn:3,quote:"Let me tell you a little about everything we offer before I take that down...",explanation:"Four sentences of filler before a simple message."}],
+    [{type:"verbose",turn:4,quote:"Absolutely, I would be more than happy to help you with that today.",explanation:"Brevity: the caller only needed the hours."}],
+    [], [{type:"unsupported_request",turn:3,quote:"Please note I'll leave the key under the mat.",explanation:"No way to record delivery notes; the agent fell back to a message."}],
+    [],[],[],[],[]
+  ];
+  var grades = gMin.map(function(m,i){
+    var sc={}; ["accuracy","tool_use","task_completion","tone","brevity"].forEach(function(k){ sc[k]=cl(gOv[i]+gOff[k][i]); });
+    return {_id:"g"+(i+1),call_id:gSid[i],config_version_id:i<5?"v1":i<10?"v2":"v3",outcome:gOut[i],scores:sc,overall:gOv[i],frustration:gFr[i],rationale:gRat[i],issues:gIss[i],model:"claude-sonnet-5-5",created_at:ts(m)};
+  });
+  var improvements = [
+    {_id:"imp8",source_call_ids:[gSid[8]],type:"context",status:"proposed",payload:{question:"Do you offer same-day pickup on Saturdays?"},evidence_turns:[2],reason:"A caller wanted a Saturday pickup the same day and the agent could not say if that is possible.",created_at:ts(12)},
+    {_id:"imp7",source_call_ids:[gSid[10]],type:"context",status:"proposed",payload:{question:"What do you charge to hem pants?"},evidence_turns:[3],reason:"A caller asked about alterations pricing and the context has no hemming price.",created_at:ts(22)},
+    {_id:"imp6",source_call_ids:[gSid[6]],type:"context",status:"applied",payload:{question:"Callers keep asking to leave pickup or delivery notes (gate codes, where to leave items). Should the receptionist accept and pass these on, and is there anything it must never write down?",answer:"Yes, accept them and pass them on. Never write down payment card numbers."},evidence_turns:[3,4],reason:"Two callers tried to leave access instructions and the agent had nowhere to put them.",applied_in_config_id:"v3",created_at:ts(35)},
+    {_id:"imp5",source_call_ids:[gSid[10]],type:"context",status:"applied",payload:{question:"What time do you close today?",answer:"Answer with today's closing time from the posted hours."},evidence_turns:[2],reason:"Callers ask for closing time and the agent hesitated.",applied_in_config_id:"v3",created_at:ts(40)},
+    {_id:"imp4",source_call_ids:[gSid[2]],type:"prompt",status:"rejected",payload:{op:"add",rule_id:"refund-policy",rule_kind:"policy",text:"Promise a full refund when a customer is unhappy with any cleaning."},evidence_turns:[6],reason:"Caller was upset about a stain and the agent had no guidance.",rejected_reason:"Guardrail: the rule commits the business to refunds the owner never authorized.",created_at:ts(1300)},
+    {_id:"imp3",source_call_ids:[gSid[3],gSid[4]],type:"prompt",status:"rolled_back",payload:{op:"add",rule_id:"always-upsell",rule_kind:"style",text:"After every answer, offer express service for an extra fee."},evidence_turns:[3,4],reason:"Try to raise revenue per call.",applied_in_config_id:"v2",rolled_back_reason:"Frustration rose 1.1 points over the next two calls; reverted in v3.",created_at:ts(1350)},
+    {_id:"imp2",source_call_ids:[gSid[0],gSid[2]],type:"tool",status:"applied",payload:{tool_name:"file_damage_claim"},evidence_turns:[5],reason:"Callers reported damaged garments and the agent could only apologise.",applied_in_config_id:"v2",created_at:ts(1380)},
+    {_id:"imp1",source_call_ids:[gSid[0],gSid[1]],type:"prompt",status:"applied",payload:{op:"add",rule_id:"keep-short",rule_kind:"style",text:"Answer in one or two short sentences. Quote prices and hours exactly as written in the company context; never guess."},evidence_turns:[3,2],reason:"The agent rambled and invented hours and prices.",applied_in_config_id:"v2",created_at:ts(1400)}
+  ];
+  var tools = [
+    {name:"record_delivery_instructions",description:"Save delivery or pickup instructions (gate codes, where to leave items) for a customer's order.",
+      params:[{name:"gate_code",type:"string",description:"Gate or door code the driver needs",required:false},{name:"instructions",type:"string",description:"Where to leave the items or how to reach the caller",required:true},{name:"order_id",type:"string",description:"Order the note belongs to, if the caller gave one",required:false}],
+      recipeVerified:true,recipe:{steps:[
+        {do:"require",when:{ref:"instructions"},else:"Ask where the driver should leave the items first."},
+        {do:"save",fields:{gate_code:{ref:"gate_code"},instructions:{ref:"instructions"},order_id:{ref:"order_id"}}}],
+        response:{saved:true,instructions:{ref:"instructions"}}},
+      write:true,why:"Two callers tried to leave a gate code or drop-off spot for their pickup and the receptionist could only take a general message that nobody would see in time.",
+      mockup:{sampleDialogue:[
+        {role:"caller",text:"I'm having my coat picked up tomorrow. The gate code is 4471, and please leave it with the doorman."},
+        {role:"agent",text:"Got it, let me save that for the driver."},
+        {role:"tool",text:"record_delivery_instructions(gate_code: \"4471\", instructions: \"Leave with the doorman\")"},
+        {role:"tool",text:"result: ok, saved as rec_8f2a"},
+        {role:"agent",text:"Saved. Gate code 4471, and the driver will leave it with the doorman. Anything else?"},
+        {role:"caller",text:"No, that's all. Thanks!"}],
+        exampleArgs:{gate_code:"4471",instructions:"Leave with the doorman",order_id:"ORD-1042"},exampleResult:{ok:true,recordId:"rec_8f2a"}},
+      status:"proposed",requestCount:2,sourceCallSids:[gSid[2],gSid[6]],
+      evidence:[{turn:4,quote:"Can you write down the gate code, it's 4471?"},{turn:3,quote:"Please note I'll leave the key under the mat."}],createdAt:ts(120),updatedAt:ts(120)},
+    {name:"file_damage_claim",description:"Open a damage claim for a garment, with a description, and notify the owner.",
+      params:[{name:"item",type:"string",description:"Garment that was damaged",required:true},{name:"description",type:"string",description:"What happened, in the caller's words",required:true},{name:"order_id",type:"string",description:"Order number if known",required:false}],
+      recipeVerified:true,recipe:{steps:[
+        {do:"compute",as:"filed_on",expr:{op:"today",args:[]}},
+        {do:"compute",as:"follow_up",expr:{op:"addDays",args:[{ref:"filed_on"},2]}},
+        {do:"save",fields:{item:{ref:"item"},description:{ref:"description"},order_id:{ref:"order_id"},filed_on:{ref:"filed_on"}}}],
+        response:{ok:true,filed_on:{ref:"filed_on"},owner_calls_by:{ref:"follow_up"}}},
+      write:true,why:"The call scored 4.8 because a caller reporting a torn button got an apology and no way to file a claim.",
+      mockup:{sampleDialogue:[
+        {role:"caller",text:"A button came off my wool coat after cleaning."},
+        {role:"agent",text:"I'm sorry about that. I'll file a claim now."},
+        {role:"tool",text:"file_damage_claim(item: \"Wool coat\", description: \"Button torn off\")"},
+        {role:"agent",text:"Done. The owner will call you back about it."}],
+        exampleArgs:{item:"Wool coat",description:"Button torn off during cleaning",order_id:"ORD-1042"},exampleResult:{ok:true,claimId:"CLM-17"}},
+      status:"enabled",enabledBy:"teacher",requestCount:3,sourceCallSids:[gSid[0]],evidence:[{turn:5,quote:"The button came off after you cleaned it, what can you do?"}],createdAt:ts(1380),updatedAt:ts(1380),enabledAt:ts(1380)},
+    {name:"rush_booking",description:"Upgrade an existing order to expedited service and book a pickup for it in one step.",
+      params:[{name:"order_id",type:"string",description:"Order to rush",required:true},{name:"window",type:"string",description:"Pickup time window, e.g. 4-6pm",required:true},{name:"address",type:"string",description:"Where the driver should collect the order",required:true},{name:"confirmed",type:"boolean",description:"True only after the caller agreed to the price and date",required:true}],
+      write:true,recipeVerified:true,
+      recipe:{steps:[
+        {do:"require",when:{ref:"confirmed"},else:"Read the price and ready date back and get a yes first."},
+        {do:"call",tool:"set_order_type",args:{order_id:{ref:"order_id"},speed:"Expedited"},as:"rush"},
+        {do:"call",tool:"schedule_appointment",args:{kind:"pickup",date:{op:"get",args:[{ref:"rush"},"expected_date"]},window:{ref:"window"},address:{ref:"address"},order_id:{ref:"order_id"},confirmed:true},as:"booking"}],
+        response:{upgraded:true,new_price:{op:"get",args:[{ref:"rush"},"price"]},appointment:{op:"get",args:[{ref:"booking"},"id"]}}},
+      why:"A caller wanted an order sped up and picked up the same week, and the receptionist could only take a message for two separate changes.",
+      mockup:{sampleDialogue:[
+        {role:"caller",text:"Can you rush my order ORD-1041? I need it by Friday, and someone has to pick it up from my office."},
+        {role:"agent",text:"Rushing it costs $52 instead of $42 and it would be ready Friday. Shall I do that?"},
+        {role:"caller",text:"Yes. Pickup between 4 and 6pm at 220 Mission Street."},
+        {role:"tool",text:"rush_booking(order_id: \"ORD-1041\", window: \"4-6pm\", address: \"220 Mission Street\", confirmed: true)"},
+        {role:"tool",text:"result: upgraded, new price 52, appointment apt_5521"},
+        {role:"agent",text:"Done. Your order is now expedited at $52 and a driver will pick it up between 4 and 6pm."}],
+        exampleArgs:{order_id:"ORD-1041",window:"4-6pm",address:"220 Mission Street",confirmed:true},exampleResult:{upgraded:true,new_price:52,appointment:"apt_5521"}},
+      status:"proposed",requestCount:1,sourceCallSids:[gSid[8]],evidence:[{turn:2,quote:"Is my suit ready yet?"}],createdAt:ts(30),updatedAt:ts(30)}
+  ];
+  var records = [
+    {id:"rec_c1",tool:"file_damage_claim",phone:"+14155550142",callSid:gSid[8],fields:{item:"Wool coat",description:"Button torn off during cleaning",order_id:"ORD-1042"},createdAt:ts(600)},
+    {id:"rec_c2",tool:"file_damage_claim",phone:"+14155550177",callSid:gSid[9],fields:{item:"Silk shirt",description:"Color transfer on the collar",order_id:"ORD-1039"},createdAt:ts(95)}
+  ];
+  function toolWrite(p,fail,res){
+    var m=p.match(/^\/api\/tools\/([^\/]+)\/(enable|disable|decline)$/);
+    if(!m) return false;
+    var name=decodeURIComponent(m[1]), act=m[2];
+    var t=tools.filter(function(x){return x.name===name;})[0];
+    if(!t){ fail(404,"Unknown tool: "+name); return true; }
+    var to={enable:"enabled",disable:"disabled",decline:"declined"}[act];
+    if(t.status===to){ fail(400,"Tool is already "+to); return true; }
+    if(act==="disable" && t.status!=="enabled"){ fail(400,"Only an enabled tool can be disabled"); return true; }
+    if(act==="decline" && t.status!=="proposed"){ fail(400,"Only a proposed tool can be declined"); return true; }
+    t.status=to; t.updatedAt=new Date().toISOString();
+    if(to==="enabled"){ t.enabledAt=t.updatedAt; t.enabledBy="owner"; }
+    res(clone(t)); return true;
+  }
   function write(method,path,body){
     return new Promise(function(res,rej){
       setTimeout(function(){
@@ -536,6 +845,22 @@ var Demo = (function(){
           cfgActive = f.version;
           return res(clone(f));
         }
+        var am=p.match(/^\/api\/improvements\/([^\/]+)\/answer$/);
+        if(method==="POST" && am){
+          var iid=decodeURIComponent(am[1]);
+          var im=improvements.filter(function(x){return x._id===iid;})[0];
+          if(!im) return fail(404,"Unknown improvement: "+iid);
+          if(im.type!=="context"||im.status!=="proposed") return fail(400,"This question is not open");
+          var an=typeof body.answer==="string"?body.answer.trim():"";
+          if(!an) return fail(400,"answer must not be empty");
+          if(an.length>600) return fail(400,"answer must be at most 600 characters");
+          var cur=cfgV.filter(function(x){return x.version===cfgActive;})[0]||cfgV[cfgV.length-1];
+          var nv={version:Math.max.apply(null,cfgV.map(function(x){return x.version;}))+1,companyName:cur.companyName,greeting:cur.greeting,context:cur.context+"\nOwner answer: "+(im.payload.question||"")+" "+an,author:"teacher",note:"Owner answered: "+String(im.payload.question||"").slice(0,120),createdAt:new Date().toISOString()};
+          cfgV.push(nv); cfgActive=nv.version;
+          im.status="applied"; im.payload.answer=an; im.applied_in_config_id="v"+nv.version;
+          return res({ok:true,version:nv.version,improvementId:iid});
+        }
+        if(method==="POST" && toolWrite(p,fail,res)) return;
         fail(404,"Not found");
       },60);
     });
@@ -549,6 +874,11 @@ var Demo = (function(){
     else if(p==="/api/stats") out = {calls:calls.length,activeCalls:calls.filter(function(c){return c.status==="active";}).length,orders:orders.length,openOrders:orders.filter(function(o){return o.stage!=="Picked up";}).length,messages:messages.length};
     else if(p==="/api/calls") out = calls;
     else if(p.indexOf("/api/calls/")===0) out = calls.filter(function(c){return c.callSid===decodeURIComponent(p.slice(11));})[0];
+    else if(p==="/api/grades") out = grades;
+    else if(p==="/api/improvements") out = improvements;
+    else if(p==="/api/tools") out = tools;
+    else if(p==="/api/records"){ var qs=new URLSearchParams(path.split("?")[1]||""), tn=qs.get("tool"); out = records.filter(function(r){return !tn||r.tool===tn;}).slice(0,Number(qs.get("limit"))||50); }
+    else if(p==="/api/customers") out = customers;
     else if(p==="/api/orders") out = orders;
     else if(p==="/api/messages") out = messages;
     return new Promise(function(res){ setTimeout(function(){res(clone(out));},40); });
@@ -702,8 +1032,86 @@ function renderMessages(){
     (rows||'<tr><td colspan="4" class="td-mono">No messages yet.</td></tr>')+'</tbody></table></div></div>';
 }
 
+/* ── Customers ────────────────────────────────────────────────────────── */
+function pkey(p){ var d=String(p==null?"":p).replace(/\D/g,""); if(d.length===11&&d.charAt(0)==="1") d=d.slice(1); return d; }
+function fmtPhone(p){
+  var raw=String(p==null?"":p), d=raw.replace(/\D/g,"");
+  if(d.length===11&&d.charAt(0)==="1") return "+1 ("+d.slice(1,4)+") "+d.slice(4,7)+"-"+d.slice(7);
+  if(d.length===10) return "("+d.slice(0,3)+") "+d.slice(3,6)+"-"+d.slice(6);
+  return raw||"—";
+}
+function custOrders(k){ return (S.orders||[]).filter(function(o){ return pkey(o.phone)===k; }); }
+function custMatches(c,q){
+  q=q.trim().toLowerCase(); if(!q) return true;
+  var hay=[c.name,c.email,c.notes,c.preferences,c.phone,fmtPhone(c.phone)].join("\n").toLowerCase();
+  if(hay.indexOf(q)>=0) return true;
+  var qd=q.replace(/\D/g,"");
+  return qd.length>=3 && String(c.phone||"").replace(/\D/g,"").indexOf(qd)>=0;
+}
+function custName(c){ return c.name?esc(c.name):"Unknown caller"; }
+function setCu(key,el,html){ if(S.sig[key]===html) return false; S.sig[key]=html; el.innerHTML=html; return true; }
+
+function renderCustomers(){
+  var st=$("cu-status"), main=$("cu-main"), msg="";
+  if(!configured()) msg=setupEmpty("Connect to a backend, or try demo data, to see your customer profiles.");
+  else if(S.custMissing) msg='<div class="empty"><h3>Customer profiles are not available on this server yet</h3><p>The backend you are connected to does not support customer profiles. Update and restart the backend, then open this tab again.</p></div>';
+  else if(S.customers===null) msg='<div class="empty"><p>Loading customers…</p></div>';
+  else if(!S.customers.length) msg='<div class="empty"><h3>No customers yet</h3><p>No customers yet. Profiles appear after the first call.</p></div>';
+  setCu("cu-status",st,msg);
+  var show=configured() && !S.custMissing && S.customers && S.customers.length>0;
+  main.classList.toggle("hidden",!show);
+  if(!show) return;
+  var all=S.customers, rows=all.filter(function(c){ return custMatches(c,S.cq); });
+  main.classList.toggle("has-sel",!!S.csel && !!all.filter(function(c){return pkey(c.phone)===S.csel;})[0]);
+  $("cu-count").textContent = rows.length===all.length ? all.length+" total" : rows.length+" of "+all.length;
+  var html;
+  if(!rows.length) html='<div class="dt-empty">No customers match your search.</div>';
+  else html='<table><thead><tr><th>Customer</th><th>Calls</th><th>Last call</th><th>Orders</th></tr></thead><tbody>'+rows.map(function(c){
+    var k=pkey(c.phone);
+    return '<tr tabindex="0" data-cu="'+esc(k)+'"'+(k===S.csel?' class="sel"':'')+'><td><div class="cu-name'+(c.name?'':' unk')+'">'+custName(c)+(c.vip?' <span class="badge b-solid">VIP</span>':'')+'</div><div class="td-mono">'+esc(fmtPhone(c.phone))+'</div></td>'+
+      '<td class="nowrap">'+esc(val(c.callCount,0))+'</td><td class="nowrap td-mono">'+esc(relTime(c.lastCallAt)||"—")+'</td><td class="nowrap">'+custOrders(k).length+'</td></tr>';
+  }).join("")+'</tbody></table>';
+  var list=$("cu-list"), keep=list.scrollTop;
+  if(setCu("cu-list",list,html)) list.scrollTop=keep;
+  renderCustDetail();
+}
+
+function renderCustDetail(){
+  var el=$("cu-detail"), all=S.customers||[];
+  var c=S.csel && all.filter(function(x){return pkey(x.phone)===S.csel;})[0];
+  if(!c){ setCu("cu-detail",el,'<div class="dt-empty">Select a customer to see their profile, orders, calls and messages.</div>'); el.removeAttribute("data-k"); return; }
+  var k=S.csel;
+  var orders=custOrders(k);
+  var calls=sortedCalls().filter(function(x){ return pkey(x.from)===k; });
+  var msgs=(S.messages||[]).filter(function(m){ return pkey(m.phone)===k; });
+  function fld(l,v,wide){ var e=v==null||v===""; return '<div'+(wide?' class="wide"':'')+'><div class="fl">'+l+'</div><div class="cu-v'+(e?' none':'')+'">'+(e?'—':esc(v))+'</div></div>'; }
+  var html='<div class="dt-hdr"><button class="icon-btn back" type="button" data-cback>&larr; Customers</button><div><div class="dt-title cu-detail-hdr">'+custName(c)+(c.vip?' <span class="badge b-solid">VIP</span>':'')+'</div><div class="dt-sub">'+esc(fmtPhone(c.phone))+'</div></div></div>'+
+    '<div class="dt-body">'+
+    '<div class="cu-fields">'+fld("Name",c.name)+fld("Phone",c.phone)+fld("Email",c.email)+fld("Calls",c.callCount)+fld("Preferences",c.preferences,true)+fld("Notes",c.notes,true)+fld("First seen",c.firstSeenAt?fmtDT(c.firstSeenAt):"")+fld("Last call",c.lastCallAt?fmtDT(c.lastCallAt)+" ("+relTime(c.lastCallAt)+")":"")+'</div>'+
+    '<div class="cu-sec">Orders<span>'+orders.length+'</span></div>'+
+    (orders.length?orders.map(function(o){
+      return '<div class="cu-item"><div class="ci-top"><span><strong>'+esc(val(o.orderId))+'</strong> · '+esc(val(o.garment))+'</span>'+stageBadge(o.stage)+'</div>'+
+        '<div class="ci-meta">'+(o.price!=null?'<span>'+esc(money(o.price))+'</span>':'')+(o.payment?'<span>'+esc(o.payment)+'</span>':'')+(o.expectedDate?'<span>due '+esc(o.expectedDate)+'</span>':'')+'</div></div>';
+    }).join(""):'<div class="cu-none">No orders for this number.</div>')+
+    '<div class="cu-sec">Calls<span>'+calls.length+(S.calls&&S.calls.length>=50?' (latest 50 overall)':'')+'</span></div>'+
+    (calls.length?calls.map(function(x){
+      return '<button type="button" class="cu-item" data-cu-call="'+esc(x.callSid)+'"><div class="ci-top"><span>'+esc(fmtDT(x.startedAt))+'</span>'+callBadge(x)+'</div>'+
+        (snippet(x)?'<div class="ci-snip">'+esc(snippet(x))+'</div>':'')+'</button>';
+    }).join(""):'<div class="cu-none">No recent calls from this number.</div>')+
+    '<div class="cu-sec">Messages<span>'+msgs.length+'</span></div>'+
+    (msgs.length?msgs.map(function(m){
+      return '<div class="cu-item"><div class="ci-top"><span>'+esc(val(m.name,"Unknown caller"))+'</span><span class="td-mono">'+esc(fmtDT(m.createdAt))+'</span></div><div class="cu-v" style="margin-top:4px">'+esc(val(m.message))+'</div></div>';
+    }).join(""):'<div class="cu-none">No messages from this number.</div>')+
+    '</div>';
+  var body=el.querySelector(".dt-body"), same=el.getAttribute("data-k")===k && body, top=same?body.scrollTop:0;
+  if(setCu("cu-detail",el,html)){
+    el.setAttribute("data-k",k);
+    var nb=el.querySelector(".dt-body"); if(nb) nb.scrollTop=top;
+  }
+}
+
 function renderAll(){
-  renderStatus(); renderBanner(); renderStats(); renderOverview(); renderCalls(); renderOrders(); renderMessages(); coRender();
+  renderStatus(); renderBanner(); renderStats(); renderOverview(); renderCalls(); renderCustomers(); renderOrders(); renderMessages(); coRender(); imRender();
 }
 
 /* ── Company context (versioned editor) ───────────────────────────────── */
@@ -970,6 +1378,424 @@ window.addEventListener("beforeunload",function(e){
   if(coDirty()){ e.preventDefault(); e.returnValue=""; return ""; }
 });
 
+/* ── Improvements (teacher: grades, changes, tool proposals) ─────────── */
+var IM = { grades:null, impr:null, tools:null, rec:{}, missing:{}, err:{}, loaded:false,
+  gen:0, busy:false, pending:{}, msg:{}, draft:{}, ans:{}, open:{}, gopen:{}, h:{}, asc:[], geo:null, toastT:null, cw:0 };
+var OUT_CLS = {answered:"b-good", message_taken:"b-warn", failed:"b-bad"};
+var OUT_LBL = {answered:"answered", message_taken:"message taken", failed:"failed"};
+var IM_ICON = {prompt:"Aa", context:"?", tool:"fx", schema:"{}"};
+var IM_TYPE = {prompt:"Prompt rule", context:"Company context", tool:"Tool", schema:"Schema"};
+
+function nz(v){ v=Number(v); return isNaN(v)?0:v; }
+function f1(v){ return (Math.round(nz(v)*10)/10).toFixed(1); }
+function avgOf(a,k){ if(!a.length) return null; var s=0; a.forEach(function(x){ s+=nz(k?x[k]:x); }); return s/a.length; }
+function setI(id,html){ var el=$(id); if(IM.h[id]===html) return false; IM.h[id]=html; el.innerHTML=html; return true; }
+function outBadge(o){ return '<span class="badge '+(OUT_CLS[o]||"b-mute")+'">'+esc(OUT_LBL[o]||o||"unknown")+'</span>'; }
+function shortId(s){ s=String(s==null?"":s); return s.length>12?s.slice(0,10)+"…":s; }
+function imToast(text,ok){
+  var t=$("im-toast"); t.textContent=text; t.className="im-toast"+(ok===false?" bad":"");
+  clearTimeout(IM.toastT); IM.toastT=setTimeout(function(){ t.className="im-toast hidden"; },3500);
+}
+function imCallLink(sid){
+  var known=(S.calls||[]).some(function(c){ return c.callSid===sid; });
+  return known ? '<button type="button" class="im-lk" data-cu-call="'+esc(sid)+'" title="Open this call in Live Calls">'+esc(shortId(sid))+'</button>'
+               : '<span class="td-mono" title="'+esc(sid)+'">'+esc(shortId(sid))+'</span>';
+}
+
+/* fetching */
+function imFetch(){
+  if(IM.busy || !configured()) return Promise.resolve();
+  IM.busy=true; var gen=IM.gen;
+  function get(path,key){
+    return api(path).then(function(d){ return {key:key,d:arr(d)}; },function(e){ return {key:key,e:e}; });
+  }
+  return Promise.all([get("/api/grades","grades"),get("/api/improvements","impr"),get("/api/tools","tools")]).then(function(rs){
+    if(gen!==IM.gen) return null;                       // an action happened meanwhile: stale
+    rs.forEach(function(r){
+      if(r.e){ if(r.e.status===404){ IM.missing[r.key]=true; IM.err[r.key]=""; if(!IM[r.key]) IM[r.key]=[]; } else { IM.err[r.key]=coErrText(r.e); } }
+      else { IM.missing[r.key]=false; IM.err[r.key]=""; IM[r.key]=r.d; }
+    });
+    var en=(IM.tools||[]).filter(function(t){ return t.status==="enabled"; });
+    return Promise.all(en.map(function(t){
+      return api("/api/records?tool="+encodeURIComponent(t.name)+"&limit=20").then(function(d){ return [t.name,arr(d)]; },function(){ return [t.name,null]; });
+    })).then(function(pairs){
+      if(gen!==IM.gen) return;
+      pairs.forEach(function(p){ if(p[1]) IM.rec[p[0]]=p[1]; });
+    });
+  }).catch(function(){}).then(function(){ IM.busy=false; IM.loaded=true; imRender(); });
+}
+
+/* owner answers */
+var AN_MAX=600;
+function imAnswer(id){
+  var d=IM.draft[id]||"", a=d.trim(), st=IM.ans[id]||{};
+  if(st.sending || !a || d.length>AN_MAX) return;
+  IM.gen++; IM.ans[id]={sending:true}; imRender();
+  api("/api/improvements/"+encodeURIComponent(id)+"/answer",{method:"POST",body:{answer:a}}).then(function(r){
+    IM.gen++; delete IM.ans[id]; delete IM.draft[id];
+    var v=r&&r.version;
+    IM.impr=arr(IM.impr).map(function(x){
+      if(x._id!==id) return x;
+      var c=JSON.parse(JSON.stringify(x)); c.status="applied"; c.payload=c.payload||{}; c.payload.answer=a; if(v!=null) c.applied_in_config_id="v"+v; return c;
+    });
+    imToast("Added to what the receptionist knows"+(v!=null?" (v"+v+")":""),true);
+    imRender();
+    CO.gen++; CO.busy=false;                      // Company Context re-reads on its next poll
+    IM.busy=false; imFetch();
+  }).catch(function(e){
+    IM.gen++;
+    var unsup=e && e.status===404 && (!e.message || /^(HTTP 404|not found|cannot (post|get))/i.test(e.message));
+    IM.ans[id]=unsup?{unsupported:true}:{err:coErrText(e)};
+    imRender();
+  });
+}
+
+/* tool actions */
+function imAct(name,act){
+  var t=(IM.tools||[]).filter(function(x){ return x.name===name; })[0];
+  if(!t || IM.pending[name]) return;
+  if(act==="decline" && !window.confirm('Decline "'+name+'"? The receptionist will not get this tool.')) return;
+  IM.gen++; IM.pending[name]=act; IM.msg[name]=null; imRender();
+  api("/api/tools/"+encodeURIComponent(name)+"/"+act,{method:"POST",body:{}}).then(function(u){
+    IM.gen++; delete IM.pending[name];
+    if(u && u.name){ IM.tools=IM.tools.map(function(x){ return x.name===name?u:x; }); }
+    imToast({enable:"Enabled ",disable:"Disabled ",decline:"Declined "}[act]+name,true);
+    imRender();
+    if(u && u.status==="enabled"){ api("/api/records?tool="+encodeURIComponent(name)+"&limit=20").then(function(d){ IM.rec[name]=arr(d); imRender(); },function(){}); }
+    IM.busy=false; imFetch();
+  }).catch(function(e){
+    IM.gen++; delete IM.pending[name];
+    IM.msg[name]={ok:false,text:coErrText(e)};
+    imToast("Could not update "+name+": "+coErrText(e),false);
+    imRender();
+  });
+}
+
+/* summary strip */
+function imDelta(cur,prev,lowerBetter,n){
+  if(cur==null||prev==null) return "";
+  var d=cur-prev;
+  if(Math.abs(d)<0.05) return '<div class="im-sub">no change vs previous '+n+'</div>';
+  var better=(d>0)!==!!lowerBetter;
+  return '<div class="im-sub '+(better?"up":"down")+'">'+(d>0?"&#9650; +":"&#9660; ")+f1(d)+' vs previous '+n+'</div>';
+}
+function imStats(){
+  var g=IM.asc, latest=g.slice(-10), prev=g.slice(-20,-10), ok=prev.length>=2;
+  var applied=(IM.impr||[]).filter(function(i){ return i.status==="applied"; }).length;
+  var wait=(IM.tools||[]).filter(function(t){ return t.status==="proposed"; }).length;
+  function tile(v,l,sub,cls){ return '<div class="sc'+(cls||"")+'"><div class="sc-val">'+esc(v)+'</div><div class="sc-lbl">'+l+'</div>'+(sub||"")+'</div>'; }
+  return tile(g.length,"Calls graded","")+
+    tile(g.length?f1(avgOf(g,"overall")):"–","Average score /10",ok?imDelta(avgOf(latest,"overall"),avgOf(prev,"overall"),false,prev.length):"")+
+    tile(g.length?f1(avgOf(g,"frustration")):"–","Avg frustration /10",ok?imDelta(avgOf(latest,"frustration"),avgOf(prev,"frustration"),true,prev.length):"")+
+    tile(applied,"Improvements applied","")+
+    tile(wait,"Tools awaiting approval","",wait?" warn":"");
+}
+
+/* score timeline */
+function imChart(g,W){
+  var H=270,L=32,R=16,T=30,B=32,pw=W-L-R,ph=H-T-B,n=g.length;
+  function X(i){ return L+(n>1?pw*i/(n-1):pw/2); }
+  function Y(v){ return T+ph*(1-Math.max(0,Math.min(10,nz(v)))/10); }
+  IM.geo={L:L,pw:pw,n:n,W:W,H:H,X:X,Y:Y};
+  var s='<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" role="img" aria-labelledby="im-ch-sum" tabindex="0" data-chart>';
+  [0,2,4,6,8,10].forEach(function(v){
+    s+='<line class="ch-grid" x1="'+L+'" x2="'+(W-R)+'" y1="'+Y(v)+'" y2="'+Y(v)+'"/><text class="ch-axis" x="'+(L-7)+'" y="'+(Y(v)+4)+'" text-anchor="end">'+v+'</text>';
+  });
+  var pv=null;
+  g.forEach(function(x,i){
+    var v=x.config_version_id; if(!v||v===pv) return; pv=v;
+    var xx=i===0?L:(X(i-1)+X(i))/2;
+    s+='<line class="ch-ver" x1="'+xx+'" x2="'+xx+'" y1="'+(T-6)+'" y2="'+(H-B)+'"/><text class="ch-vl" x="'+(xx+4)+'" y="'+(T-12)+'">'+esc(v)+'</text>';
+  });
+  var step=Math.max(1,Math.ceil(n/(W<500?6:14)));
+  g.forEach(function(x,i){ if(i%step===0||(i===n-1&&(n-1)%step>=step/2)) s+='<text class="ch-axis" x="'+X(i)+'" y="'+(H-B+17)+'" text-anchor="middle">#'+(i+1)+'</text>'; });
+  function path(k){ return g.map(function(x,i){ return (i?"L":"M")+X(i).toFixed(1)+" "+Y(x[k]).toFixed(1); }).join(" "); }
+  s+='<path class="ch-fr" d="'+path("frustration")+'"/><path class="ch-ov" d="'+path("overall")+'"/>';
+  g.forEach(function(x,i){ s+='<circle class="ch-frd" cx="'+X(i)+'" cy="'+Y(x.frustration)+'" r="3"/>'; });
+  g.forEach(function(x,i){ s+='<circle class="ch-d d-'+esc(x.outcome)+'" cx="'+X(i)+'" cy="'+Y(x.overall)+'" r="5"/>'; });
+  s+='<line class="ch-cur hidden" id="im-cur" y1="'+(T-6)+'" y2="'+(H-B)+'" x1="0" x2="0"/></svg><div class="im-tip hidden" id="im-tip" role="status"></div>';
+  return '<div class="im-chart-wrap">'+s+'</div>';
+}
+function imSummary(g){
+  var f=g[0], l=g[g.length-1], vs=[], pv=null, oc={};
+  g.forEach(function(x){ oc[x.outcome]=(oc[x.outcome]||0)+1; if(x.config_version_id&&x.config_version_id!==pv){ vs.push(x.config_version_id); pv=x.config_version_id; } });
+  var t=g.length+" graded call"+(g.length===1?"":"s")+", "+fmtDT(f.created_at)+" to "+fmtDT(l.created_at)+". Overall score went from "+f1(f.overall)+" to "+f1(l.overall)+" out of 10; frustration went from "+f1(f.frustration)+" to "+f1(l.frustration)+". Outcomes: "+
+    Object.keys(oc).map(function(k){ return oc[k]+" "+(OUT_LBL[k]||k); }).join(", ")+".";
+  if(vs.length>1) t+=" Config versions in effect: "+vs.join(", ")+".";
+  return t;
+}
+function imTipShow(i){
+  var g=IM.asc, geo=IM.geo, tip=$("im-tip"), cur=$("im-cur"), svg=$("im-chart").querySelector("svg");
+  if(!tip||!svg||!geo||i<0||i>=g.length){ if(tip) tip.classList.add("hidden"); if(cur) cur.classList.add("hidden"); return; }
+  var x=g[i], k=svg.getBoundingClientRect().width/geo.W;
+  cur.setAttribute("x1",geo.X(i)); cur.setAttribute("x2",geo.X(i)); cur.classList.remove("hidden");
+  tip.innerHTML='<strong>'+esc(shortId(x.call_id))+'</strong> <span class="mono">#'+(i+1)+(x.config_version_id?' · '+esc(x.config_version_id):'')+'</span><br>Overall '+f1(x.overall)+' · Frustration '+f1(x.frustration)+'<br>'+esc(OUT_LBL[x.outcome]||x.outcome)+' · <span class="mono">'+esc(fmtDT(x.created_at))+'</span>';
+  tip.classList.remove("hidden");
+  var w=tip.offsetWidth, h=tip.offsetHeight, cw=$("im-chart").clientWidth;
+  var left=Math.max(2,Math.min(cw-w-2,geo.X(i)*k-w/2)), top=geo.Y(x.overall)*k-h-12;
+  if(top<2) top=geo.Y(x.overall)*k+14;
+  tip.style.left=left+"px"; tip.style.top=top+"px";
+  IM.hov=i;
+}
+function imIdx(e){
+  var geo=IM.geo, svg=$("im-chart").querySelector("svg"); if(!geo||!svg) return -1;
+  var r=svg.getBoundingClientRect(), x=(e.clientX-r.left)*geo.W/r.width-geo.L;
+  if(geo.n<2) return 0;
+  return Math.max(0,Math.min(geo.n-1,Math.round(x/(geo.pw/(geo.n-1)))));
+}
+(function(){
+  var c=$("im-chart");
+  c.addEventListener("pointermove",function(e){ if(e.target.closest&&e.target.closest("svg")) imTipShow(imIdx(e)); });
+  c.addEventListener("pointerdown",function(e){ if(e.target.closest&&e.target.closest("svg")) imTipShow(imIdx(e)); });
+  c.addEventListener("pointerleave",function(e){ if(e.pointerType==="mouse") imTipShow(-1); });
+  c.addEventListener("keydown",function(e){
+    var h=IM.hov==null?-1:IM.hov;
+    if(e.key==="ArrowRight"){ e.preventDefault(); imTipShow(Math.min(IM.asc.length-1,h+1)); }
+    else if(e.key==="ArrowLeft"){ e.preventDefault(); imTipShow(Math.max(0,h-1)); }
+    else if(e.key==="Escape"){ imTipShow(-1); }
+  });
+})();
+
+/* tool proposals */
+function toolBadge(s){
+  var cls=s==="proposed"?"b-warn":s==="enabled"?"b-good":"b-mute";
+  return '<span class="badge '+cls+'">'+esc(s)+'</span>';
+}
+function imOpen(k,def){ return IM.open.hasOwnProperty(k)?IM.open[k]:def; }
+function jsonBlock(label,v){ return '<div><div class="fl">'+label+'</div><pre class="im-pre">'+esc(pj(v)||"—")+'</pre></div>'; }
+/* recipe -> plain English */
+var RC_WRITE={schedule_appointment:1,set_order_type:1,create_order:1};
+function xw(e,d){
+  d=d||0;
+  if(d>4) return pj(e).replace(/\s+/g," ");
+  if(e===null||e===undefined) return "nothing";
+  if(typeof e==="string") return '"'+e+'"';
+  if(typeof e==="number"||typeof e==="boolean") return String(e);
+  if(typeof e!=="object"||Array.isArray(e)) return JSON.stringify(e);
+  if(typeof e.ref==="string") return e.ref;
+  if(typeof e.op==="string"){
+    var a=arr(e.args), w=function(i){ return xw(a[i],d+1); }, op=e.op;
+    var bin={add:"plus",sub:"minus",mul:"times",div:"divided by",gt:"is more than",gte:"is at least",lt:"is less than",lte:"is at most",eq:"is",neq:"is not",and:"and",or:"or"};
+    if(bin[op] && a.length===2){ var inner=(a[0]&&a[0].op)||(a[1]&&a[1].op); var t=w(0)+" "+bin[op]+" "+w(1); return inner&&d>0?"("+t+")":t; }
+    if(op==="not" && a.length===1) return "not "+w(0);
+    if(op==="if" && a.length===3) return "if "+w(0)+" then "+w(1)+" otherwise "+w(2);
+    if(op==="get" && a.length===2) return (typeof a[1]==="string"?a[1]:w(1))+" from "+w(0);
+    if(op==="today") return "today's date";
+    if(op==="addDays" && a.length===2) return w(1)+" days after "+w(0);
+    if(op==="concat" && a.length) return a.map(function(x){ return xw(x,d+1); }).join(" joined with ");
+    if(op==="round" && a.length===1) return w(0)+" rounded";
+    if(op==="min"||op==="max") return "the "+(op==="min"?"smaller":"larger")+" of "+a.map(function(x){ return xw(x,d+1); }).join(" and ");
+    return op+"("+a.map(function(x){ return xw(x,d+1); }).join(", ")+")";
+  }
+  return JSON.stringify(e);
+}
+function rcKeys(o){ return o&&typeof o==="object"&&!Array.isArray(o)?Object.keys(o):[]; }
+function rcList(list){ return list.length?list.join(", "):"nothing"; }
+function recipeSteps(r){
+  var li=arr(r.steps).map(function(s){
+    s=s||{};
+    switch(s.do){
+      case "require": return "Stop unless "+esc(xw(s.when))+(s["else"]!=null?" (otherwise says: <em>"+esc(String(s["else"]))+"</em>)":"");
+      case "compute": return "Work out <code>"+esc(s.as)+"</code> = "+esc(xw(s.expr));
+      case "save": return "Save a record with "+esc(rcList(rcKeys(s.fields)));
+      case "lookup": return "Look up this caller's saved records"+(s.as?" as <code>"+esc(s.as)+"</code>":"");
+      case "call": return "Use the built-in <code>"+esc(s.tool)+"</code> with "+esc(rcList(rcKeys(s.args)))+(RC_WRITE[s.tool]?'<span class="rc-wr">changes data</span>':"")+(s.as?" (call the result <code>"+esc(s.as)+"</code>)":"");
+      default: return esc(JSON.stringify(s));
+    }
+  }).map(function(x){ return "<li>"+x+"</li>"; });
+  li.push('<li class="rc-end">Then reply with '+esc(rcList(rcKeys(r.response)))+'</li>');
+  return '<ol class="rc-list">'+li.join("")+'</ol>';
+}
+function recipeTags(t){
+  var r=t.recipe, tags={};
+  if(r&&typeof r==="object"){
+    arr(r.steps).forEach(function(s){
+      if(!s) return;
+      if(s.do==="save") tags.save=1;
+      else if(s.do==="lookup") tags.read=1;
+      else if(s.do==="call"){ if(s.tool==="schedule_appointment") tags.cal=1; if(s.tool==="set_order_type"||s.tool==="create_order") tags.ord=1; }
+    });
+  } else { if(t.write) tags.save=1; else tags.read=1; }
+  var out=[]; if(tags.save) out.push("Saves records"); if(tags.read) out.push("Reads records"); if(tags.cal) out.push("Uses calendar"); if(tags.ord) out.push("Changes orders");
+  return out;
+}
+function toolCard(t){
+  var n=t.name, pend=IM.pending[n], st=t.status, mk=t.mockup||{}, params=arr(t.params), ev=arr(t.evidence), msg=IM.msg[n];
+  var enabled=st==="enabled", teacher=enabled&&t.enabledBy==="teacher", owner=enabled&&t.enabledBy==="owner";
+  var h='<div class="card imt" data-tool="'+esc(n)+'"><div class="tw-hdr"><div style="min-width:0"><div class="imt-name">'+esc(n)+'</div>'+
+    '<div class="imt-meta"><span>'+(t.write?"write tool":"read tool")+'</span><span>requested '+esc(nz(t.requestCount))+' time'+(nz(t.requestCount)===1?"":"s")+'</span>'+(t.updatedAt?'<span>updated '+esc(relTime(t.updatedAt))+'</span>':'')+'</div></div>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+(teacher?'<span class="badge b-teacher">Auto-enabled by teacher</span>':'')+(owner?'<span class="badge b-line">Enabled by you</span>':'')+toolBadge(st)+'</div></div><div class="card-body">';
+  if(teacher) h+='<div class="notice"><span>Created because the call scored below the threshold; disable it if you don\'t want it.</span></div>';
+  h+='<div class="imt-why">'+esc(val(t.why,t.description||""))+'</div>';
+  if(t.description && t.why) h+='<div class="hint" style="margin:0">'+esc(t.description)+'</div>';
+  h+='<details class="im-d" data-k="p:'+esc(n)+'"'+(imOpen("p:"+n,st==="proposed")?" open":"")+'><summary>Parameters ('+params.length+')</summary><div class="im-d-body"><div class="tscroll"><table><thead><tr><th>Name</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>'+
+    (params.map(function(p){ return '<tr><td class="td-mono nowrap">'+esc(p.name)+'</td><td class="td-mono">'+esc(p.type)+'</td><td>'+(p.required?'<span class="badge b-line">required</span>':'<span class="td-mono">optional</span>')+'</td><td>'+esc(p.description)+'</td></tr>'; }).join("")||'<tr><td colspan="4" class="td-mono">No parameters.</td></tr>')+'</tbody></table></div></div></details>';
+  var hasR=t.recipe&&typeof t.recipe==="object";
+  h+='<div class="imt-tags">'+(hasR?(t.recipeVerified?'<span class="badge b-good">Tested by the teacher before enabling</span>':''):'<span class="tag">Simple tool: saves or looks up fields</span>')+recipeTags(t).map(function(x){ return '<span class="tag">'+x+'</span>'; }).join("")+'</div>';
+  if(hasR) h+='<details class="im-d" data-k="h:'+esc(n)+'"'+(imOpen("h:"+n,false)?" open":"")+'><summary>How it works</summary><div class="im-d-body">'+recipeSteps(t.recipe)+'</div></details>';
+  h+='<details class="im-d" data-k="m:'+esc(n)+'"'+(imOpen("m:"+n,st==="proposed")?" open":"")+'><summary>Mockup: how it would sound</summary><div class="im-d-body"><div class="mk">'+
+    arr(mk.sampleDialogue).map(function(m){
+      var r=m.role==="agent"?"agent":m.role==="tool"?"tool":"caller";
+      return '<div class="mk-m mk-'+r+'"><div class="who">'+(r==="tool"?"&#9881; tool":r==="agent"?esc(BRAND)+" agent":"caller")+'</div><div class="bubble">'+esc(m.text)+'</div></div>';
+    }).join("")+'</div><div class="imj">'+jsonBlock("Example arguments",mk.exampleArgs)+jsonBlock("Example result",mk.exampleResult)+'</div></div></details>';
+  if(ev.length) h+='<div>'+ev.map(function(e){ return '<div class="im-q">&ldquo;'+esc(e.quote)+'&rdquo;<small>turn '+esc(e.turn)+'</small></div>'; }).join("")+
+    (arr(t.sourceCallSids).length?'<div class="imt-meta" style="margin-top:6px">from '+arr(t.sourceCallSids).map(imCallLink).join(" ")+'</div>':'')+'</div>';
+  function b(act,label,cls){ return '<button type="button" class="btn '+cls+'" data-im-act="'+act+'" data-name="'+esc(n)+'"'+(pend?' disabled':'')+'>'+(pend===act?"Working…":label)+'</button>'; }
+  h+='<div class="im-acts">';
+  if(st==="proposed") h+=b("enable","Approve & enable","")+b("decline","Decline","ghost");
+  else if(st==="enabled") h+=b("disable","Disable",teacher?"danger":"ghost");
+  else h+=b("enable","Enable","");
+  h+='<span class="co-msg '+(msg&&!msg.ok?"bad":"")+'" role="status" aria-live="polite">'+(msg?esc(msg.text):"")+'</span></div>';
+  if(enabled){
+    var rs=IM.rec[n];
+    h+='<details class="im-d" data-k="r:'+esc(n)+'"'+(imOpen("r:"+n,false)?" open":"")+'><summary>Records saved ('+(rs?rs.length:"…")+')</summary><div class="im-d-body">'+
+      (rs&&rs.length?rs.map(function(r){
+        return '<div class="im-rec"><div class="td-mono">'+esc(fmtDT(r.createdAt))+(r.phone?' · '+esc(r.phone):'')+(r.callSid?' · '+esc(shortId(r.callSid)):'')+'</div><dl>'+
+          Object.keys(r.fields||{}).map(function(k){ var v=r.fields[k]; return '<dt>'+esc(k)+'</dt><dd>'+esc(typeof v==="object"?JSON.stringify(v):v)+'</dd>'; }).join("")+'</dl></div>';
+      }).join(""):'<div class="cu-none">'+(rs?"Nothing saved yet.":"Loading…")+'</div>')+'</div></details>';
+  }
+  return h+'</div></div>';
+}
+
+/* teacher changes */
+function answerForm(id){
+  var st=IM.ans[id]||{}, d=IM.draft[id]||"", n=d.length, bad=n>AN_MAX, sending=!!st.sending;
+  if(st.unsupported) return '<div class="im-form"><div class="err" role="alert">Answering from the dashboard is not available on this server yet. Use:</div><div class="im-ans"><code>npm run answer '+esc(id)+' &lt;your answer&gt;</code><button type="button" class="btn ghost sm" data-im-copy="'+esc(id)+'">Copy id</button></div></div>';
+  return '<div class="im-form" data-ans="'+esc(id)+'"><label for="ans-'+esc(id)+'">Your answer</label>'+
+    '<textarea class="fi" id="ans-'+esc(id)+'" data-im-draft="'+esc(id)+'" maxlength="'+(AN_MAX+200)+'" rows="3" placeholder="Type the answer the receptionist should give callers"'+(sending?' readonly':'')+'>'+esc(d)+'</textarea>'+
+    '<div class="im-form-bar"><button type="button" class="btn" data-im-send="'+esc(id)+'"'+(sending||!d.trim()||bad?' disabled':'')+'>'+(sending?"Sending…":"Send answer")+'</button>'+
+    '<span class="cnt'+(bad?' over':'')+'" data-cnt>'+n+' / '+AN_MAX+'</span></div>'+
+    (st.err?'<div class="err" role="alert">'+esc(st.err)+'</div>':'')+'</div>';
+}
+function changeItem(i,pinned){
+  var p=i.payload||{}, st=i.status, ty=i.type, txt="";
+  if(ty==="context"){
+    txt='<div class="im-tx"><strong>Question:</strong> '+esc(p.question||"")+'</div>'+(p.answer?'<div class="im-tx"><strong>Answer:</strong> '+esc(p.answer)+'</div>':'');
+  } else if(ty==="tool"){
+    txt='<div class="im-tx">Tool <code>'+esc(p.tool_name||"")+'</code>'+(p.text?' — '+esc(p.text):'')+'</div>';
+  } else {
+    txt='<div class="im-tx">'+(p.text?esc(p.text):'<span class="td-mono">'+esc(pj(p))+'</span>')+'</div>';
+  }
+  var stc=st==="applied"?"b-good":st==="proposed"?"b-warn":st==="rejected"?"b-bad":"b-mute";
+  var h='<div class="im-ch'+(pinned?' pin':'')+'"><div class="im-ic" aria-hidden="true">'+esc(IM_ICON[ty]||"•")+'</div><div class="im-cm"><div class="im-ct">'+
+    '<span class="badge b-teacher">'+esc(IM_TYPE[ty]||ty)+'</span><span class="badge '+stc+'">'+esc(st==="rolled_back"?"rolled back":st)+'</span>'+
+    (p.op?'<span class="badge b-mute">'+esc(p.op)+(p.rule_id?' '+esc(p.rule_id):'')+'</span>':'')+
+    (i.applied_in_config_id?'<span class="badge b-line">'+esc(i.applied_in_config_id)+'</span>':'')+
+    '<span class="tw-meta" title="'+esc(fmtDT(i.created_at))+'">'+esc(relTime(i.created_at))+'</span></div>'+txt+
+    (i.reason?'<div class="im-rs">'+esc(i.reason)+'</div>':'')+
+    (i.rejected_reason?'<div class="im-rs bad">Rejected: '+esc(i.rejected_reason)+'</div>':'')+
+    (i.rolled_back_reason?'<div class="im-rs bad">Rolled back: '+esc(i.rolled_back_reason)+'</div>':'');
+  if(pinned) h+=answerForm(i._id);
+  var src=arr(i.source_call_ids), tr=arr(i.evidence_turns);
+  if(src.length||tr.length) h+='<div class="imt-meta">'+(src.length?'<span>from call '+src.map(imCallLink).join(" ")+'</span>':'')+(tr.length?'<span>turn'+(tr.length>1?'s':'')+' '+esc(tr.join(", "))+'</span>':'')+'</div>';
+  return h+'</div></div>';
+}
+
+/* grades */
+function bar(v,fr){ return '<div class="mb'+(fr?' fr':'')+'" title="'+f1(v)+' / 10"><s><i style="width:'+Math.max(0,Math.min(100,nz(v)*10))+'%"></i></s><b>'+f1(v)+'</b></div>'; }
+function gradesTable(){
+  var rows=IM.asc.slice().reverse().slice(0,25), cols=8;
+  return '<div class="table-wrap"><div class="tscroll"><table class="gr"><thead><tr><th>Time</th><th>Call</th><th>Outcome</th><th>Overall</th><th>Accuracy</th><th>Tool use</th><th>Completion</th><th>Tone</th><th>Brevity</th><th>Frustration</th></tr></thead><tbody>'+
+    rows.map(function(g){
+      var o=!!IM.gopen[g._id], sc=g.scores||{};
+      var r='<tr class="gr-row'+(o?' gr-open':'')+'" tabindex="0" data-gid="'+esc(g._id)+'" aria-expanded="'+o+'"><td class="td-mono nowrap">'+esc(fmtDT(g.created_at))+'</td><td class="td-mono nowrap">'+esc(shortId(g.call_id))+'</td><td>'+outBadge(g.outcome)+'</td><td>'+bar(g.overall)+'</td>'+
+        [sc.accuracy,sc.tool_use,sc.task_completion,sc.tone,sc.brevity].map(function(v){ return '<td>'+bar(v)+'</td>'; }).join("")+'<td>'+bar(g.frustration,true)+'</td></tr>';
+      if(o){
+        var is=arr(g.issues);
+        r+='<tr class="gr-x"><td colspan="10"><div class="im-tx">'+esc(g.rationale||"No rationale recorded.")+'</div><div class="imt-meta" style="margin-top:6px"><span>call '+imCallLink(g.call_id)+'</span>'+(g.config_version_id?'<span>config '+esc(g.config_version_id)+'</span>':'')+(g.model?'<span>graded by '+esc(g.model)+'</span>':'')+'</div>'+
+          '<div class="gr-iss">'+(is.length?is.map(function(x){ return '<div class="im-q"><span class="badge b-mute">'+esc(x.type)+'</span> &ldquo;'+esc(x.quote)+'&rdquo;<small>turn '+esc(x.turn)+'</small><div class="im-rs">'+esc(x.explanation)+'</div></div>'; }).join(""):'<div class="cu-none">No issues flagged.</div>')+'</div></td></tr>';
+      }
+      return r;
+    }).join("")+'</tbody></table></div></div>';
+}
+
+function imNoteMissing(what){ return '<div class="im-note">'+what+' are not available on this server yet. Update and restart the backend, then check back.</div>'; }
+function imRender(){
+  if(S.tab!=="improvements") return;
+  var all3=IM.missing.grades&&IM.missing.impr&&IM.missing.tools;
+  var msg="";
+  if(!configured()) msg=setupEmpty("Connect to a backend, or try demo data, to see what the teaching agent has been doing.");
+  else if(!IM.loaded) msg='<div class="empty"><p>Loading…</p></div>';
+  else if(all3) msg='<div class="empty"><h3>The teacher is not available on this server yet</h3><p>The backend you are connected to does not expose grades, improvements or tool proposals. Update and restart the backend, then check back.</p></div>';
+  setI("im-status",msg);
+  var show=configured() && IM.loaded && !all3;
+  $("im-main").classList.toggle("hidden",!show);
+  if(!show) return;
+  var errs=["grades","impr","tools"].filter(function(k){ return IM.err[k]; });
+  setI("im-err",errs.length?'<div class="banner">Could not refresh '+errs.map(function(k){ return {grades:"grades",impr:"improvements",tools:"tool proposals"}[k]; }).join(", ")+': '+esc(IM.err[errs[0]])+'. Retrying every 3 seconds.</div>':"");
+  IM.asc=(IM.grades||[]).slice().sort(function(a,b){ return (tms(a.created_at)||0)-(tms(b.created_at)||0); });
+  var g=IM.asc;
+  setI("im-stats",imStats());
+  var emptyG='<div class="empty"><h3>No calls graded yet</h3><p>No calls graded yet. Run the teacher: <code>cd teacher &amp;&amp; npm run watch</code></p></div>';
+  /* chart */
+  var cw=Math.max(260,($("im-chart").clientWidth||624)-24);
+  if(!g.length){
+    setI("im-chart", IM.missing.grades?imNoteMissing("Grades"):emptyG); setI("im-legend",""); setI("im-ch-sum","");
+  } else {
+    var key=cw+"|"+sig(g.map(function(x){ return [x._id,x.overall,x.frustration,x.outcome,x.config_version_id]; }));
+    if(IM.h["im-chartkey"]!==key){ IM.h["im-chartkey"]=key; IM.h["im-chart"]=null; var hv=IM.hov; setI("im-chart",imChart(g,cw)); }
+    setI("im-legend",'<span><i class="lg-l"></i>Overall score</span><span><i class="lg-l fr"></i>Frustration</span><span><i class="lg-d" style="background:var(--good)"></i>answered</span><span><i class="lg-d" style="background:var(--warn)"></i>message taken</span><span><i class="lg-d" style="background:var(--bad)"></i>failed</span><span><i class="lg-l vr"></i>config version change</span>');
+    setI("im-ch-sum",imSummary(g));
+  }
+  /* tools */
+  var tools=(IM.tools||[]).slice().sort(function(a,b){
+    var o={proposed:0,enabled:1,disabled:2,declined:3};
+    return (o[a.status]-o[b.status])||((tms(b.updatedAt)||0)-(tms(a.updatedAt)||0));
+  });
+  var th=IM.missing.tools?imNoteMissing("Tool proposals"):tools.length?tools.map(toolCard).join(""):'<div class="empty"><p>No tool proposals yet. When a caller asks for something the receptionist can\'t do, the teacher will propose one here.</p></div>';
+  var focus=document.activeElement, fk=focus&&focus.closest&&focus.closest("[data-tool]")?focus.closest("[data-tool]").getAttribute("data-tool")+"|"+(focus.getAttribute("data-im-act")||""):null;
+  if(setI("im-tools",th) && fk){ var parts=fk.split("|"), sel='[data-tool="'+parts[0]+'"] [data-im-act="'+parts[1]+'"]'; var re=null; try{ re=$("im-tools").querySelector(sel); }catch(e){} if(re&&!re.disabled) re.focus(); }
+  /* changes */
+  var imps=(IM.impr||[]).slice().sort(function(a,b){ return (tms(b.created_at)||0)-(tms(a.created_at)||0); });
+  var pins=imps.filter(function(i){ return i.type==="context"&&i.status==="proposed"; });
+  var rest=imps.filter(function(i){ return pins.indexOf(i)<0; });
+  var ch=IM.missing.impr?imNoteMissing("Teacher changes"):!imps.length?'<div class="empty"><p>The teacher has not changed anything yet.</p></div>':
+    '<div class="im-tl">'+pins.map(function(i){ return changeItem(i,true); }).join("")+rest.slice(0,40).map(function(i){ return changeItem(i,false); }).join("")+'</div>';
+  var af=document.activeElement, afid=af&&af.getAttribute&&af.getAttribute("data-im-draft"), ss=afid?af.selectionStart:0, se=afid?af.selectionEnd:0;
+  if(setI("im-changes",ch) && afid){ var nt=$("im-changes").querySelector('textarea[data-im-draft="'+afid.replace(/"/g,"")+'"]'); if(nt && !nt.readOnly){ nt.focus(); try{ nt.setSelectionRange(ss,se); }catch(x){} } }
+  /* grades */
+  var sc=$("im-grades").querySelector(".tscroll"), sl=sc?sc.scrollLeft:0;
+  var gh=!g.length?(IM.missing.grades?imNoteMissing("Grades"):emptyG):gradesTable();
+  if(setI("im-grades",gh)){ sc=$("im-grades").querySelector(".tscroll"); if(sc) sc.scrollLeft=sl; }
+  $("im-grades-meta").textContent=g.length>25?"latest 25 of "+g.length:g.length+" total";
+}
+function imReset(){
+  IM.gen++; IM.grades=IM.impr=IM.tools=null; IM.rec={}; IM.missing={}; IM.err={}; IM.loaded=false; IM.busy=false; IM.pending={}; IM.msg={}; IM.draft={}; IM.ans={}; IM.h={}; IM.asc=[];
+}
+$("panel-improvements").addEventListener("click",function(e){
+  var sb=e.target.closest("[data-im-send]");
+  if(sb){ imAnswer(sb.getAttribute("data-im-send")); return; }
+  var a=e.target.closest("[data-im-act]");
+  if(a){ imAct(a.getAttribute("data-name"),a.getAttribute("data-im-act")); return; }
+  var c=e.target.closest("[data-im-copy]");
+  if(c){
+    var id=c.getAttribute("data-im-copy");
+    var done=function(){ imToast("Copied id "+id,true); };
+    var fb=function(){ var ta=document.createElement("textarea"); ta.value=id; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.select(); try{ document.execCommand("copy"); done(); }catch(x){ imToast("Copy failed: "+id,false); } document.body.removeChild(ta); };
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(id).then(done,fb); else fb();
+    return;
+  }
+  var r=e.target.closest("tr[data-gid]");
+  if(r){ var id2=r.getAttribute("data-gid"); IM.gopen[id2]=!IM.gopen[id2]; imRender(); var nr=$("im-grades").querySelector('tr[data-gid="'+id2+'"]'); if(nr) nr.focus(); }
+});
+$("panel-improvements").addEventListener("input",function(e){
+  var t=e.target, id=t.getAttribute&&t.getAttribute("data-im-draft"); if(!id) return;
+  IM.draft[id]=t.value;
+  var f=t.closest(".im-form"), n=t.value.length, bad=n>AN_MAX;
+  var c=f.querySelector("[data-cnt]"); c.textContent=n+" / "+AN_MAX; c.classList.toggle("over",bad);
+  f.querySelector("[data-im-send]").disabled=!t.value.trim()||bad||!!(IM.ans[id]&&IM.ans[id].sending);
+  if(IM.ans[id]&&IM.ans[id].err){ delete IM.ans[id]; var er=f.querySelector(".err"); if(er) er.remove(); IM.h["im-changes"]=null; }
+});
+$("panel-improvements").addEventListener("keydown",function(e){
+  var r=e.target.closest&&e.target.closest("tr[data-gid]");
+  if(r && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); r.click(); }
+});
+$("panel-improvements").addEventListener("toggle",function(e){
+  var d=e.target; if(d.classList&&d.classList.contains("im-d")){ IM.open[d.getAttribute("data-k")]=d.open; }
+},true);
+var imRz=null;
+window.addEventListener("resize",function(){ cancelAnimationFrame(imRz); imRz=requestAnimationFrame(imRender); });
+
 /* ── polling ──────────────────────────────────────────────────────────── */
 var busy=false, timer=null;
 function arr(x){ return Array.isArray(x)?x:[]; }
@@ -984,17 +1810,21 @@ function refresh(){
       api("/api/stats").catch(function(){return S.stats;}),
       api("/api/calls?limit=50").catch(function(){return S.calls;}),
       api("/api/orders").catch(function(){return S.orders;}),
-      api("/api/messages").catch(function(){return S.messages;})
+      api("/api/messages").catch(function(){return S.messages;}),
+      (S.tab==="customers"||S.customers===null) ? api("/api/customers").then(function(d){ S.custMissing=false; return arr(d); },function(e){
+        if(e && e.status===404){ S.custMissing=true; return []; }
+        return S.customers;
+      }) : S.customers
     ]);
   }).then(function(r){
-    S.stats=r[0]; S.calls=r[1]?arr(r[1]):S.calls; S.orders=r[2]?arr(r[2]):S.orders; S.messages=r[3]?arr(r[3]):S.messages;
+    S.stats=r[0]; S.calls=r[1]?arr(r[1]):S.calls; S.orders=r[2]?arr(r[2]):S.orders; S.messages=r[3]?arr(r[3]):S.messages; S.customers=r[4];
   }).catch(function(){ S.health=false; }).then(function(){ busy=false; renderAll(); });
 }
 function schedule(){
   clearInterval(timer);
-  timer=setInterval(function(){ if(!document.hidden){ refresh(); if(S.tab==="company") coFetch(); } },POLL_MS);
+  timer=setInterval(function(){ if(!document.hidden){ refresh(); if(S.tab==="company") coFetch(); if(S.tab==="improvements") imFetch(); } },POLL_MS);
 }
-document.addEventListener("visibilitychange",function(){ if(!document.hidden){ refresh(); if(S.tab==="company") coFetch(); } });
+document.addEventListener("visibilitychange",function(){ if(!document.hidden){ refresh(); if(S.tab==="company") coFetch(); if(S.tab==="improvements") imFetch(); } });
 
 /* ── UI wiring ────────────────────────────────────────────────────────── */
 function setTab(t){
@@ -1002,7 +1832,9 @@ function setTab(t){
   document.querySelectorAll(".tab").forEach(function(b){ var on=b.getAttribute("data-tab")===t; b.classList.toggle("active",on); b.setAttribute("aria-selected",on); });
   document.querySelectorAll(".panel").forEach(function(p){ p.classList.toggle("active",p.id==="panel-"+t); });
   if(t==="calls") renderCalls();
+  if(t==="customers"){ renderCustomers(); refresh(); }
   if(t==="company"){ coRender(); coFetch(); }
+  if(t==="improvements"){ imRender(); imFetch(); }
 }
 $("tabs").addEventListener("click",function(e){ var b=e.target.closest(".tab"); if(b) setTab(b.getAttribute("data-tab")); });
 
@@ -1011,7 +1843,7 @@ function openSettings(){
   $("settings-ov").classList.remove("hidden"); $("in-api").focus();
 }
 function closeSettings(){ $("settings-ov").classList.add("hidden"); }
-function resetData(){ S.health=null; S.stats=S.calls=S.orders=S.messages=null; S.sel=null; S.sig={}; coReset(); ["call-list","detail","orders-wrap","messages-wrap","overview-recent","stats"].forEach(function(i){$(i).innerHTML="";}); }
+function resetData(){ S.health=null; S.stats=S.calls=S.orders=S.messages=S.customers=null; S.custMissing=false; S.csel=null; S.sel=null; S.sig={}; coReset(); imReset(); ["call-list","detail","cu-list","cu-detail","cu-status","orders-wrap","messages-wrap","overview-recent","stats"].forEach(function(i){$(i).innerHTML="";}); }
 function applySettings(){
   S.api=$("in-api").value.trim().replace(/\/+$/,""); S.token=$("in-token").value.trim(); S.demo=$("in-demo").checked;
   sset("hanger_api",S.api); sset("hanger_token",S.token); sset("hanger_demo",S.demo?"1":"0");
@@ -1038,8 +1870,19 @@ document.addEventListener("click",function(e){
   if(t.closest("[data-open-settings]")){ openSettings(); return; }
   if(t.closest("[data-demo]")){ S.demo=true; sset("hanger_demo","1"); resetData(); renderAll(); refresh(); return; }
   if(t.closest("[data-back]")){ S.sel=null; S.sig["call-list"]=null; S.sig.detail=null; $("detail").removeAttribute("data-sid"); renderCalls(); return; }
+  if(t.closest("[data-cback]")){ S.csel=null; S.sig["cu-list"]=null; S.sig["cu-detail"]=null; renderCustomers(); return; }
+  var cc=t.closest("[data-cu-call]");
+  if(cc){ S.sel=cc.getAttribute("data-cu-call"); S.sig.detail=null; S.sig["call-list"]=null; $("detail").removeAttribute("data-sid"); setTab("calls"); window.scrollTo(0,0); return; }
+  var cr=t.closest("tr[data-cu]");
+  if(cr){ S.csel=cr.getAttribute("data-cu"); S.sig["cu-list"]=null; S.sig["cu-detail"]=null; renderCustomers(); if(window.matchMedia("(max-width:760px)").matches) window.scrollTo(0,0); return; }
   var ci=t.closest(".call-item");
   if(ci){ S.sel=ci.getAttribute("data-sid"); S.sig.detail=null; S.sig["call-list"]=null; renderCalls(); if(window.matchMedia("(max-width:760px)").matches) window.scrollTo(0,0); }
+});
+
+$("cu-q").addEventListener("input",function(){ S.cq=this.value; renderCustomers(); });
+$("cu-list").addEventListener("keydown",function(e){
+  var r=e.target.closest&&e.target.closest("tr[data-cu]");
+  if(r && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); r.click(); }
 });
 
 renderAll();

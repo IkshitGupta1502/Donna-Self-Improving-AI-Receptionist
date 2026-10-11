@@ -54,15 +54,22 @@ export function handleMediaStream(ws: WebSocket): void {
         if (startedRecorder) {
           recorder = startedRecorder;
           if (closed) void startedRecorder.end();
-          else await startedRecorder.start();
+          else void startedRecorder.start().catch((err) => console.error(`[${callSid}] recorder start failed:`, err));
         }
 
         const handle = await openGeminiSession({
           callerPhone,
+          callSid: callSid ?? undefined,
           recorder: recorder ?? undefined,
           onAudio: (base64Mulaw: string) => {
             if (ws.readyState === WebSocket.OPEN && streamSid) {
               ws.send(JSON.stringify({ event: "media", streamSid, media: { payload: base64Mulaw } }));
+            }
+          },
+          onInterrupted: () => {
+            // Caller spoke over the agent: tell Twilio to drop any audio it has queued
+            if (ws.readyState === WebSocket.OPEN && streamSid) {
+              ws.send(JSON.stringify({ event: "clear", streamSid }));
             }
           },
           onError: (err) => {

@@ -2,7 +2,7 @@ import "dotenv/config";
 import { MongoClient, type Db } from "mongodb";
 import { toConfig } from "./bridge.js";
 import type {
-  AppointmentDoc, BridgeCall, BridgeConfig, BridgeConfigState, ConfigVersionDoc, GradeDoc, ImprovementDoc, WorkspaceDoc,
+  AppointmentDoc, BridgeCall, BridgeConfig, BridgeConfigState, ConfigVersionDoc, GradeDoc, ImprovementDoc, ToolProposalDoc, WorkspaceDoc,
 } from "./types.js";
 
 let client: MongoClient | null = null;
@@ -34,9 +34,10 @@ export async function cols() {
     // Owned by the teacher.
     grades: db.collection<GradeDoc>("grades"),
     improvements: db.collection<ImprovementDoc>("improvements"),
+    toolProposals: db.collection<ToolProposalDoc>("tool_proposals"), // read by the bridge/dashboard; the owner enables
     // Calendar integration: settings and the gateway's bookings.
     workspaces: db.collection<WorkspaceDoc>("workspaces"),
-    appointments: db.collection<AppointmentDoc>("appointments"),
+    appointments: db.collection<AppointmentDoc>("calendar_bookings"), // not "appointments": the bridge owns that name
   };
 }
 

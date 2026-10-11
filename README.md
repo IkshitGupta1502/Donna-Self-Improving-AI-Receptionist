@@ -1,7 +1,7 @@
 # Snoopy Voice Receptionist
 
 Customers call a Twilio number and talk to a Gemini Live voice agent for a dry cleaner
-("Charlie's Cleaners"). The agent looks up orders and prices and takes messages or order
+("CJ's Cleaning Company"). The agent looks up orders and prices and takes messages or order
 notes through tools backed by MongoDB Atlas. A teaching agent (planned) grades each call
 and improves the voice agent over time. See [docs/PLAN.md](docs/PLAN.md).
 
@@ -42,7 +42,12 @@ and prices. With it, the same data is seeded into Atlas on first connect.
 
 ## Tools
 
-`get_order`, `lookup_price`, `list_prices`, `add_order_note`, `take_message`
+`get_order`, `lookup_price`, `list_prices`, `add_order_note`, `take_message`, `update_customer_profile`,
+`quote_turnaround`, `create_order`*, `set_order_type`, `cancel_order`*, `schedule_appointment`*
+(*require `confirmed=true` after the agent reads the details back). Turnaround is 3 days regular,
+1 day expedited, skipping closed days (Sunday; `CLOSED_DAYS` in `store.ts`). Cancel works only
+while an order is Received or Sorting. Appointments (pickup, delivery, dropoff) live in the
+`appointments` collection.
 
 ## Dashboard API
 
@@ -53,6 +58,7 @@ JSON endpoints under `/api` for the dashboard UI (calls are recorded with transc
 - `GET /api/calls?limit=50` -> call records, newest first (live calls included)
 - `GET /api/calls/:callSid` -> one call record
 - `GET /api/orders`, `GET /api/messages` -> arrays
+- `GET /api/appointments` -> scheduled pickups/deliveries/drop-offs, newest first
 - `GET /api/config` -> `{active, versions}` (company config versions, newest first)
 - `PUT /api/config` `{companyName, greeting, context, note?}` -> 201, the new active version (author `manager`)
 - `POST /api/config/activate` `{version}` -> the activated version (404 if unknown); this is rollback

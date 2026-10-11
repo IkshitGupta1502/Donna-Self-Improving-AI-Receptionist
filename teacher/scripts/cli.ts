@@ -2,7 +2,7 @@ import { closeDb, cols, dbName, getWorkspace } from "../src/services/mongo/clien
 import { PERMISSIONS, TOOL_NAMES, type Permission, type ToolName } from "../src/services/mongo/types.js";
 import { approveAppointment, rejectAppointment, runTool } from "../src/services/integrations/gateway.js";
 import { nextOpenDayAt } from "../src/services/integrations/time.js";
-import { activeContext, answerOwnerQuestion, printResult, rollback, scoreTrend, setToolPermission, teach, watch } from "../src/services/teacher/index.js";
+import { activeContext, answerOwnerQuestion, listToolProposals, printResult, rollback, scoreTrend, setToolPermission, teach, watch } from "../src/services/teacher/index.js";
 import { call, demoCalls, demoConfig, demoWorkspace } from "../fixtures/seed.js";
 
 const [cmd, a, ...rest] = process.argv.slice(2);
@@ -12,7 +12,7 @@ async function seed() {
   if (!dbName().endsWith("_demo"))
     throw new Error(`refusing to seed "${dbName()}": demo data only goes in a database ending in _demo (use npm run seed / npm run demo)`);
   const c = await cols();
-  await Promise.all([c.calls, c.configVersions, c.configState, c.grades, c.improvements, c.workspaces, c.appointments]
+  await Promise.all([c.calls, c.configVersions, c.configState, c.grades, c.improvements, c.toolProposals, c.workspaces, c.appointments]
     .map((col) => col.deleteMany({})));
   await c.configVersions.createIndex({ version: 1 }, { unique: true }); // same index the bridge creates
   await c.configVersions.insertOne({ ...demoConfig });
@@ -39,7 +39,7 @@ async function bookingDemo() {
   const start = nextOpenDayAt("14:00", ws.timezone, ws.business_hours, new Date());
   const day = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" })
     .format(new Date(start + ":00Z"));
-  const callSid = "fake_call_4";
+  const callSid = "fake_call_booking";
   const trace = await runTool(callSid, "book_appointment", {
     staff: "Maya", start, duration_minutes: 60, service: "Women's cut",
     customer_name: "Priya", customer_phone: "415-555-0134", caller_confirmed: true,
@@ -73,7 +73,11 @@ try {
     console.log(`answer added, active config is now ${cfg._id}`);
   } else if (cmd === "rollback") console.log(`rolled back to ${await rollback()}`);
   else if (cmd === "trend") console.table(await scoreTrend());
-  else if (cmd === "context") console.log(await activeContext());
+  else if (cmd === "tools") {
+    const rows = await listToolProposals();
+    if (!rows.length) console.log("no tool proposals yet");
+    for (const t of rows) console.log(`${t.name}  [${t.status}${t.enabledBy ? ` by ${t.enabledBy}` : ""}]  requests ${t.requestCount}  ${t.write ? "write" : "read"}\n    why: ${t.why}`);
+  } else if (cmd === "context") console.log(await activeContext());
   else if (cmd === "watch") await watch();
   else if (cmd === "appointments") await printAppointments();
   else if (cmd === "approve") console.log(JSON.stringify(await approveAppointment(a!)));
@@ -91,7 +95,7 @@ try {
     const staff = [...ws.staff.filter((s) => s.id !== id), { id, name: a, calendar_id: rest[0] }];
     await (await cols()).workspaces.replaceOne({ _id: "default" }, { ...ws, staff }, { upsert: true });
     console.log(`staff: ${staff.map((s) => s.name).join(", ")} | time zone ${ws.timezone} | edit business_hours in the workspaces collection if needed`);
-  } else console.log("commands: seed | demo | teach <callSid> | answer <improvementId> <answer...> | rollback | trend | context | watch\n" +
+  } else console.log("commands: seed | demo | teach <callSid> | answer <improvementId> <answer...> | rollback | trend | tools | context | watch\n" +
     "          appointments | approve <id> | reject <id> | permission <tool> <level> | calendar-setup <staff name> <calendar id>");
 } finally {
   await closeDb();
