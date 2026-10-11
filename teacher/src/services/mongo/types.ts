@@ -81,6 +81,8 @@ export interface Scores {
   task_completion: number;
   tone: number;
   brevity: number;
+  /** Critical thinking. Absent on grades written before this dimension existed. */
+  judgment?: number;
 }
 
 export interface Issue {
@@ -88,6 +90,8 @@ export interface Issue {
   turn: number;
   quote: string;
   explanation: string;
+  /** For judgment issues: the question the owner must answer so the receptionist can handle this next time. */
+  owner_question?: string;
 }
 
 export interface GradeDoc {

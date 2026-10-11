@@ -760,6 +760,7 @@ var Demo = (function(){
   ];
   var grades = gMin.map(function(m,i){
     var sc={}; ["accuracy","tool_use","task_completion","tone","brevity"].forEach(function(k){ sc[k]=cl(gOv[i]+gOff[k][i]); });
+    sc.judgment=cl(gOv[i]-(i<6?1.8:0.3));
     return {_id:"g"+(i+1),call_id:gSid[i],config_version_id:i<5?"v1":i<10?"v2":"v3",outcome:gOut[i],scores:sc,overall:gOv[i],frustration:gFr[i],rationale:gRat[i],issues:gIss[i],model:"claude-sonnet-5-5",created_at:ts(m)};
   });
   var improvements = [
@@ -1850,14 +1851,14 @@ function pbSave(){
 function bar(v,fr){ return '<div class="mb'+(fr?' fr':'')+'" title="'+f1(v)+' / 10"><s><i style="width:'+Math.max(0,Math.min(100,nz(v)*10))+'%"></i></s><b>'+f1(v)+'</b></div>'; }
 function gradesTable(){
   var rows=IM.asc.slice().reverse().slice(0,25), cols=8;
-  return '<div class="table-wrap"><div class="tscroll"><table class="gr"><thead><tr><th>Time</th><th>Call</th><th>Outcome</th><th>Overall</th><th>Accuracy</th><th>Tool use</th><th>Completion</th><th>Tone</th><th>Brevity</th><th>Frustration</th></tr></thead><tbody>'+
+  return '<div class="table-wrap"><div class="tscroll"><table class="gr"><thead><tr><th>Time</th><th>Call</th><th>Outcome</th><th>Overall</th><th>Accuracy</th><th>Tool use</th><th>Completion</th><th>Tone</th><th>Brevity</th><th>Judgment</th><th>Frustration</th></tr></thead><tbody>'+
     rows.map(function(g){
       var o=!!IM.gopen[g._id], sc=g.scores||{};
       var r='<tr class="gr-row'+(o?' gr-open':'')+'" tabindex="0" data-gid="'+esc(g._id)+'" aria-expanded="'+o+'"><td class="td-mono nowrap">'+esc(fmtDT(g.created_at))+'</td><td class="td-mono nowrap">'+esc(shortId(g.call_id))+'</td><td>'+outBadge(g.outcome)+'</td><td>'+bar(g.overall)+'</td>'+
-        [sc.accuracy,sc.tool_use,sc.task_completion,sc.tone,sc.brevity].map(function(v){ return '<td>'+bar(v)+'</td>'; }).join("")+'<td>'+bar(g.frustration,true)+'</td></tr>';
+        [sc.accuracy,sc.tool_use,sc.task_completion,sc.tone,sc.brevity].map(function(v){ return '<td>'+bar(v)+'</td>'; }).join("")+(sc.judgment==null?'<td class="td-mono" title="Graded before the judgment score existed">\u2014</td>':'<td>'+bar(sc.judgment)+'</td>')+'<td>'+bar(g.frustration,true)+'</td></tr>';
       if(o){
         var is=arr(g.issues);
-        r+='<tr class="gr-x"><td colspan="10"><div class="im-tx">'+esc(g.rationale||"No rationale recorded.")+'</div><div class="imt-meta" style="margin-top:6px"><span>call '+imCallLink(g.call_id)+'</span>'+(g.config_version_id?'<span>config '+esc(g.config_version_id)+'</span>':'')+(g.model?'<span>graded by '+esc(g.model)+'</span>':'')+'</div>'+
+        r+='<tr class="gr-x"><td colspan="11"><div class="im-tx">'+esc(g.rationale||"No rationale recorded.")+'</div><div class="imt-meta" style="margin-top:6px"><span>call '+imCallLink(g.call_id)+'</span>'+(g.config_version_id?'<span>config '+esc(g.config_version_id)+'</span>':'')+(g.model?'<span>graded by '+esc(g.model)+'</span>':'')+'</div>'+
           '<div class="gr-iss">'+(is.length?is.map(function(x){ return '<div class="im-q"><span class="badge b-mute">'+esc(x.type)+'</span> &ldquo;'+esc(x.quote)+'&rdquo;<small>turn '+esc(x.turn)+'</small><div class="im-rs">'+esc(x.explanation)+'</div></div>'; }).join(""):'<div class="cu-none">No issues flagged.</div>')+'</div></td></tr>';
       }
       return r;

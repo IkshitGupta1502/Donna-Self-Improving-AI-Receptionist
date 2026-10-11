@@ -764,7 +764,7 @@ const SPARK = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M1
 /* ── teacher vocabulary ───────────────────────────────────────────────── */
 const OUTCOME = { answered: "Answered", message_taken: "Message taken", booked: "Booked", escalated: "Escalated", failed: "Not resolved" };
 const RESOLVED = { answered: 1, message_taken: 1, booked: 1 };
-const DIMS = [["accuracy", "Accuracy"], ["tools", "Tool use"], ["completion", "Completion"], ["tone", "Tone"], ["brevity", "Brevity"]];
+const DIMS = [["accuracy", "Accuracy"], ["tools", "Tool use"], ["completion", "Completion"], ["tone", "Tone"], ["brevity", "Brevity"], ["judgment", "Judgment"]];
 const TYPE = { context: "Knowledge", prompt: "Instructions", data: "Data", tool: "New tool", schema: "Schema" };
 function feel(f) { if (f == null) return "—"; return f < 0.25 ? "Calm" : f < 0.5 ? "A little tense" : f < 0.75 ? "Frustrated" : "Very frustrated"; }
 function gradeFor(sid) { return arr(S.grades).find((g) => g.callSid === sid) || null; }
@@ -1259,7 +1259,7 @@ function readHtml(c) {
   return '<div class="read"><div class="read-top"><span class="t">' + SPARK + "Teacher’s read</span>" + '<span class="chip' + (RESOLVED[g.outcome] ? "" : " bad") + '">' + esc(OUTCOME[g.outcome] || g.outcome) + "</span>" +
     '<span class="chip">' + esc(feel(g.frustration)) + "</span></div>" +
     '<div class="read-grid"><div class="score">' + esc(g.score) + "<small>quality, out of 100</small></div>" +
-    '<div class="dims">' + DIMS.map((d) => { const v = (g.dims || {})[d[0]] | 0; return '<div class="dim"><span>' + d[1] + '</span><span class="pips" role="img" aria-label="' + v + ' of 5">' + [1, 2, 3, 4, 5].map((i) => "<i" + (i <= v ? ' class="on"' : "") + "></i>").join("") + "</span></div>"; }).join("") + "</div></div>" +
+    '<div class="dims">' + DIMS.filter((d) => (g.dims || {})[d[0]] != null).map((d) => { const v = (g.dims || {})[d[0]] | 0; return '<div class="dim"><span>' + d[1] + '</span><span class="pips" role="img" aria-label="' + v + ' of 5">' + [1, 2, 3, 4, 5].map((i) => "<i" + (i <= v ? ' class="on"' : "") + "></i>").join("") + "</span></div>"; }).join("") + "</div></div>" +
     (g.summary ? "<p>" + esc(g.summary) + "</p>" : "") +
     led.map((i) => '<div class="led">' + (i.status === "applied" && i.toVersion ? "Led to <a href=\"#/learning\">Knowledge v" + esc(i.toVersion) + "</a>: " : i.status === "proposed" ? "Led to a proposal: <a href=\"#/learning\">" : "Led to <a href=\"#/learning\">") + esc(i.title) + (i.status === "applied" && i.toVersion ? "" : "</a>") + "</div>").join("") + "</div>";
 }

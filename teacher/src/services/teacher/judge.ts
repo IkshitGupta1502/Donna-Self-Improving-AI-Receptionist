@@ -8,6 +8,7 @@ const score = z.coerce.number().min(0).max(10);
 export const JudgeOutput = z.object({
   scores: z.object({
     accuracy: score, tool_use: score, task_completion: score, tone: score, brevity: score,
+    judgment: score.optional(),
   }),
   frustration: score,
   rationale: z.string(),
@@ -16,6 +17,7 @@ export const JudgeOutput = z.object({
     turn: z.coerce.number().int(),
     quote: z.string(),
     explanation: z.string(),
+    owner_question: z.string().optional(),
   })).default([]),
   improvements: z.array(z.object({
     type: z.enum(["prompt", "context", "tool", "schema"]),
@@ -89,9 +91,19 @@ RUBRIC, each 0-10:
 - task_completion: the caller got what they needed, or a clear next step (message taken, escalation).
 - tone: natural, polite, sounds like a person on the phone.
 - brevity: short spoken turns, no rambling, no repeated questions.
+- judgment: CRITICAL THINKING, separate from how well the agent talks. Did the agent think about what it was agreeing to? See CRITICAL THINKING below.
 Also: frustration 0-10 = how frustrated the caller sounded (repeated questions, "this isn't working", asking for a human). Estimate from the text only.
 
 ISSUES: each needs the turn number and an EXACT quote copied from that turn. No quote, no issue.
+Issue types: invented_fact, missed_question, rule_violation, tool_error, tone, verbosity, other, and the judgment types blind_agreement, unflagged_risk, missed_clarification, knowledge_gap.
+
+CRITICAL THINKING (the "judgment" score, 0-10). A receptionist that is polite and fluent can still hurt the business or the customer by not thinking. Look for these and quote the turn:
+- blind_agreement: the caller asked for a change and the agent simply agreed without checking the current state with a tool or saying what it would change or cost. Example: the caller asks to switch an expedited order back to regular and the agent says "sure" and does it, although work may already have started, the ready date moves and it may be too late to change back. Agreeing is wrong when it is hard or impossible to undo, costs the business money or time, or the agent never looked at the order.
+- unflagged_risk: the agent did something with consequences (a price, a date, a promise, a cancellation, a refund, an exception) without telling the caller what would change, and without asking for a clear yes.
+- missed_clarification: the request was ambiguous (which order? which item? rush how?) and the agent guessed instead of asking one short question.
+- knowledge_gap: the agent said it does not know or does not have something the business must know or decide (a price, a policy, whether an exception is allowed, what happens in a case like this) and gave no way forward, or only deflected. "I don't know the price" is a knowledge gap, not just a missing fact: the owner has to supply it.
+Scoring: 9-10 the agent checked state, stated the consequence, asked for confirmation or declined when it could not know, and escalated what it could not decide. 5-8 acceptable but missed a chance to protect the caller or the business. 0-4 agreed to something consequential or irreversible without checking, or left a knowledge gap with no way forward. Harmless requests (opening hours, a price that is on file) are 10 if answered correctly. Do not invent risks that are not in the transcript.
+For EVERY blind_agreement, unflagged_risk, missed_clarification or knowledge_gap issue you MUST also set "owner_question" on that issue: one short question (under 160 characters) whose answer would let the receptionist handle this case correctly next time. Ask for the POLICY or FACT, never suggest the answer. Examples: "Can an order that is already in cleaning be switched from expedited back to regular?", "What do you charge to hem pants?", "Do you make exceptions for loyal customers on rush fees?". The code turns each owner_question into a question for the owner (at most 2 per call, repeats are dropped), so make the two most important ones count.
 
 IMPROVEMENTS (at most 3, fewer is better, zero is fine for a good call):
 - type "prompt": change a RULE. op "add" (give rule_kind + text), "modify" (rule_id + new text), or "remove" (rule_id).
@@ -141,8 +153,8 @@ Handling may ONLY use what the receptionist can really do: answer from BUSINESS 
 Example: the caller asks to hold a finished order until next Tuesday and the agent just takes a message. playbook_entry: {"title":"Caller wants an order held until a later date","when":"The caller asks to keep or hold a finished order and collect it on a later date.","handling":"Say you will note the request for staff, take a message with the order number and the date they want, and do not promise the hold is confirmed.","evidence":[{"turn":3,"quote":"Can you hold it until next Tuesday?"}]}
 
 Reply with ONLY a JSON object:
-{"scores":{"accuracy":0,"tool_use":0,"task_completion":0,"tone":0,"brevity":0},"frustration":0,"rationale":"2-3 sentences",
- "issues":[{"type":"invented_fact|missed_question|rule_violation|tool_error|tone|verbosity|other","turn":0,"quote":"","explanation":""}],
+{"scores":{"accuracy":0,"tool_use":0,"task_completion":0,"tone":0,"brevity":0,"judgment":0},"frustration":0,"rationale":"2-3 sentences",
+ "issues":[{"type":"invented_fact|missed_question|rule_violation|tool_error|tone|verbosity|blind_agreement|unflagged_risk|missed_clarification|knowledge_gap|other","turn":0,"quote":"","explanation":"","owner_question":"only for the four judgment types"}],
  "improvements":[{"type":"prompt","op":"add","rule_kind":"guardrail","text":"","evidence_turns":[0],"reason":""},
                  {"type":"prompt","op":"modify","rule_id":"r0","text":"","evidence_turns":[0],"reason":""},
                  {"type":"context","question":"","evidence_turns":[0],"reason":""}],

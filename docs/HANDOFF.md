@@ -171,3 +171,10 @@ The first real run graded old test calls and wrote two wrong rules: "do not addr
 - A call cut off by a technical failure gets graded but no improvements.
 - `watch` grades only calls that **end after the teacher starts** (set `TEACHER_GRADE_BACKLOG=1` to grade older ones) and never a call with no caller turn.
 - Bad rules that already exist can be undone in the dashboard by activating an earlier Knowledge version, or with `cd teacher && npm run rollback`.
+
+### Grader: critical thinking (judgment)
+The grader now scores **judgment** (0-10) alongside accuracy, tool use, completion, tone and brevity. It rewards thinking before agreeing: checking an order's state with a tool, saying what a change costs or whether it can be undone, asking one short clarifying question, and escalating what it cannot decide. It penalises `blind_agreement` (e.g. switching a rushed order back to regular without checking, when it may be too late), `unflagged_risk`, `missed_clarification` and `knowledge_gap` ("I don't know the price" with no way forward).
+- Weights with judgment: accuracy .30, completion .20, judgment .15, tool use .15, tone .12, brevity .08. Grades written before judgment existed keep the old weights.
+- **Judgment problems become owner questions in code.** Each such issue carries an `owner_question`; the code turns it into a question for the owner (max 2 per call, repeats dropped), so a gap does not depend on the model remembering to ask.
+- Agent side: the prompt now has a "use judgment, do not just agree" section, and `set_order_type` refuses to switch an Expedited order back to Regular once work has started (only before: stage Received or Sorting).
+- Shown as a Judgment column in the Ops dashboard's grades table, and as a dimension in the Snoopy dashboard only for grades that have it.

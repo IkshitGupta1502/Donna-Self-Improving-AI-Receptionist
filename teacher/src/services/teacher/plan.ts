@@ -13,12 +13,15 @@ export const LIMITS = {
   maxOwnerQuestionsPerCall: 2, maxQuestionLength: 160, questionSimilarity: 0.8,
 };
 
-const WEIGHTS: Record<keyof Scores, number> = {
-  accuracy: 0.35, task_completion: 0.25, tool_use: 0.15, tone: 0.15, brevity: 0.1,
-};
+// Without a judgment score (grades written before it existed) the original weights apply, so old grades stay comparable.
+const WEIGHTS_BASE: Record<string, number> = { accuracy: 0.35, task_completion: 0.25, tool_use: 0.15, tone: 0.15, brevity: 0.1 };
+const WEIGHTS_WITH_JUDGMENT: Record<string, number> = { accuracy: 0.30, task_completion: 0.20, judgment: 0.15, tool_use: 0.15, tone: 0.12, brevity: 0.08 };
+
+export const JUDGMENT_ISSUE_TYPES = new Set(["blind_agreement", "unflagged_risk", "missed_clarification", "knowledge_gap"]);
 
 export function overallScore(s: Scores): number {
-  const sum = (Object.keys(WEIGHTS) as (keyof Scores)[]).reduce((a, k) => a + s[k] * WEIGHTS[k], 0);
+  const w = s.judgment === undefined ? WEIGHTS_BASE : WEIGHTS_WITH_JUDGMENT;
+  const sum = Object.entries(w).reduce((a, [k, wt]) => a + (s as unknown as Record<string, number>)[k]! * wt, 0);
   return Math.round(sum * 10) / 10;
 }
 
@@ -90,6 +93,15 @@ export function buildPlan(
     return q.length > 0 && call.transcript.some((t) => norm(t.text).includes(q));
   });
 
+  // Judgment issues carry the owner question that would fix them: turn each into a context improvement, unless the
+  // judge already asked a similar one. This keeps "the agent didn't know" from depending on the model remembering to ask.
+  const askedByJudge = out.improvements.filter((p) => p.type === "context").map((p) => p.question ?? "");
+  const derived = issues
+    .filter((i) => JUDGMENT_ISSUE_TYPES.has(i.type) && (i.owner_question ?? "").trim())
+    .filter((i) => !askedByJudge.some((q) => similarQuestion(q, i.owner_question!)))
+    .map((i) => ({ type: "context" as const, question: i.owner_question!.trim(), evidence_turns: [i.turn], reason: i.explanation }));
+  const proposals = [...out.improvements, ...derived] as JudgeOutput["improvements"];
+
   const grade: GradeDoc = {
     _id: call._id, call_id: call._id,
     config_version_id: call.config_version_id, outcome: call.outcome,
@@ -104,7 +116,7 @@ export function buildPlan(
   const askedQuestions = [...(extra.existingQuestions ?? [])];
   let ownerQuestions = 0;
 
-  const improvements: ImprovementDoc[] = out.improvements.map((p, i) => {
+  const improvements: ImprovementDoc[] = proposals.map((p, i) => {
     const doc: ImprovementDoc = {
       _id: `${call._id}_imp${i + 1}`, source_call_ids: [call._id],
       type: p.type, status: "proposed",
