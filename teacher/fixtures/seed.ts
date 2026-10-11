@@ -95,4 +95,17 @@ export const demoCalls: BridgeCall[] = [
     name: "take_message", args: { name: "Marcus", phone: "415-555-0188", message: "Rush ORD-0042, book pickup when ready, call with the price to hem pants" },
     result: { saved: true, message: { name: "Marcus", phone: "+14155550188", message: "Rush ORD-0042, book pickup when ready, call with the price to hem pants" } },
   }]),
+  // 6. Dry cleaner: the caller wants a finished order held until next Tuesday. The agent has no guidance for this and only takes a
+  //    message. Should give a playbook entry (hold an order until a later date -> note it for staff, take a message).
+  call("fake_call_6", [
+    ["caller", "Hi, this is Priya. My order ORD-0051 is ready but I'm away this week. Can you hold it until next Tuesday?"],
+    ["agent", "Hi Priya. I'm not sure I can do that. I can take a message for the team."],
+    ["caller", "Okay. I just don't want it sitting out or sent anywhere. Please make sure they keep it until Tuesday."],
+    ["agent", "I'll take a message so the team knows. What is your phone number?"],
+    ["caller", "415-555-0166."],
+    ["agent", "Thanks. I've left a message for the team about holding ORD-0051 until next Tuesday."],
+  ], [{
+    name: "take_message", args: { name: "Priya", phone: "415-555-0166", message: "Hold ORD-0051 until next Tuesday, caller is away" },
+    result: { saved: true, message: { name: "Priya", phone: "+14155550166", message: "Hold ORD-0051 until next Tuesday, caller is away" } },
+  }]),
 ];

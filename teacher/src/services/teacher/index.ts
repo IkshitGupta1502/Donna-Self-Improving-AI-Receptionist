@@ -1,9 +1,10 @@
 import { fromConfig, renderContext, toCall, versionOf } from "../mongo/bridge.js";
 import { cols, getActiveConfig, getConfig } from "../mongo/client.js";
-import type { BridgeCall, ConfigVersionDoc, GradeDoc, ImprovementDoc, ToolProposal, ToolProposalDoc } from "../mongo/types.js";
+import type { BridgeCall, CallDoc, ConfigVersionDoc, GradeDoc, ImprovementDoc, PlaybookDoc, PlaybookEntry, ToolProposal, ToolProposalDoc } from "../mongo/types.js";
 import { geminiJudge, teacherModel, type Judge } from "./judge.js";
 import {
-  buildPlan, decideToolStatus, describeRecipe, LIMITS, mergeToolProposal, ownerAnswerLine, regression, verifyToolRecipe, type ToolDecision,
+  buildPlan, decidePlaybookStatus, decideToolStatus, describeRecipe, LIMITS, mergePlaybookEntry, mergeToolProposal, ownerAnswerLine,
+  playbookImprovement, regression, validatePlaybookEntry, verifyToolRecipe, type PlaybookDecision, type ToolDecision,
 } from "./plan.js";
 
 export interface TeachResult {
@@ -14,6 +15,8 @@ export interface TeachResult {
   rolledBack: { from: string; to: string; reason: string } | null; // automatic rollback, if one fired
   // Accepted tool proposal (as stored) and what happened to it. null when the call showed no capability gap or it was rejected.
   toolProposal: { proposal: ToolProposal; action: ToolDecision["action"]; status: ToolProposal["status"]; promoted: boolean; threshold: number } | null;
+  // Accepted playbook entry (as stored after the write) and what happened. null when the call had none or it was rejected (see improvements).
+  playbook: { entry: PlaybookEntry; action: PlaybookDecision["action"]; threshold: number } | null;
 }
 
 /**
@@ -51,7 +54,7 @@ export async function teach(callId: string, judge: Judge = geminiJudge): Promise
   const existing = await c.grades.findOne({ _id: callId });
   if (existing) {
     const improvements = await c.improvements.find({ source_call_ids: callId }).toArray();
-    return { grade: existing, improvements, newConfig: null, alreadyGraded: true, rolledBack: null, toolProposal: null };
+    return { grade: existing, improvements, newConfig: null, alreadyGraded: true, rolledBack: null, toolProposal: null, playbook: null };
   }
 
   // Changes are always built on the ACTIVE config, so two calls never overwrite each other's rules.
@@ -74,10 +77,11 @@ export async function teach(callId: string, judge: Judge = geminiJudge): Promise
   const plan = await insertVersion(
     (version) => buildPlan(out, call, base, teacherModel(), now, version, extra), (p) => p.nextConfig);
   const toolProposal = plan.toolProposal ? await saveToolProposal(plan.toolProposal, grade.overall, plan.improvements) : null;
+  const playbook = out.playbook_entry ? await savePlaybookEntry(out.playbook_entry, call, base, grade.overall, plan.improvements, now) : null;
   if (plan.improvements.length) await c.improvements.insertMany(plan.improvements);
   if (plan.nextConfig) await setActive(plan.nextConfig.version);
   return {
-    grade, improvements: plan.improvements, newConfig: plan.nextConfig, alreadyGraded: false, toolProposal,
+    grade, improvements: plan.improvements, newConfig: plan.nextConfig, alreadyGraded: false, toolProposal, playbook,
     rolledBack: rolledBack && { from: rolledBack.from, to: rolledBack.to, reason: rolledBack.reason },
   };
 }
@@ -123,6 +127,56 @@ async function saveToolProposal(incoming: ToolProposal, overall: number, improve
     }
   }
   return d.action === "skip" ? null : { proposal: incoming, action: d.action, status: d.status, promoted: d.promote, threshold: d.threshold };
+}
+
+/**
+ * Validates and writes the call's playbook entry, and appends the mirroring `improvements` document to `improvements`
+ * (type "prompt" with payload.playbook_id: no config version, no rule change). The status of an existing entry is never changed.
+ */
+async function savePlaybookEntry(
+  raw: NonNullable<Awaited<ReturnType<Judge>>["playbook_entry"]>, call: CallDoc, cfg: ConfigVersionDoc,
+  overall: number, improvements: ImprovementDoc[], now: Date,
+): Promise<TeachResult["playbook"]> {
+  const c = await cols();
+  const n = () => improvements.length + 1;
+  for (let attempt = 0; ; attempt++) {
+    const existing = await c.playbook.find().toArray();
+    const v = validatePlaybookEntry(raw, call, cfg, { now, existingIds: existing.map((e) => e.id) });
+    if (!v.ok) {
+      improvements.push(playbookImprovement(call._id, n(), { id: "", when: raw.when, handling: raw.handling }, [], "rejected",
+        `Playbook entry "${raw.title}" rejected.`, now, `playbook entry: ${v.reason}`));
+      return null;
+    }
+    const entry = v.entry, turns = [...new Set(entry.evidence.map((e) => e.turn))];
+    const d = decidePlaybookStatus(overall, existing, process.env, { title: entry.title, when: entry.when, callSid: call._id });
+    if (d.action === "bump" && d.match) {
+      const m = mergePlaybookEntry(d.match, entry, now);
+      await c.playbook.updateOne({ _id: d.match.id },
+        { $set: { timesSeen: m.timesSeen, sourceCallSids: m.sourceCallSids, evidence: m.evidence, updatedAt: m.updatedAt } });
+      const note = `Seen again (timesSeen ${m.timesSeen}); entry ${m.id} is ${m.status}.`;
+      improvements.push(d.match.status === "active"
+        ? playbookImprovement(call._id, n(), m, turns, "applied", note, now)
+        : playbookImprovement(call._id, n(), m, turns, "rejected", note, now, `playbook entry ${m.id} already exists (${m.status}); counted, status not changed`));
+      return { entry: m, action: "bump", threshold: d.threshold };
+    }
+    const status = d.action === "create-active" ? "active" : "proposed";
+    const doc: PlaybookDoc = { ...entry, _id: entry.id, status };
+    try { await c.playbook.insertOne(doc); }
+    catch (e) { // same id taken at the same moment: draw another and re-read
+      if ((e as { code?: number }).code !== 11000 || attempt >= 4) throw e;
+      continue;
+    }
+    improvements.push(playbookImprovement(call._id, n(), entry, turns, status === "active" ? "applied" : "proposed",
+      status === "active"
+        ? `Playbook entry ${entry.id} activated by the teacher because the call scored ${overall} (< ${d.threshold}).`
+        : `Playbook entry ${entry.id} waiting for the owner; the call scored ${overall}, threshold ${d.threshold}.`, now));
+    return { entry: doc, action: d.action, threshold: d.threshold };
+  }
+}
+
+/** For `npm run playbook`: every entry, most seen first. */
+export async function listPlaybook() {
+  return (await cols()).playbook.find().sort({ timesSeen: -1, updatedAt: -1 }).toArray();
 }
 
 /** For `npm run tools`: every proposal, most requested first. */
@@ -251,6 +305,15 @@ export function printResult(r: TeachResult) {
     console.log(`    params: ${p.params.map((q) => `${q.name}:${q.type}${q.required ? "*" : ""}`).join(", ") || "(none)"}`);
     for (const d of p.mockup.sampleDialogue) console.log(`    ${d.role.padEnd(6)} ${d.text}`);
     console.log(`    example args ${JSON.stringify(p.mockup.exampleArgs)} -> ${JSON.stringify(p.mockup.exampleResult)}`);
+  }
+  if (r.playbook) {
+    const { entry: e, action, threshold } = r.playbook;
+    const head = action === "bump" ? `PLAYBOOK ENTRY SEEN AGAIN (timesSeen ${e.timesSeen})`
+      : action === "create-active" ? `PLAYBOOK ENTRY ADDED (active, grade ${g.overall})` : "PLAYBOOK ENTRY PROPOSED (waiting for owner)";
+    console.log(`  ${head}: ${e.id} ${e.title}`);
+    console.log(`    when:     ${e.when}\n    handling: ${e.handling}`);
+    if (action === "bump" && e.status !== "active") console.log(`    (entry is ${e.status}; status not changed)`);
+    else if (action === "create-proposed") console.log(`    (grade ${g.overall} is not below ${threshold}, or auto-activate is off)`);
   }
   if (r.newConfig) console.log(`  -> new active config: ${r.newConfig._id} (${r.newConfig.rules.length} rules)`);
 }

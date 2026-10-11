@@ -2,8 +2,8 @@
 import assert from "node:assert/strict";
 import { JudgeOutput } from "../src/services/teacher/judge.js";
 import {
-  buildPlan, decideToolStatus, describeRecipe, mergeToolProposal, overallScore, ownerAnswerLine, regression, selfCheckRecipe,
-  validateToolProposal, verifyToolRecipe,
+  buildPlan, decidePlaybookStatus, decideToolStatus, describeRecipe, mergePlaybookEntry, mergeToolProposal, newPlaybookId, overallScore, ownerAnswerLine, playbookImprovement, regression, selfCheckRecipe,
+  similarPlaybook, validatePlaybookEntry, validateToolProposal, verifyToolRecipe,
 } from "../src/services/teacher/plan.js";
 import { deriveOutcome, fromConfig, splitContext, toCall, toConfig } from "../src/services/mongo/bridge.js";
 import { demoCalls, demoConfig } from "../fixtures/seed.js";
@@ -15,7 +15,7 @@ assert.deepEqual(configV1.rules.map((r) => [r.id, r.kind, !!r.locked]), [["r1", 
 assert.ok(!configV1.context.includes("LEARNED RULES"), "rules are split out of the company text");
 assert.equal(fromConfig(configV1).context, demoConfig.context, "config round-trips to the bridge's text");
 assert.deepEqual([call._id, call.config_version_id, call.transcript[3]!.turn], ["fake_call_1", "v1", 4]);
-assert.deepEqual(demoCalls.map((d) => toCall(d).outcome), ["answered", "answered", "message_taken", "message_taken", "message_taken"]);
+assert.deepEqual(demoCalls.map((d) => toCall(d).outcome), ["answered", "answered", "message_taken", "message_taken", "message_taken", "message_taken"]);
 assert.equal(deriveOutcome([{ name: "get_order", result: { error: "Provide orderId, customerName, or phone." } }]), "failed");
 // A line a manager typed inside the rules block is kept as company text, not dropped.
 const edited = splitContext(demoConfig.context.replace("END OF LEARNED RULES", "We also sell gift cards.\nEND OF LEARNED RULES"));
@@ -291,5 +291,80 @@ assert.match(open[0]!.rejected_reason!, /already asked/);
 const longQ = qPlan(["What do you charge to hem pants? " + "x".repeat(160)]);
 assert.match(longQ[0]!.rejected_reason!, /under 160/);
 assert.equal(ownerAnswerLine(" Do you take walk-ins? ", " Yes, mornings only. "), "Owner answer: Do you take walk-ins? Yes, mornings only.");
+
+// ---- Scenario playbook ----
+const hold = toCall(demoCalls[5]!);
+const pbRaw = {
+  title: "Caller wants an order held until a later date",
+  when: "The caller asks to keep a finished order and collect it on a later date.",
+  handling: "Say you will note the request for staff, take a message with the order number and the date, and do not promise the hold is confirmed.",
+  evidence: [{ turn: 1, quote: "Can you hold it until next Tuesday?" }],
+};
+const pbOut = (patch: Record<string, unknown>) => JudgeOutput.parse({ ...out, playbook_entry: { ...pbRaw, ...patch } }).playbook_entry!;
+const pbWhy = (patch: Record<string, unknown>) => {
+  const r = validatePlaybookEntry(pbOut(patch), hold, configV1);
+  assert.equal(r.ok, false, JSON.stringify(patch)); return r.ok ? "" : r.reason;
+};
+const pbOk = validatePlaybookEntry(pbOut({ evidence: [{ turn: 9, quote: "can you HOLD it until next tuesday?" }] }), hold, configV1, { now: new Date("2026-10-11T00:00:00Z") });
+assert.ok(pbOk.ok, "good entry accepted");
+if (pbOk.ok) {
+  const e = pbOk.entry;
+  assert.match(e.id, /^PB-\d{6}$/);
+  assert.deepEqual([e.source, e.status, e.timesSeen, e.sourceCallSids, e.evidence[0]!.turn, e.createdAt], ["teacher", "proposed", 1, ["fake_call_6"], 1, "2026-10-11T00:00:00.000Z"]);
+}
+assert.equal(JudgeOutput.parse({ ...out, playbook_entry: null }).playbook_entry, null);
+assert.equal(JudgeOutput.parse(out).playbook_entry, undefined, "playbook_entry is optional");
+assert.match(pbWhy({ evidence: [] }), /no evidence/);
+assert.match(pbWhy({ evidence: [{ turn: 1, quote: "Please dry clean my wedding dress" }] }), /not found in transcript/);
+assert.match(pbWhy({ handling: "Tell them the hold fee is $5 per day." }), /not in the business knowledge: 5/);
+assert.match(pbWhy({ handling: "Tell them it is held for 14 days." }), /14/);
+assert.match(pbWhy({ handling: "Point them to https://example.com/hold to book it." }), /external/);
+assert.match(pbWhy({ handling: "Take their card number to reserve the hold." }), /payments/);
+assert.match(pbWhy({ handling: "Say we will send you an email to confirm." }), /email/);
+assert.match(pbWhy({ handling: "Say we will text you a confirmation." }), /text message/);
+assert.match(pbWhy({ handling: "Transfer the call to the manager." }), /transfer/);
+assert.match(pbWhy({ title: "x".repeat(81) }), /title is longer/);
+assert.match(pbWhy({ when: "x".repeat(201) }), /when is longer/);
+assert.match(pbWhy({ handling: "x".repeat(301) }), /handling is longer/);
+assert.match(pbWhy({ handling: "  " }), /non-empty/);
+// A number that IS in the business knowledge is fine (reuses the rule guard).
+assert.ok(validatePlaybookEntry(pbOut({ handling: "Say the studio is on 214 Valencia Street and take a message." }), hold, configV1).ok);
+// Ids are unique.
+assert.equal(newPlaybookId(["PB-000001"], (() => { const xs = [0.000001, 0.5]; return () => xs.shift()!; })()), "PB-500000");
+
+const entry = (o: Partial<import("../src/services/mongo/types.js").PlaybookEntry> = {}) => ({
+  id: "PB-111111", title: pbRaw.title, when: pbRaw.when, handling: pbRaw.handling, source: "teacher" as const, status: "active" as const,
+  timesSeen: 1, sourceCallSids: ["c1"], evidence: [{ turn: 1, quote: "q" }], createdAt: "2026-10-10T00:00:00.000Z", updatedAt: "2026-10-10T00:00:00.000Z", ...o,
+});
+const cand = { title: "Hold an order till next week", when: "Caller wants the finished order kept until next week", callSid: "c2" };
+assert.equal(decidePlaybookStatus(5, [], {}, cand).action, "create-active", "below the threshold");
+assert.equal(decidePlaybookStatus(7, [], {}, cand).action, "create-proposed", "not below the threshold");
+assert.equal(decidePlaybookStatus(9, [], {}, cand).action, "create-proposed");
+assert.equal(decidePlaybookStatus(5, [], { PLAYBOOK_AUTO_ACTIVATE: "0" }, cand).action, "create-proposed", "kill switch");
+assert.equal(decidePlaybookStatus(8, [], { PLAYBOOK_GRADE_THRESHOLD: "9" }, cand).action, "create-active", "custom threshold");
+assert.equal(decidePlaybookStatus(5, [entry({ title: "Dry clean a wedding dress", when: "Caller asks about a gown" })], {}, cand).action, "create-active", "different entry");
+const sameTitle = decidePlaybookStatus(9, [entry({ title: "  caller WANTS an order held until a later date!! " })], {}, { title: pbRaw.title, when: "other", callSid: "c2" });
+assert.deepEqual([sameTitle.action, sameTitle.newCall], ["bump", true], "normalised title equality bumps");
+const jac = decidePlaybookStatus(1, [entry()], {}, { title: "Caller wants an order held until a later date", when: "The caller asks to keep a finished order and collect it on a later day.", callSid: "c2" });
+assert.equal(jac.action, "bump", "word-Jaccard > 0.7 bumps");
+assert.ok(similarPlaybook(entry(), { title: "Hold order", when: "x" }) === false);
+assert.equal(decidePlaybookStatus(1, [entry({ status: "disabled" })], {}, { ...cand, title: pbRaw.title }).action, "bump", "disabled similar entry is bumped, not recreated");
+assert.equal(decidePlaybookStatus(1, [entry({ status: "proposed" })], {}, { ...cand, title: pbRaw.title }).action, "bump", "proposed similar entry is bumped");
+assert.equal(decidePlaybookStatus(5, [entry()], {}, { ...cand, title: pbRaw.title, callSid: "c1" }).newCall, false, "same call not counted twice");
+const incoming = { ...entry(), sourceCallSids: ["c2"], evidence: [{ turn: 3, quote: "q2" }] };
+const m1 = mergePlaybookEntry(entry({ status: "disabled" }), incoming, new Date("2026-10-11T00:00:00Z"));
+assert.deepEqual([m1.timesSeen, m1.sourceCallSids, m1.status, m1.updatedAt, m1.title], [2, ["c1", "c2"], "disabled", "2026-10-11T00:00:00.000Z", pbRaw.title], "bump keeps a disabled status");
+assert.equal(mergePlaybookEntry(m1, incoming).timesSeen, 2, "same call twice is not counted twice");
+assert.equal(mergePlaybookEntry(entry({ status: "proposed" }), incoming).status, "proposed");
+// The improvements document: type "prompt", mirrors the entry, and cannot be mistaken for a rule change.
+const pbImp = playbookImprovement("fake_call_6", 1, entry({ id: "PB-222222" }), [1], "applied", "why");
+assert.deepEqual([pbImp._id, pbImp.type, pbImp.status, pbImp.payload.playbook_id, pbImp.payload.op, pbImp.payload.rule_id, pbImp.applied_in_config_id],
+  ["fake_call_6_imp1", "prompt", "applied", "PB-222222", undefined, undefined, undefined]);
+assert.equal(pbImp.payload.text, `When ${pbRaw.when}: ${pbRaw.handling}`);
+const pbRej = playbookImprovement("fake_call_6", 2, { id: "", when: "w", handling: "h" }, [], "rejected", "r", new Date(), "playbook entry: no evidence quote");
+assert.deepEqual([pbRej.status, pbRej.rejected_reason, "playbook_id" in pbRej.payload], ["rejected", "playbook entry: no evidence quote", false]);
+// buildPlan itself never touches the playbook, so it makes no config version and no extra improvement.
+const pbPlan = buildPlan(JudgeOutput.parse({ ...out, improvements: [], playbook_entry: pbRaw }), hold, configV1, "mock");
+assert.deepEqual([pbPlan.nextConfig, pbPlan.improvements.length], [null, 0]);
 
 console.log("selftest passed");

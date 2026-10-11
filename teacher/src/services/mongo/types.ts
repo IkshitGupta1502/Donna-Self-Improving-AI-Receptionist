@@ -120,6 +120,7 @@ export interface ImprovementDoc {
     question?: string; // context: question for the owner
     answer?: string; // filled in when the owner replies
     tool_name?: string; // tool improvements from a tool_proposal: the proposed tool's name (= _id in tool_proposals)
+    playbook_id?: string; // type "prompt" improvements that mirror a playbook entry (text = "When <when>: <handling>"); no op, no rule_id: they never touch the rules or the config
   };
   evidence_turns: number[];
   reason: string;
@@ -154,3 +155,21 @@ export interface ToolProposal {
   enabledBy?: "teacher" | "owner"; // who enabled it: the teacher (auto, low-grade call) or the owner (dashboard)
 }
 export type ToolProposalDoc = ToolProposal & { _id: string };
+
+/** `playbook` collection, `_id` = id. Shared contract with the bridge (puts every "active" entry in the prompt) and the dashboard
+ *  (the owner adds entries and changes `status`). The teacher inserts entries and bumps counters; it NEVER changes the status of an
+ *  existing entry and never reactivates a "disabled" one. */
+export interface PlaybookEntry {
+  id: string; // "PB-" + 6 random digits, unique
+  title: string; // max 80
+  when: string; // the situation, max 200
+  handling: string; // what to do or say, max 300
+  source: "teacher" | "owner";
+  status: "active" | "proposed" | "disabled";
+  timesSeen: number;
+  sourceCallSids: string[];
+  evidence: { turn: number; quote: string }[];
+  createdAt: string;
+  updatedAt: string;
+}
+export type PlaybookDoc = PlaybookEntry & { _id: string };
