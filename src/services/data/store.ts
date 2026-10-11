@@ -98,6 +98,20 @@ export interface Customer {
 
 export type CustomerPatch = Partial<Pick<Customer, "name" | "email" | "preferences" | "notes" | "vip">>;
 
+/** Splits an owner edit into fields to set and fields to clear. */
+function splitEdit(patch: CustomerPatch): { set: CustomerPatch; unset: string[] } {
+  const set: CustomerPatch = {};
+  const unset: string[] = [];
+  for (const key of ["name", "email", "preferences", "notes"] as const) {
+    const v = patch[key];
+    if (typeof v !== "string") continue;
+    if (v.trim()) set[key] = v.trim();
+    else unset.push(key);
+  }
+  if (typeof patch.vip === "boolean") set.vip = patch.vip;
+  return { set, unset };
+}
+
 function cleanPatch(patch: CustomerPatch): CustomerPatch {
   const out: CustomerPatch = {};
   for (const key of ["name", "email", "preferences", "notes"] as const) {
@@ -463,6 +477,8 @@ export interface DataStore {
   listMessages(): Promise<Message[]>;
   getCustomerByPhone(phone: string): Promise<Customer | null>;
   upsertCustomer(phone: string, patch: CustomerPatch): Promise<Customer>;
+  /** Owner edit: unlike upsertCustomer, an empty string clears the field. Returns null if the customer does not exist. */
+  editCustomer(phone: string, patch: CustomerPatch): Promise<Customer | null>;
   recordCustomerCall(phone: string): Promise<void>;
   listCustomers(): Promise<Customer[]>;
   createOrder(input: CreateOrderInput): Promise<Order>;
@@ -630,6 +646,16 @@ export function createMemoryStore(): DataStore {
       const key = normalizePhone(phone);
       const existing = customers.get(key) ?? { phone: key, firstSeenAt: new Date().toISOString(), callCount: 0 };
       const next = { ...existing, ...cleanPatch(patch) };
+      customers.set(key, next);
+      return { ...next };
+    },
+    async editCustomer(phone, patch) {
+      const key = normalizePhone(phone);
+      const existing = customers.get(key);
+      if (!existing) return null;
+      const { set, unset } = splitEdit(patch);
+      const next: Customer = { ...existing, ...set };
+      for (const k of unset) delete (next as unknown as Record<string, unknown>)[k];
       customers.set(key, next);
       return { ...next };
     },
@@ -930,6 +956,16 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
         { upsert: true }
       );
       return (await customers.findOne({ phone: key }, proj)) as Customer;
+    },
+    async editCustomer(phone, patch) {
+      const key = normalizePhone(phone);
+      const { set, unset } = splitEdit(patch);
+      const update: Record<string, unknown> = {};
+      if (Object.keys(set).length) update.$set = set;
+      if (unset.length) update.$unset = Object.fromEntries(unset.map((k) => [k, ""]));
+      if (!Object.keys(update).length) return customers.findOne({ phone: key }, proj);
+      const res = await customers.findOneAndUpdate({ phone: key }, update, { returnDocument: "after", projection: { _id: 0 } });
+      return res;
     },
     async recordCustomerCall(phone) {
       const now = new Date().toISOString();

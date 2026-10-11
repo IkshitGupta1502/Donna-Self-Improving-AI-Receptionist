@@ -5,6 +5,7 @@ import { getStore } from "../services/gemini/liveSession";
 import { getActiveCalls } from "../services/calls/recorder";
 import { BUILTIN_TOOL_NAMES } from "../services/gemini/tools";
 import type { CallRecord } from "../services/data/store";
+import { toUiGrade, toUiImprovement, type UiContext } from "./uiShape";
 
 export const apiRouter = Router();
 
@@ -130,6 +131,29 @@ apiRouter.get(
   })
 );
 
+const customerSchema = z.object({
+  name: z.string().trim().max(80).optional(),
+  email: z.string().trim().max(120).optional(),
+  preferences: z.string().trim().max(500).optional(),
+  notes: z.string().trim().max(1000).optional(),
+  vip: z.boolean().optional(),
+});
+
+// Owner edit. An empty string clears a field.
+apiRouter.put(
+  "/customers/:phone",
+  wrap(async (req, res) => {
+    const parsed = customerSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return badRequest(res, parsed.error);
+    const saved = await (await getStore()).editCustomer(String(req.params.phone), parsed.data);
+    if (!saved) {
+      res.status(404).json({ error: "customer not found" });
+      return;
+    }
+    res.json(saved);
+  })
+);
+
 apiRouter.get(
   "/messages",
   wrap(async (_req, res) => {
@@ -230,15 +254,70 @@ apiRouter.get(
 
 apiRouter.get(
   "/grades",
-  wrap(async (_req, res) => {
-    res.json(await (await getStore()).listGrades());
+  wrap(async (req, res) => {
+    const store = await getStore();
+    const grades = await store.listGrades();
+    if (req.query.shape === "ui") {
+      const ctx = await uiContext(store);
+      res.json(grades.map((g) => toUiGrade(g as Record<string, unknown>, ctx)));
+      return;
+    }
+    res.json(grades);
   })
 );
 
 apiRouter.get(
   "/improvements",
-  wrap(async (_req, res) => {
-    res.json(await (await getStore()).listImprovements());
+  wrap(async (req, res) => {
+    const store = await getStore();
+    const improvements = await store.listImprovements();
+    res.json(req.query.shape === "ui" ? await uiImprovements(store, improvements) : improvements);
+  })
+);
+
+// The Snoopy dashboard (web/snoopy) approves or dismisses a change with { action }.
+apiRouter.post(
+  "/improvements/:id",
+  wrap(async (req, res) => {
+    const store = await getStore();
+    const id = String(req.params.id);
+    const action = String(req.body?.action ?? "");
+    const all = await store.listImprovements();
+    const imp = all.find((i) => String((i as Record<string, unknown>)._id) === id) as Record<string, any> | undefined;
+    if (!imp) {
+      res.status(404).json({ error: "improvement not found" });
+      return;
+    }
+    const payload = imp.payload ?? {};
+    if (action === "rolled_back") {
+      // The dashboard re-activates the previous version itself; nothing else to change here
+    } else if (action === "approve" || action === "dismiss") {
+      const on = action === "approve";
+      if (imp.type === "tool" && payload.tool_name) {
+        const t = await store.setToolStatus(payload.tool_name, on ? "enabled" : "declined");
+        if (!t) {
+          res.status(404).json({ error: "tool not found" });
+          return;
+        }
+      } else if (payload.playbook_id) {
+        const e = await store.setPlaybookStatus(payload.playbook_id, on ? "active" : "disabled");
+        if (!e) {
+          res.status(404).json({ error: "playbook entry not found" });
+          return;
+        }
+      } else if (imp.type === "context") {
+        res.status(400).json({ error: "This is a question for you. Answer it on the Ops page (the Improvements tab) so the answer is saved." });
+        return;
+      } else {
+        res.status(400).json({ error: "This change was already applied by the teacher. To undo it, restore the previous Knowledge version." });
+        return;
+      }
+    } else {
+      res.status(400).json({ error: "action must be approve, dismiss or rolled_back" });
+      return;
+    }
+    const fresh = (await store.listImprovements()).find((i) => String((i as Record<string, unknown>)._id) === id);
+    res.json((await uiImprovements(store, [fresh as Record<string, unknown>]))[0]);
   })
 );
 
@@ -268,6 +347,26 @@ const configSchema = z.object({
   note: z.string().trim().max(300).optional(),
 });
 const activateSchema = z.object({ version: z.number().int().positive() });
+
+async function uiContext(store: Awaited<ReturnType<typeof getStore>>): Promise<UiContext> {
+  const [calls, versions, tools, playbook] = await Promise.all([
+    store.listCalls(500),
+    store.listConfigVersions(),
+    store.listToolProposals(),
+    store.listPlaybook(),
+  ]);
+  return {
+    calls: new Map(calls.map((c) => [c.callSid, c])),
+    versions,
+    tools: new Map(tools.map((t) => [t.name, t])),
+    playbook: new Map(playbook.map((e) => [e.id, e])),
+  };
+}
+
+async function uiImprovements(store: Awaited<ReturnType<typeof getStore>>, rows: unknown[]) {
+  const ctx = await uiContext(store);
+  return rows.map((r) => toUiImprovement(r as Record<string, unknown>, ctx));
+}
 
 function badRequest(res: Response, err: z.ZodError): void {
   const msg = err.issues.map((i) => `${i.path.join(".") || "body"}: ${i.message}`).join("; ");

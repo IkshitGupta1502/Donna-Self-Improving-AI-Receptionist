@@ -1,0 +1,1820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<title>CJ's Cleaning</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231d1d1f'/%3E%3Cpath d='M9 16v0M13 12v8M17 9v14M21 13v6' stroke='white' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E" />
+<script src="config.js"></script>
+<style>
+/* ── Tokens ─────────────────────────────────────────────────────────────── */
+:root{
+  --bg:#f5f5f7; --surface:#ffffff; --surface-2:#fbfbfd; --bar:rgba(245,245,247,.78);
+  --ink:#1d1d1f; --ink-2:#424245; --muted:#6e6e73; --faint:#aeaeb2;
+  --hairline:rgba(0,0,0,.08); --hairline-2:rgba(0,0,0,.14);
+  --fill:rgba(118,118,128,.12); --fill-2:rgba(118,118,128,.2); --hover:rgba(0,0,0,.035);
+  --seg-on:#ffffff; --seg-shadow:0 1px 3px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.04);
+  --accent:#0071e3; --accent-ink:#0066cc; --accent-soft:rgba(0,113,227,.1); --focus:rgba(0,113,227,.45);
+  --live:#34c759; --live-ink:#1f8a3d; --live-soft:rgba(52,199,89,.14);
+  --teacher:#6e4bd8; --teacher-soft:rgba(110,75,216,.1);
+  --bad:#d70015; --bad-soft:rgba(215,0,21,.08); --warn:#b25000;
+  --add:rgba(52,199,89,.16); --del:rgba(215,0,21,.09);
+  --card-shadow:0 0 0 .5px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04),0 8px 24px -12px rgba(0,0,0,.08);
+  --sheet-shadow:0 24px 80px -12px rgba(0,0,0,.35),0 0 0 .5px rgba(0,0,0,.08);
+  --band:rgba(118,118,128,.06);
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue","Segoe UI",Roboto,system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  --r-lg:20px; --r:14px; --r-sm:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000000; --surface:#1c1c1e; --surface-2:#232325; --bar:rgba(22,22,23,.78);
+    --ink:#f5f5f7; --ink-2:#d1d1d6; --muted:#98989d; --faint:#636366;
+    --hairline:rgba(255,255,255,.09); --hairline-2:rgba(255,255,255,.16);
+    --fill:rgba(118,118,128,.24); --fill-2:rgba(118,118,128,.34); --hover:rgba(255,255,255,.05);
+    --seg-on:#636366; --seg-shadow:0 1px 3px rgba(0,0,0,.4);
+    --accent:#0a84ff; --accent-ink:#4ea4ff; --accent-soft:rgba(10,132,255,.18); --focus:rgba(10,132,255,.6);
+    --live:#30d158; --live-ink:#30d158; --live-soft:rgba(48,209,88,.16);
+    --teacher:#b79cff; --teacher-soft:rgba(183,156,255,.14);
+    --bad:#ff453a; --bad-soft:rgba(255,69,58,.14); --warn:#ff9f0a;
+    --add:rgba(48,209,88,.18); --del:rgba(255,69,58,.16);
+    --card-shadow:0 0 0 .5px rgba(255,255,255,.07);
+    --sheet-shadow:0 24px 80px -12px rgba(0,0,0,.8),0 0 0 .5px rgba(255,255,255,.1);
+    --band:rgba(118,118,128,.1);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000000; --surface:#1c1c1e; --surface-2:#232325; --bar:rgba(22,22,23,.78);
+  --ink:#f5f5f7; --ink-2:#d1d1d6; --muted:#98989d; --faint:#636366;
+  --hairline:rgba(255,255,255,.09); --hairline-2:rgba(255,255,255,.16);
+  --fill:rgba(118,118,128,.24); --fill-2:rgba(118,118,128,.34); --hover:rgba(255,255,255,.05);
+  --seg-on:#636366; --seg-shadow:0 1px 3px rgba(0,0,0,.4);
+  --accent:#0a84ff; --accent-ink:#4ea4ff; --accent-soft:rgba(10,132,255,.18); --focus:rgba(10,132,255,.6);
+  --live:#30d158; --live-ink:#30d158; --live-soft:rgba(48,209,88,.16);
+  --teacher:#b79cff; --teacher-soft:rgba(183,156,255,.14);
+  --bad:#ff453a; --bad-soft:rgba(255,69,58,.14); --warn:#ff9f0a;
+  --add:rgba(48,209,88,.18); --del:rgba(255,69,58,.16);
+  --card-shadow:0 0 0 .5px rgba(255,255,255,.07);
+  --sheet-shadow:0 24px 80px -12px rgba(0,0,0,.8),0 0 0 .5px rgba(255,255,255,.1);
+  --band:rgba(118,118,128,.1);
+}
+
+/* ── Base ───────────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.47 var(--font);letter-spacing:-.008em;
+  -webkit-font-smoothing:antialiased;min-height:100vh;overflow-x:hidden}
+button,input,textarea,select{font:inherit;color:inherit;letter-spacing:inherit}
+button{cursor:pointer;background:none;border:0}
+a{color:var(--accent-ink);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:6px}
+[hidden]{display:none!important}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.skip{position:absolute;left:12px;top:-60px;z-index:100;background:var(--surface);padding:8px 14px;border-radius:10px;box-shadow:var(--card-shadow)}
+.skip:focus{top:10px}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--mono);font-size:.88em}
+svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* ── Top bar ────────────────────────────────────────────────────────────── */
+.bar{position:sticky;top:0;z-index:50;height:56px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;
+  padding:0 max(20px,env(safe-area-inset-right)) 0 max(20px,env(safe-area-inset-left));
+  background:var(--bar);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);
+  border-bottom:.5px solid var(--hairline-2)}
+.brand{display:inline-flex;align-items:center;gap:9px;font-weight:600;font-size:17px;color:var(--ink);letter-spacing:-.02em;justify-self:start}
+.brand:hover{text-decoration:none}
+.brand-mark{width:26px;height:26px;border-radius:7px;background:var(--ink);color:var(--bg);display:grid;place-items:center}
+.brand-mark svg{width:16px;height:16px;stroke-width:2.4}
+.seg{display:inline-flex;background:var(--fill);border-radius:9px;padding:2px;gap:2px}
+.seg a,.seg button{position:relative;display:inline-flex;align-items:center;gap:6px;padding:5px 14px;font-size:13px;font-weight:500;
+  color:var(--ink);border-radius:7px;white-space:nowrap;transition:background .15s}
+.seg a:hover{text-decoration:none;background:var(--hover)}
+.seg [aria-current="page"],.seg [aria-pressed="true"]{background:var(--seg-on);box-shadow:var(--seg-shadow)}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--live);box-shadow:0 0 0 0 var(--live);animation:ping 1.8s infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(52,199,89,.5)}80%,100%{box-shadow:0 0 0 7px rgba(52,199,89,0)}}
+.bar-end{justify-self:end;display:flex;align-items:center;gap:6px}
+.pill{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 12px;border-radius:999px;background:var(--fill);
+  font-size:12px;font-weight:500;color:var(--ink-2);white-space:nowrap}
+.pill:hover{background:var(--fill-2)}
+.pill .d{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+.pill.ok .d{background:var(--live)} .pill.bad .d{background:var(--bad)} .pill.demo .d{background:var(--teacher)}
+.icon-btn{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:var(--ink-2)}
+.icon-btn:hover{background:var(--fill)}
+
+/* bottom tab bar (phones) */
+.tabbar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:50;grid-template-columns:repeat(7,1fr);
+  padding:6px max(4px,env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom));
+  background:var(--bar);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:.5px solid var(--hairline-2)}
+.tabbar a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0;font-size:10px;letter-spacing:-.02em;font-weight:500;color:var(--muted);position:relative}
+.tabbar a:hover{text-decoration:none}
+.tabbar a[aria-current="page"]{color:var(--accent-ink)}
+.tabbar svg.i{width:24px;height:24px}
+.tabbar .live-dot{position:absolute;top:3px;left:calc(50% + 9px)}
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+main{max-width:1200px;margin:0 auto;padding:40px 24px 96px;outline:none}
+.view{display:none}
+.view.on{display:block;animation:rise .35s cubic-bezier(.2,.7,.2,1)}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:28px}
+.eyebrow{font-size:13px;font-weight:500;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.title{font-size:34px;line-height:1.12;font-weight:700;letter-spacing:-.025em}
+.lede{font-size:17px;color:var(--muted);margin-top:8px;max-width:62ch;line-height:1.45}
+.card{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--card-shadow);min-width:0}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px 0}
+.card-t{font-size:17px;font-weight:600;letter-spacing:-.015em}
+.card-s{font-size:13px;color:var(--muted)}
+.section-t{font-size:22px;font-weight:700;letter-spacing:-.02em;margin:44px 0 14px}
+.muted{color:var(--muted)}
+.empty{padding:56px 24px;text-align:center;color:var(--muted)}
+.empty h3{color:var(--ink);font-size:19px;font-weight:600;letter-spacing:-.015em;margin-bottom:6px}
+.empty p{max-width:46ch;margin:0 auto 18px;line-height:1.5}
+
+/* inset grouped list */
+.group{background:var(--surface);border-radius:var(--r);box-shadow:var(--card-shadow);overflow:hidden}
+.group-t{font-size:13px;font-weight:500;color:var(--muted);margin:0 0 8px 16px}
+.row{display:flex;align-items:center;gap:12px;min-height:48px;padding:11px 16px;position:relative;color:var(--ink);width:100%;text-align:left}
+.row+.row::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:.5px solid var(--hairline-2)}
+a.row:hover,button.row:hover{background:var(--hover);text-decoration:none}
+.row-l{flex:1;min-width:0}
+.row-v{font-weight:600;font-size:17px;letter-spacing:-.01em}
+.row-sub{font-size:13px;color:var(--muted);margin-top:1px}
+.chev{color:var(--faint);width:14px;height:14px;stroke-width:2.2}
+
+/* buttons, fields */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 16px;border-radius:999px;
+  font-size:14px;font-weight:500;background:var(--fill);color:var(--accent-ink);white-space:nowrap;transition:background .15s,opacity .15s}
+.btn:hover{background:var(--fill-2);text-decoration:none}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent);opacity:.88}
+.btn.plain{background:none;padding:0 4px;height:auto}
+.btn.plain:hover{text-decoration:underline}
+.btn.danger{color:var(--bad)}
+.btn.sm{height:28px;padding:0 12px;font-size:13px}
+.btn:disabled{opacity:.38;cursor:default}
+.field{width:100%;background:var(--surface-2);border:.5px solid var(--hairline-2);border-radius:var(--r-sm);padding:10px 12px;font-size:15px;
+  outline:none;transition:border-color .15s,box-shadow .15s}
+.field:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.search{position:relative}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--muted)}
+.search .field{padding-left:34px;background:var(--fill);border-color:transparent;height:36px}
+.search .field:focus{background:var(--surface)}
+.lbl{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+.hint{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.45}
+.count{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.count.over{color:var(--bad);font-weight:600}
+
+/* chips */
+.chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:999px;font-size:12px;font-weight:500;
+  background:var(--fill);color:var(--ink-2);white-space:nowrap}
+.chip.live{background:var(--live-soft);color:var(--live-ink)}
+.chip.teacher{background:var(--teacher-soft);color:var(--teacher)}
+.chip.bad{background:var(--bad-soft);color:var(--bad)}
+.chip.accent{background:var(--accent-soft);color:var(--accent-ink)}
+.chip svg.i{width:12px;height:12px;stroke-width:2.2}
+
+/* ── The script (transcripts) ───────────────────────────────────────────── */
+.script{display:grid;grid-template-columns:84px minmax(0,1fr);column-gap:22px;row-gap:16px;font-size:17px;line-height:1.5}
+.who{font-size:13px;font-weight:600;color:var(--muted);padding-top:3px;line-height:1.3}
+.who.agent{color:var(--accent-ink)}
+.who time{display:block;font-weight:400;font-size:12px;color:var(--faint);margin-top:2px;font-variant-numeric:tabular-nums}
+.say{min-width:0;overflow-wrap:anywhere;white-space:pre-wrap}
+.say.agent{color:var(--ink)}
+.say.caller{color:var(--ink-2)}
+.dir{grid-column:2;font-size:14px;color:var(--muted);margin-top:-6px}
+.dir summary{list-style:none;cursor:pointer;display:flex;align-items:baseline;gap:8px;padding:6px 10px;margin-left:-10px;border-radius:10px;width:fit-content;max-width:100%}
+.dir summary::-webkit-details-marker{display:none}
+.dir summary:hover{background:var(--hover)}
+.dir .arr{color:var(--faint);flex:none}
+.dir .what{min-width:0;overflow-wrap:anywhere}
+.dir .res{color:var(--ink-2);font-weight:500}
+.dir.err .res{color:var(--bad)}
+.dir .tog{font-size:12px;color:var(--faint);flex:none;margin-left:4px}
+.dir[open] .tog{color:var(--accent-ink)}
+.raw{display:grid;gap:8px;margin:6px 0 4px}
+.raw b{font-size:12px;font-weight:600;color:var(--muted)}
+.raw pre{font:12px/1.5 var(--mono);background:var(--fill);border-radius:10px;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:auto;color:var(--ink-2)}
+.listening{grid-column:2;display:flex;align-items:center;gap:10px;color:var(--muted);font-size:14px}
+.bars{display:inline-flex;align-items:center;gap:3px;height:16px}
+.bars i{width:3px;border-radius:2px;background:var(--live);animation:eq 1s ease-in-out infinite}
+.bars i:nth-child(1){height:6px;animation-delay:-.2s}.bars i:nth-child(2){height:12px;animation-delay:-.5s}
+.bars i:nth-child(3){height:9px;animation-delay:-.8s}.bars i:nth-child(4){height:14px;animation-delay:-.35s}
+@keyframes eq{50%{transform:scaleY(.35)}}
+
+/* ── Line ───────────────────────────────────────────────────────────────── */
+.line-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;align-items:start}
+.now-h{display:flex;align-items:center;gap:14px;padding:22px 24px;border-bottom:.5px solid var(--hairline)}
+.avatar{width:46px;height:46px;border-radius:50%;background:var(--fill);display:grid;place-items:center;font-weight:600;font-size:16px;color:var(--ink-2);flex:none;position:relative}
+.avatar.live::after{content:"";position:absolute;right:0;bottom:0;width:12px;height:12px;border-radius:50%;background:var(--live);border:2.5px solid var(--surface)}
+.now-who{flex:1;min-width:0}
+.now-name{font-size:20px;font-weight:600;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.now-sub{font-size:14px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.now-body{padding:24px;max-height:58vh;overflow-y:auto;scroll-behavior:smooth}
+.quiet{padding:44px 28px;display:grid;justify-items:center;text-align:center;gap:6px}
+.flat{width:180px;height:40px;margin-bottom:14px;color:var(--faint)}
+.quiet h3{font-size:19px;font-weight:600;letter-spacing:-.015em}
+.quiet p{color:var(--muted);max-width:42ch}
+.last{margin-top:22px;width:100%;max-width:520px;text-align:left}
+.switch-live{display:flex;gap:8px;flex-wrap:wrap;padding:14px 24px 0}
+.aside{display:grid;gap:24px}
+.strip-wrap{padding:20px 22px 18px;overflow-x:auto}
+.strip{display:flex;gap:28px;min-width:min-content}
+.strip-v{flex:none}
+.strip-l{font-size:12px;color:var(--muted);margin-bottom:10px;white-space:nowrap;display:flex;gap:6px;align-items:center}
+.strip-l b{color:var(--ink);font-weight:600}
+.dots{display:flex;gap:7px;align-items:center;height:22px;padding-left:10px;border-left:1.5px dashed var(--hairline-2)}
+.strip-v:first-child .dots{border-left:0;padding-left:0}
+.dot{width:14px;height:14px;border-radius:50%;background:var(--ink-2);position:relative;transition:transform .15s}
+.dot:hover,.dot:focus-visible{transform:scale(1.25)}
+.dot.miss{background:transparent;box-shadow:inset 0 0 0 2px var(--bad)}
+.dot.ungraded{background:var(--fill-2)}
+.dot.live{background:var(--live);animation:ping 1.8s infinite}
+.tip{position:relative}
+.tip[data-tip]:hover::after,.tip[data-tip]:focus-visible::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  background:var(--ink);color:var(--bg);font-size:12px;font-weight:500;padding:6px 9px;border-radius:8px;white-space:pre;z-index:10;pointer-events:none;line-height:1.4;text-align:left}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--muted);padding:0 22px 18px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend .dot{width:10px;height:10px}
+.legend .dot:hover{transform:none}
+
+/* ── Calls ──────────────────────────────────────────────────────────────── */
+.split{display:grid;grid-template-columns:340px minmax(0,1fr);gap:20px;align-items:start}
+.list{position:sticky;top:76px;display:flex;flex-direction:column;max-height:calc(100vh - 100px);overflow:hidden}
+.list-h{padding:14px 14px 10px;display:grid;gap:10px;border-bottom:.5px solid var(--hairline)}
+.list-h .seg{width:100%}
+.list-h .seg button{flex:1;justify-content:center}
+.list-b{overflow-y:auto;padding:6px}
+.call-row{color:var(--ink);display:grid;grid-template-columns:auto 1fr auto;column-gap:12px;row-gap:2px;width:100%;text-align:left;padding:11px 12px;border-radius:12px;align-items:center}
+.call-row:hover{background:var(--hover);text-decoration:none}
+.call-row[aria-current="true"]{background:var(--accent-soft)}
+.call-row .avatar{width:36px;height:36px;font-size:13px;grid-row:span 2}
+.cr-name{font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-time{font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.cr-sub{grid-column:2 / 4;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;gap:6px;align-items:center}
+.detail{display:flex;flex-direction:column;max-height:calc(100vh - 100px);position:sticky;top:76px}
+.detail-h{padding:24px 28px 20px;border-bottom:.5px solid var(--hairline);display:flex;gap:16px;align-items:flex-start}
+.detail-h .avatar{width:52px;height:52px;font-size:18px}
+.back{display:none}
+.detail-b{overflow-y:auto;padding:24px 28px 32px}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;color:var(--muted);margin-top:4px}
+
+/* teacher's read */
+.read{border-radius:16px;background:var(--surface-2);box-shadow:inset 0 0 0 .5px var(--hairline-2);padding:18px 20px;margin-bottom:28px}
+.read-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.read-top .t{font-size:13px;font-weight:600;color:var(--teacher);display:flex;align-items:center;gap:6px}
+.read-grid{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center}
+.score{font-size:44px;font-weight:700;letter-spacing:-.035em;line-height:1;font-variant-numeric:tabular-nums}
+.score small{display:block;font-size:12px;font-weight:500;color:var(--muted);letter-spacing:0;margin-top:5px}
+.dims{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px 28px}
+.dim{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px}
+.pips{display:inline-flex;gap:3px}
+.pips i{width:14px;height:5px;border-radius:3px;background:var(--fill-2)}
+.pips i.on{background:var(--ink-2)}
+.read p{margin-top:14px;font-size:15px;color:var(--ink-2);line-height:1.5}
+.read .led{margin-top:12px;font-size:14px}
+.grading{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:14px}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--fill-2);border-top-color:var(--teacher);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Learning ───────────────────────────────────────────────────────────── */
+.hero{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding:22px 24px 4px}
+.hero-n{font-size:56px;font-weight:700;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+.hero-t{font-size:15px;color:var(--muted);max-width:46ch}
+.hero-t b{color:var(--ink);font-weight:600}
+.delta{font-weight:600;color:var(--live-ink)}
+.delta.down{color:var(--bad)}
+.chart{position:relative;padding:8px 12px 6px;outline:none;border-radius:var(--r-lg)}
+.chart svg{display:block;width:100%;overflow:visible}
+.chart text{font:12px var(--font);fill:var(--muted)}
+.chart .vl{font-weight:600;fill:var(--ink-2)}
+.ctip{position:absolute;pointer-events:none;background:var(--surface);box-shadow:var(--sheet-shadow);border-radius:12px;padding:10px 12px;font-size:13px;
+  min-width:170px;z-index:5;transform:translate(-50%,calc(-100% - 12px));line-height:1.45}
+.ctip b{display:block;font-size:12px;color:var(--muted);font-weight:500;margin-bottom:4px}
+.ctip .kv{display:flex;justify-content:space-between;gap:16px}
+.ctip .kv span:last-child{font-weight:600;font-variant-numeric:tabular-nums}
+.chart-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:4px 24px 18px;font-size:12px;color:var(--muted)}
+.chart-foot .legend{padding:0}
+.tbl-wrap summary{cursor:pointer;color:var(--accent-ink);font-size:13px;list-style:none}
+.tbl-wrap summary::-webkit-details-marker{display:none}
+.tbl{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+.tbl th{text-align:left;font-weight:600;color:var(--muted);padding:6px 8px;border-bottom:.5px solid var(--hairline-2)}
+.tbl td{padding:6px 8px;border-bottom:.5px solid var(--hairline);font-variant-numeric:tabular-nums}
+.changes{display:grid;gap:14px}
+.change{padding:20px 22px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 20px}
+.change-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;grid-column:1 / -1;margin-bottom:4px}
+.change h4{font-size:17px;font-weight:600;letter-spacing:-.015em}
+.change p{color:var(--ink-2);margin-top:4px}
+.change .diffline{margin-top:10px;font-size:14px;background:var(--add);border-radius:10px;padding:8px 12px;color:var(--ink)}
+.quote{margin-top:12px;border-left:2px solid var(--hairline-2);padding:2px 0 2px 12px;color:var(--ink-2);font-size:14px}
+.quote a{font-size:13px;display:inline-block;margin-top:2px}
+.change-act{display:flex;flex-direction:column;gap:8px;align-items:flex-end;justify-content:flex-start;grid-row:2 / span 3;grid-column:2}
+.change-act .when{font-size:12px;color:var(--muted);white-space:nowrap}
+
+/* ── Knowledge ──────────────────────────────────────────────────────────── */
+.kgrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;align-items:start}
+.form{padding:8px 24px 0}
+.fgroup{padding:18px 0;border-bottom:.5px solid var(--hairline)}
+.fgroup:last-of-type{border-bottom:0}
+.frow{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.two{display:grid;grid-template-columns:1fr 1.6fr;gap:18px}
+.two>div{min-width:0}
+textarea.field{min-height:360px;resize:vertical;line-height:1.6;display:block}
+.hears{margin-top:8px;font-size:14px;color:var(--muted)}
+.hears q{color:var(--ink-2)}
+.save-bar{position:sticky;bottom:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 24px;margin-top:6px;
+  border-top:.5px solid var(--hairline);background:var(--surface);border-radius:0 0 var(--r-lg) var(--r-lg)}
+.save-bar .msg{flex:1;min-width:160px;font-size:13px;color:var(--muted)}
+.save-bar .msg.ok{color:var(--live-ink)} .save-bar .msg.bad{color:var(--bad)}
+.notice{margin:16px 0 0;padding:12px 14px;border-radius:12px;background:var(--accent-soft);font-size:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tips summary{cursor:pointer;color:var(--accent-ink);font-size:13px;list-style:none;margin-top:8px}
+.tips summary::-webkit-details-marker{display:none}
+.tips ul{margin:8px 0 0 18px;font-size:13px;color:var(--muted);line-height:1.6}
+.hist{padding:8px 10px 10px}
+.ver{display:grid;grid-template-columns:22px 1fr;gap:10px;width:100%;text-align:left;padding:10px 10px;border-radius:12px;position:relative}
+.ver:hover{background:var(--hover)}
+.ver::before{content:"";position:absolute;left:20px;top:0;bottom:0;border-left:1.5px solid var(--hairline-2)}
+.ver:first-child::before{top:18px}.ver:last-child::before{bottom:calc(100% - 18px)}
+.node{width:12px;height:12px;border-radius:50%;background:var(--surface);box-shadow:inset 0 0 0 2px var(--faint);margin:4px 0 0 5px;position:relative;z-index:1}
+.ver.active .node{background:var(--live);box-shadow:0 0 0 3px var(--live-soft)}
+.ver-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ver-n{font-weight:600;font-size:15px}
+.ver-time{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+.ver-note{font-size:14px;color:var(--ink-2);margin-top:2px;overflow-wrap:anywhere}
+.ver-d{font-size:12px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+.ver-d .p{color:var(--live-ink)} .ver-d .m{color:var(--bad)}
+
+/* diff */
+.diff{font:13px/1.55 var(--mono);border-radius:12px;background:var(--surface-2);box-shadow:inset 0 0 0 .5px var(--hairline-2);overflow:auto;max-height:52vh;padding:6px 0}
+.df{display:flex;gap:10px;padding:1px 14px}
+.df-m{flex:none;width:1ch;color:var(--muted)}
+.df-t{white-space:pre-wrap;overflow-wrap:anywhere;min-width:0}
+.df-add{background:var(--add)}
+.df-del{background:var(--del)}
+.df-del .df-t{text-decoration:line-through;color:var(--muted)}
+.df-skip{padding:4px 14px;color:var(--muted);font:12px var(--font)}
+.full dt{font-size:13px;font-weight:600;color:var(--muted);margin-top:14px}
+.full dt:first-child{margin-top:0}
+.full dd{margin-top:4px;white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* ── Orders ─────────────────────────────────────────────────────────────── */
+.orders .row{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(160px,1.4fr) minmax(170px,1.2fr) 110px;gap:20px;padding:16px 20px;align-items:center}
+.orders .row::before{left:20px}
+.o-id{font:12px var(--mono);color:var(--muted)}
+.o-name{font-weight:600}
+.o-note{font-size:13px;color:var(--muted);margin-top:2px}
+.o-right{text-align:right}
+.o-price{font-weight:600;font-variant-numeric:tabular-nums}
+.o-due{font-size:13px;color:var(--muted)}
+.track{display:flex;gap:3px}
+.track i{flex:1;height:5px;border-radius:3px;background:var(--fill-2)}
+.track i.on{background:var(--accent)}
+.track.done i.on{background:var(--faint)}
+.track-l{font-size:13px;color:var(--ink-2);margin-top:6px;display:flex;gap:8px;align-items:center}
+.track-l .ready{color:var(--live-ink);font-weight:600}
+
+/* ── Messages ───────────────────────────────────────────────────────────── */
+.msgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.msg{padding:20px 22px;display:flex;flex-direction:column;gap:10px}
+.msg-h{display:flex;align-items:center;gap:12px}
+.msg-h .avatar{width:38px;height:38px;font-size:14px}
+.msg-b{font-size:16px;line-height:1.5;color:var(--ink);flex:1;overflow-wrap:anywhere}
+.msg-f{display:flex;gap:16px;flex-wrap:wrap;font-size:14px}
+
+/* ── Dialogs ────────────────────────────────────────────────────────────── */
+dialog{border:0;padding:0;margin:auto;border-radius:var(--r-lg);background:var(--surface);color:var(--ink);box-shadow:var(--sheet-shadow);
+  width:min(560px,calc(100vw - 32px));max-height:calc(100vh - 48px)}
+dialog[open]{animation:pop .22s cubic-bezier(.2,.8,.2,1)}
+dialog::backdrop{background:rgba(0,0,0,.3);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+@keyframes pop{from{opacity:0;transform:scale(.97) translateY(8px)}to{opacity:1;transform:none}}
+dialog.wide{width:min(760px,calc(100vw - 32px))}
+.dlg{display:flex;flex-direction:column;max-height:calc(100vh - 48px)}
+.dlg-h{display:flex;align-items:center;gap:12px;padding:20px 22px 14px}
+.dlg-h h2{font-size:19px;font-weight:600;letter-spacing:-.015em;flex:1}
+.dlg-b{padding:4px 22px 18px;overflow-y:auto;display:grid;gap:18px}
+.dlg-f{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:14px 22px 20px;border-top:.5px solid var(--hairline)}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.toggle input{appearance:none;-webkit-appearance:none;width:51px;height:31px;border-radius:999px;background:var(--fill-2);position:relative;cursor:pointer;transition:background .2s;flex:none}
+.toggle input::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:transform .2s}
+.toggle input:checked{background:var(--live)}
+.toggle input:checked::after{transform:translateX(20px)}
+.test-res{font-size:13px;color:var(--muted);min-height:1.2em}
+
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:300;
+  background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:999px;font-size:14px;font-weight:500;transition:opacity .25s,transform .25s;max-width:calc(100vw - 32px)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.banner{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-12px 0 24px;padding:12px 16px;border-radius:14px;background:var(--bad-soft);color:var(--ink);font-size:14px}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width:1000px){
+  .line-grid,.kgrid{grid-template-columns:1fr}
+  .aside{grid-template-columns:1fr 1fr}
+}
+@media (max-width:860px){
+  .bar{grid-template-columns:1fr auto}
+  .bar .seg{display:none}
+  .tabbar{display:grid}
+  .toast{bottom:calc(90px + env(safe-area-inset-bottom))}
+  main{padding:28px 16px calc(110px + env(safe-area-inset-bottom))}
+  .title{font-size:30px}
+  .split{grid-template-columns:1fr}
+  .list,.detail{position:static;max-height:none}
+  .split.has-sel .list{display:none}
+  .split:not(.has-sel) .detail{display:none}
+  .back{display:inline-flex}
+  .detail-b{overflow:visible}
+  .orders .row{grid-template-columns:1fr auto;gap:10px 16px}
+  .orders .o-garment{grid-column:1 / -1;grid-row:2}
+  .orders .o-track{grid-column:1 / -1;grid-row:3}
+  .orders .o-right{grid-column:2;grid-row:1}
+  .change{grid-template-columns:1fr}
+  .change-act{grid-row:auto;grid-column:1;flex-direction:row;align-items:center;flex-wrap:wrap;margin-top:8px}
+}
+@media (max-width:600px){
+  .aside{grid-template-columns:1fr}
+  .script{grid-template-columns:1fr;row-gap:4px;font-size:16px}
+  .who{padding-top:12px;display:flex;gap:8px;align-items:baseline}
+  .who:first-child{padding-top:0}
+  .who time{display:inline;margin:0}
+  .dir{grid-column:1;margin:4px 0 0}
+  .listening{grid-column:1;margin-top:12px}
+  .now-h,.now-body,.detail-h,.detail-b{padding-left:18px;padding-right:18px}
+  .two{grid-template-columns:1fr}
+  .form{padding:4px 18px 0}
+  .save-bar{padding:12px 18px}
+  .read-grid{grid-template-columns:1fr;gap:14px}
+  .hero-n{font-size:46px}
+  .msgs{grid-template-columns:1fr}
+  .pill .txt{display:none}
+  .pill{padding:0 10px}
+}
+/* ── Customers ──────────────────────────────────────────────────────────── */
+.cust{display:grid;grid-template-columns:44px minmax(0,1.3fr) minmax(0,1.6fr) auto auto;gap:14px;align-items:center}
+.cust .avatar{width:40px;height:40px;font-size:14px}
+.cust-n{font-weight:600;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cust-sub{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cust-pref{font-size:13.5px;color:var(--ink-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cust-stat{text-align:right;font-size:13px;color:var(--muted);white-space:nowrap}
+.cust-stat b{display:block;font-size:15px;color:var(--ink);font-weight:600}
+.chip.vip{background:var(--accent-soft);color:var(--accent-ink)}
+.cd-top{display:flex;gap:14px;align-items:center}
+.cd-top .avatar{width:56px;height:56px;font-size:19px}
+.cd-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.cd-stat{background:var(--band);border-radius:var(--r-sm);padding:10px 12px}
+.cd-stat b{display:block;font-size:20px;font-weight:600;letter-spacing:-.02em}
+.cd-stat span{font-size:12px;color:var(--muted)}
+.cd-h{font-size:13px;font-weight:600;color:var(--muted);margin:18px 0 6px}
+.cd-note{font-size:15px;line-height:1.5;overflow-wrap:anywhere}
+.cd-list{border-radius:var(--r-sm);background:var(--band);overflow:hidden}
+.cd-item{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;font-size:14px;align-items:center;color:var(--ink);width:100%;text-align:left}
+.cd-item+.cd-item{border-top:.5px solid var(--hairline-2)}
+.cd-item small{display:block;color:var(--muted);font-size:12.5px}
+button.cd-item:hover{background:var(--hover)}
+@media (max-width:760px){.cust{grid-template-columns:40px 1fr auto}.cust .cust-pref,.cust .cust-stat.hide-sm{display:none}.cd-grid{grid-template-columns:repeat(3,1fr)}}
+
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="bar">
+  <a class="brand" href="#/line" aria-label="CJ's Cleaning, go to the line">
+    <span class="brand-mark" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M5 12v0M9.5 8v8M14 5v14M18.5 9.5v5"/></svg></span>
+    <span class="brand-name">CJ's Cleaning</span>
+  </a>
+  <nav class="seg" aria-label="Sections" id="nav-top"></nav>
+  <div class="bar-end">
+    <button class="pill" id="conn" type="button" aria-label="Connection settings"><span class="d"></span><span class="txt">…</span></button>
+    <button class="icon-btn" id="open-settings" type="button" aria-label="Settings"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></button>
+  </div>
+</header>
+
+<main id="main" tabindex="-1">
+  <div id="banner" class="banner" hidden></div>
+
+  <!-- The line -->
+  <section class="view" id="v-line" aria-labelledby="t-line">
+    <div class="head"><div>
+      <div class="eyebrow" id="line-eyebrow"></div>
+      <h1 class="title" id="t-line">The line</h1>
+    </div></div>
+    <div class="line-grid">
+      <div class="card" id="now"></div>
+      <div class="aside" id="line-aside"></div>
+    </div>
+    <h2 class="section-t">Every call, by version</h2>
+    <div class="card" id="strip"></div>
+  </section>
+
+  <!-- Calls -->
+  <section class="view" id="v-calls" aria-labelledby="t-calls">
+    <div class="head"><div><h1 class="title" id="t-calls">Calls</h1></div></div>
+    <div class="split" id="split">
+      <div class="card list">
+        <div class="list-h">
+          <label class="search"><span class="sr-only">Search calls</span>
+            <svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
+            <input class="field" id="call-q" type="search" placeholder="Search name, number or words" autocomplete="off" />
+          </label>
+          <div class="seg" role="group" aria-label="Filter calls" id="call-filter">
+            <button type="button" data-f="all" aria-pressed="true">All</button>
+            <button type="button" data-f="live" aria-pressed="false">Live</button>
+            <button type="button" data-f="miss" aria-pressed="false">Unresolved</button>
+          </div>
+        </div>
+        <div class="list-b" id="call-list"></div>
+      </div>
+      <div class="card detail" id="detail"></div>
+    </div>
+  </section>
+
+  <!-- Learning -->
+  <section class="view" id="v-learning" aria-labelledby="t-learning">
+    <div class="head"><div>
+      <h1 class="title" id="t-learning">Learning</h1>
+      <p class="lede">After every call a teacher model grades how it went and edits what the assistant knows. Edits go live on the next call, and you can undo any of them.</p>
+    </div></div>
+    <div id="learning"></div>
+  </section>
+
+  <!-- Knowledge -->
+  <section class="view" id="v-knowledge" aria-labelledby="t-knowledge">
+    <div class="head"><div>
+      <h1 class="title" id="t-knowledge">Knowledge</h1>
+      <p class="lede">Everything the assistant knows about the business. Each save is a new version that answers the next call. Earlier versions are kept.</p>
+    </div></div>
+    <div id="k-status"></div>
+    <div class="kgrid" id="k-main" hidden>
+      <div class="card">
+        <div class="card-h"><div class="card-t">Editing</div><div class="card-s" id="k-base"></div></div>
+        <div id="k-notice"></div>
+        <div class="form">
+          <div class="fgroup two">
+            <div>
+              <div class="frow"><label class="lbl" for="k-name">Business name</label><span class="count" id="k-name-n"></span></div>
+              <input class="field" id="k-name" type="text" autocomplete="off" />
+            </div>
+            <div>
+              <div class="frow"><label class="lbl" for="k-greet">Greeting</label><span class="count" id="k-greet-n"></span></div>
+              <input class="field" id="k-greet" type="text" autocomplete="off" aria-describedby="k-hears" />
+              <div class="hears" id="k-hears"></div>
+            </div>
+          </div>
+          <div class="fgroup">
+            <div class="frow"><label class="lbl" for="k-ctx">What the assistant knows</label><span class="count" id="k-ctx-n"></span></div>
+            <textarea class="field" id="k-ctx" spellcheck="true" aria-describedby="k-tips"></textarea>
+            <details class="tips" id="k-tips"><summary>What to write here</summary>
+              <ul>
+                <li>Hours, including weekends and holidays</li>
+                <li>Services, and what you don't do</li>
+                <li>Prices and policies: turnaround, payment, damage, unclaimed items</li>
+                <li>Questions callers ask, with the answers you want given</li>
+                <li>Tone: friendly, formal, brief</li>
+                <li>When the assistant should take a message instead of answering</li>
+              </ul>
+            </details>
+          </div>
+          <div class="fgroup">
+            <label class="lbl" for="k-note">What changed? <span class="muted" style="font-weight:400">Optional</span></label>
+            <input class="field" id="k-note" type="text" autocomplete="off" placeholder="Updated Saturday hours" />
+          </div>
+        </div>
+        <div class="save-bar">
+          <span class="msg" id="k-msg" role="status" aria-live="polite"></span>
+          <button class="btn" type="button" id="k-revert">Revert</button>
+          <button class="btn primary" type="button" id="k-save">Save</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><div class="card-t">History</div><div class="card-s" id="k-hist-n"></div></div>
+        <div class="hist" id="k-hist"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Customers -->
+  <section class="view" id="v-customers" aria-labelledby="t-customers">
+    <div class="head">
+      <div><h1 class="title" id="t-customers">Customers</h1>
+      <p class="lede">Everyone who has called, with what the assistant remembers about them. Orders are what is being cleaned; customers are who it belongs to.</p></div>
+      <label class="search" style="width:min(320px,100%)"><span class="sr-only">Search customers</span>
+        <svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
+        <input class="field" id="cust-q" type="search" placeholder="Search name, phone or notes" autocomplete="off" />
+      </label>
+    </div>
+    <div id="customers"></div>
+  </section>
+
+  <!-- Orders -->
+  <section class="view" id="v-orders" aria-labelledby="t-orders">
+    <div class="head">
+      <div><h1 class="title" id="t-orders">Orders</h1></div>
+      <label class="search" style="width:min(320px,100%)"><span class="sr-only">Search orders</span>
+        <svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
+        <input class="field" id="order-q" type="search" placeholder="Search name, order or garment" autocomplete="off" />
+      </label>
+    </div>
+    <div id="orders"></div>
+  </section>
+
+  <!-- Messages -->
+  <section class="view" id="v-messages" aria-labelledby="t-messages">
+    <div class="head"><div>
+      <h1 class="title" id="t-messages">Messages</h1>
+      <p class="lede">Callers who asked for a person. The assistant took their name and number.</p>
+    </div></div>
+    <div id="messages"></div>
+  </section>
+</main>
+
+<nav class="tabbar" aria-label="Sections" id="nav-bottom"></nav>
+
+<!-- Settings -->
+<dialog id="settings" aria-labelledby="settings-t">
+  <form class="dlg" method="dialog" id="settings-form">
+    <div class="dlg-h"><h2 id="settings-t">Settings</h2><button class="icon-btn" type="button" data-close aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="dlg-b">
+      <label class="toggle"><span><span style="font-weight:600">Demo data</span><span class="hint" style="display:block;margin:2px 0 0">A scripted line with calls, grades and edits. No backend needed.</span></span>
+        <input type="checkbox" role="switch" id="in-demo" /></label>
+      <div id="conn-fields">
+        <label class="lbl" for="in-api">Backend URL</label>
+        <input class="field" id="in-api" type="url" placeholder="https://your-tunnel.ngrok-free.app" autocomplete="off" spellcheck="false" />
+        <div class="hint">The voice server runs on your laptop behind ngrok. Paste the https address it prints.</div>
+        <label class="lbl" for="in-token" style="margin-top:16px">Dashboard token</label>
+        <input class="field" id="in-token" type="password" placeholder="Leave empty if not set" autocomplete="off" />
+        <div style="display:flex;gap:12px;align-items:center;margin-top:12px"><button class="btn sm" type="button" id="btn-test">Test connection</button><span class="test-res" id="test-res" role="status" aria-live="polite"></span></div>
+      </div>
+      <div>
+        <div class="lbl" id="theme-l">Appearance</div>
+        <div class="seg" role="group" aria-labelledby="theme-l" id="theme-seg">
+          <button type="button" data-theme="auto">Automatic</button><button type="button" data-theme="light">Light</button><button type="button" data-theme="dark">Dark</button>
+        </div>
+      </div>
+    </div>
+    <div class="dlg-f"><button class="btn" type="button" data-close>Cancel</button><button class="btn primary" type="submit" id="btn-save">Save</button></div>
+  </form>
+</dialog>
+
+<dialog id="cust-dlg" class="wide" aria-labelledby="cust-t"><div class="dlg" id="cust-body"></div></dialog>
+<dialog id="sheet" class="wide" aria-labelledby="sheet-t"><div class="dlg" id="sheet-body"></div></dialog>
+<dialog id="ask" aria-labelledby="ask-t"><div class="dlg">
+  <div class="dlg-h"><h2 id="ask-t"></h2></div>
+  <div class="dlg-b"><p id="ask-b" class="muted"></p></div>
+  <div class="dlg-f"><button class="btn" type="button" id="ask-no">Cancel</button><button class="btn primary" type="button" id="ask-yes"></button></div>
+</div></dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="sr-only" id="announce" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+const BRAND = window.SNOOPY_BRAND || window.HANGER_BRAND || "CJ's Cleaning";
+const POLL_MS = 3000;
+
+/* ── storage (always guarded) ─────────────────────────────────────────── */
+const sget = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const sset = (k, v) => { try { if (v == null || v === "") localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
+// carry settings over from the old "hanger" dashboard
+["api", "token", "demo"].forEach((k) => { if (sget("snoopy_" + k) == null && sget("hanger_" + k) != null) sset("snoopy_" + k, sget("hanger_" + k)); });
+
+const params = new URLSearchParams(location.search);
+if (params.get("api")) { sset("snoopy_api", params.get("api").trim()); sset("snoopy_demo", "0"); }
+if (params.get("demo") === "1") sset("snoopy_demo", "1");
+
+const S = {
+  api: (sget("snoopy_api") || window.SNOOPY_API_BASE || window.HANGER_API_BASE || "").trim().replace(/\/+$/, ""),
+  token: sget("snoopy_token") || "",
+  demo: false,
+  theme: sget("snoopy_theme") || "auto",
+  view: "line", sel: null, liveSel: null,
+  health: null,
+  calls: null, orders: null, messages: null, customers: null, custSel: null, custQ: "", custEdit: false, custMsg: "",
+  grades: null, imps: null,   // null = teacher API not available
+  callQ: "", callF: "all", orderQ: "",
+  h: {}, seenLive: {},
+};
+S.demo = sget("snoopy_demo") === "1" || (sget("snoopy_demo") !== "0" && !S.api);
+
+document.title = BRAND;
+document.querySelector(".brand-name").textContent = BRAND;
+applyTheme();
+
+/* ── helpers ──────────────────────────────────────────────────────────── */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const arr = (x) => (Array.isArray(x) ? x : []);
+function setH(el, html) { if (typeof el === "string") el = $(el); if (S.h[el.id] === html) return false; S.h[el.id] = html; el.innerHTML = html; return true; }
+function pj(v) { if (v === undefined) return ""; try { return JSON.stringify(v, null, 2); } catch (e) { return String(v); } }
+const tms = (t) => { if (t == null || t === "") return null; const d = new Date(t); return isNaN(d) ? null : d; };
+const clock = (t) => { const d = tms(t); return d ? d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : ""; };
+const clockS = (t) => { const d = tms(t); return d ? d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }) : ""; };
+const dateTime = (t) => { const d = tms(t); return d ? d.toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : ""; };
+function rel(t) {
+  const d = tms(t); if (!d) return "";
+  const s = Math.round((Date.now() - d) / 1000);
+  if (s < 45) return "just now";
+  if (s < 3600) return Math.max(1, Math.round(s / 60)) + " min ago";
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  if (d >= today) return clock(t);
+  const y = new Date(today); y.setDate(y.getDate() - 1);
+  if (d >= y) return "Yesterday";
+  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+function dur(s) { if (s == null || isNaN(s)) return ""; s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+function elapsed(c) { return c.status === "active" ? (Date.now() - (tms(c.startedAt) || Date.now())) / 1000 : c.durationSec; }
+function money(p) { if (p == null || p === "") return "—"; const n = Number(p); return isNaN(n) ? String(p) : "$" + n.toFixed(2); }
+function day(ds) { if (!ds) return ""; const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ds); const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : tms(ds); return d ? d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" }) : ds; }
+function digits(p) { return String(p || "").replace(/\D/g, ""); }
+function phone(p) {
+  const d = digits(p);
+  if (d.length === 11 && d[0] === "1") return "(" + d.slice(1, 4) + ") " + d.slice(4, 7) + "-" + d.slice(7);
+  if (d.length === 10) return "(" + d.slice(0, 3) + ") " + d.slice(3, 6) + "-" + d.slice(6);
+  return p || "";
+}
+function samePhone(a, b) { const x = digits(a).slice(-10), y = digits(b).slice(-10); return x.length === 10 && x === y; }
+function customerFor(p) { if (!p) return null; const o = arr(S.orders).find((o) => samePhone(o.phone, p)); return o ? o.customerName : null; }
+function callerName(c) { return customerFor(c.from) || (c.from ? phone(c.from) : "Unknown caller"); }
+function initials(c) {
+  const n = customerFor(c.from);
+  if (n) return esc(n.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase());
+  return '<svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M5 4h3l2 5-2.5 1.5a11 11 0 0 0 6 6L15 14l5 2v3a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>';
+}
+function plural(n, w) { return n + " " + w + (n === 1 ? "" : "s"); }
+function isToday(t) { const d = tms(t); if (!d) return false; const s = new Date(); s.setHours(0, 0, 0, 0); return d >= s; }
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("on"), 2800); }
+function announce(msg) { $("announce").textContent = msg; }
+function errText(e) { if (e && e.status === 404) return "The backend doesn't support this yet."; if (e && e.status) return e.message; if (e && e.name === "AbortError") return "The backend took too long to answer."; return "Couldn't reach the backend."; }
+
+const ICON = {
+  line: '<path d="M3 12h1.5M7 8.5v7M11 5v14M15 8v8M19 10.5v3M21.5 12h0"/>',
+  calls: '<path d="M5 4h3l2 5-2.5 1.5a11 11 0 0 0 6 6L15 14l5 2v3a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
+  learning: '<path d="M4 18l5-5 4 3 7-8"/><path d="M15 8h5v5"/>',
+  knowledge: '<path d="M5 5.5A2.5 2.5 0 0 1 7.5 3H19v15H7.5A2.5 2.5 0 0 0 5 20.5z"/><path d="M5 20.5A2.5 2.5 0 0 1 7.5 18H19v3H7.5"/>',
+  orders: '<path d="M12 8.5a2 2 0 1 1 2-2"/><path d="M12 8.5v1.5L3 17h18l-9-7"/>',
+  customers: '<circle cx="9" cy="8" r="3.2"/><path d="M3 19a6 6 0 0 1 12 0"/><path d="M16 5.5a3 3 0 0 1 0 5.5M18 19a5.5 5.5 0 0 0-2.6-4.7"/>',
+  messages: '<path d="M4 5h16v11H10l-5 4v-4H4z"/>',
+};
+const svg = (k, cls) => '<svg class="i' + (cls ? " " + cls : "") + '" viewBox="0 0 24 24" aria-hidden="true">' + ICON[k] + "</svg>";
+const CHEV = '<svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+const SPARK = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>';
+
+/* ── teacher vocabulary ───────────────────────────────────────────────── */
+const OUTCOME = { answered: "Answered", message_taken: "Message taken", booked: "Booked", escalated: "Escalated", failed: "Not resolved" };
+const RESOLVED = { answered: 1, message_taken: 1, booked: 1 };
+const DIMS = [["accuracy", "Accuracy"], ["tools", "Tool use"], ["completion", "Completion"], ["tone", "Tone"], ["brevity", "Brevity"]];
+const TYPE = { context: "Knowledge", prompt: "Instructions", data: "Data", tool: "New tool", schema: "Schema" };
+function feel(f) { if (f == null) return "—"; return f < 0.25 ? "Calm" : f < 0.5 ? "A little tense" : f < 0.75 ? "Frustrated" : "Very frustrated"; }
+function gradeFor(sid) { return arr(S.grades).find((g) => g.callSid === sid) || null; }
+function authorName(a) { return a === "teacher" ? "Teacher" : a === "manager" ? "You" : a === "system" ? "Setup" : String(a || "Unknown"); }
+function authorChip(a) { return a === "teacher" ? '<span class="chip teacher">' + SPARK + "Teacher</span>" : '<span class="chip">' + esc(authorName(a)) + "</span>"; }
+
+/* ── what a tool call means, in words ─────────────────────────────────── */
+function describeTool(tc) {
+  const a = tc.args || {}, r = tc.result || {};
+  let what = tc.name || "tool", res = "", bad = false;
+  if (r && r.error) { bad = true; res = String(r.error); }
+  switch (tc.name) {
+    case "get_order":
+      what = a.orderId ? "Looked up order " + a.orderId : a.phone ? "Looked up orders for " + phone(a.phone) : a.customerName ? "Searched orders for “" + a.customerName + "”" : "Looked up an order";
+      if (!bad) { const os = arr(r.orders); res = !os.length ? "nothing found" : os.length === 1 ? os[0].garment + ", " + os[0].stage : os.length + " orders"; }
+      break;
+    case "lookup_price":
+      what = "Checked the " + String(a.speed || "regular").toLowerCase() + " price for " + (a.item || "an item");
+      if (!bad) res = r.found ? money(r.price) : "not on the price list";
+      break;
+    case "list_prices":
+      what = "Pulled up the price list";
+      if (!bad) res = plural(arr(r.prices).length, "item");
+      break;
+    case "add_order_note":
+      what = "Noted on " + (a.orderId || "the order") + ": “" + (a.note || "") + "”";
+      if (!bad) res = r.saved ? "saved" : "not saved";
+      if (r.saved === false) bad = true;
+      break;
+    case "take_message":
+      what = "Took a message from " + (a.name || "the caller");
+      if (!bad) res = r.saved ? "saved for staff" : "";
+      break;
+  }
+  return { what, res, bad };
+}
+
+/* ── API ──────────────────────────────────────────────────────────────── */
+function api(path, opt) {
+  opt = opt || {};
+  const method = opt.method || "GET";
+  if (S.demo) return Demo.call(method, path, opt.body);
+  if (!S.api) return Promise.reject(new Error("no-api"));
+  const h = { "ngrok-skip-browser-warning": "1" };
+  if (S.token) h["x-dashboard-token"] = S.token;
+  if (opt.body !== undefined) h["Content-Type"] = "application/json";
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 8000);
+  return fetch(S.api + path, { method, headers: h, body: opt.body !== undefined ? JSON.stringify(opt.body) : undefined, signal: ctl.signal }).then((r) => {
+    clearTimeout(t);
+    if (r.ok) return r.json();
+    return r.json().catch(() => null).then((d) => { const e = new Error(d && d.error ? String(d.error) : "HTTP " + r.status); e.status = r.status; throw e; });
+  }, (e) => { clearTimeout(t); throw e; });
+}
+
+/* ── demo backend: same shapes as the real API ────────────────────────── */
+const Demo = (function () {
+  const T0 = Date.now();
+  const ago = (min, sec) => new Date(T0 - min * 60000 + (sec || 0) * 1000).toISOString();
+  const clone = (o) => JSON.parse(JSON.stringify(o));
+  const iso = (d) => { const x = new Date(T0 + d * 864e5); return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0"); };
+
+  const orders = [
+    { orderId: "ORD-0006", customerName: "Angela Torres", phone: "+14155550118", garment: "Wool Coat", stage: "Ready for Pickup", orderType: "Regular", price: 32, payment: "Card", notes: "Remove the lint from the lining.", expectedDate: iso(0) },
+    { orderId: "ORD-0007", customerName: "Daniel Kim", phone: "+14155550142", garment: "Suit (2-piece)", stage: "Cleaning", orderType: "Expedited", price: 36, payment: "Unpaid", notes: "", expectedDate: iso(2) },
+    { orderId: "ORD-0008", customerName: "Priya Shah", phone: "+14155550177", garment: "Wedding Dress", stage: "Pressing", orderType: "Regular", price: 95, payment: "Unpaid", notes: "Delicate beading. Handle with care. No starch.", expectedDate: iso(5) },
+    { orderId: "ORD-0009", customerName: "Marcus Johnson", phone: "+14155550161", garment: "Shirt (dress) x3", stage: "Received", orderType: "Regular", price: 13.5, payment: "Unpaid", notes: "Light starch on all three shirts.", expectedDate: iso(3) },
+    { orderId: "ORD-0010", customerName: "Lucia Ramirez", phone: "+14155550199", garment: "Comforter (queen)", stage: "Sorting", orderType: "Regular", price: 30, payment: "Venmo", notes: "", expectedDate: iso(4) },
+    { orderId: "ORD-0011", customerName: "Marcus Johnson", phone: "+14155550161", garment: "Pants (casual)", stage: "Delivered", orderType: "Regular", price: 9, payment: "Cash", notes: "", expectedDate: iso(-3) },
+  ];
+  const ord = (id) => orders.find((o) => o.orderId === id);
+  const prices = [["Shirts", "Shirt (casual)", 3.5, 5.5], ["Shirts", "Shirt (dress)", 4.5, 7], ["Pants", "Pants (casual)", 9, 14], ["Pants", "Pants (dress)", 10.5, 16], ["Suits", "Suit (2-piece)", 24, 36], ["Suits", "Suit (3-piece)", 28, 42], ["Outerwear", "Wool Coat", 32, 48], ["Outerwear", "Winter Coat (down)", 38, 55], ["Dresses", "Dress (cocktail)", 18, 28], ["Dresses", "Wedding Dress", 95, 140], ["Household", "Comforter (queen)", 30, 45]]
+    .map((p) => ({ category: p[0], item: p[1], regularPrice: p[2], expeditedPrice: p[3], notes: p[1] === "Wedding Dress" ? "Call for quote if heavily beaded." : "" }));
+  const price = (item, speed) => { const r = prices.find((p) => p.item === item); return { found: true, item, orderType: speed, price: speed === "Expedited" ? r.expeditedPrice : r.regularPrice, category: r.category, notes: r.notes || null }; };
+
+  const BASE = ["CJ's Cleaning is a friendly neighborhood dry cleaner.",
+    "Services: dry cleaning, laundry and press, alterations and repairs, wedding gown and leather care, and household items like comforters and curtains.",
+    "Turnaround: regular service takes 3 days. Expedited service is ready the next day for an extra fee.",
+    "Pickup hours: Monday to Saturday, 8am to 6pm. Closed on Sunday.",
+    "Payment: we accept cash, credit and debit cards, and Apple Pay. Payment is due at pickup.",
+    "Special items such as leather, suede, beaded or vintage garments need staff to inspect them. Take a message and staff will call back with a quote.",
+    "Stains: tell us about stains at drop-off so we can treat them, but we cannot guarantee every stain will come out.",
+    "Unclaimed items are held for 30 days.",
+    "Tone: warm, neighborly, and brief. Be patient with callers and never pushy.",
+    "For anything not listed here, take a message and let the caller know staff will call back."];
+  const ALT = "Alterations: hems, tapering and zipper repair are done in-house in 3 to 5 days. Staff quote the price after seeing the garment.";
+  const SUN = "Sunday: the shop is closed, but the 24-hour drop box by the front door takes garments any time. Drop-box orders are logged Monday at 8am.";
+  const READY = "When a caller asks when an order will be ready, give the expected date from the order lookup as a weekday and date, for example \"Wednesday, October 15th\". Never say you don't have a date if the lookup returned one.";
+  const ctx = (extra) => BASE.slice(0, 4).concat(extra.filter((x) => x.at === 4).map((x) => x.s), BASE.slice(4, 8), extra.filter((x) => x.at === 8).map((x) => x.s), BASE.slice(8)).join("\n");
+  const G = "Hey, this is CJ's Cleaning.";
+  const configs = [
+    { version: 1, companyName: "CJ's Cleaning", greeting: G, context: BASE.join("\n"), author: "system", note: "Default", createdAt: ago(4400) },
+    { version: 2, companyName: "CJ's Cleaning", greeting: G, context: ctx([{ at: 8, s: ALT }]), author: "manager", note: "Added alterations", createdAt: ago(2900) },
+    { version: 3, companyName: "CJ's Cleaning", greeting: G, context: ctx([{ at: 4, s: SUN }, { at: 8, s: ALT }]), author: "teacher", note: "Answer Sunday drop-off questions", createdAt: ago(1560) },
+    { version: 4, companyName: "CJ's Cleaning", greeting: G, context: ctx([{ at: 4, s: SUN }, { at: 8, s: ALT }, { at: 8, s: READY }]), author: "teacher", note: "Give the ready date when asked", createdAt: ago(46) },
+  ];
+  let active = 4;
+
+  // calls: [sid, from, minutesAgo, seconds, version, [[role|tool, ...]]]
+  const C = [];
+  function call(sid, from, min, secs, v, steps) {
+    const c = { callSid: sid, from, startedAt: ago(min), endedAt: ago(min, secs), durationSec: secs, status: "completed", configVersion: v, transcript: [], toolCalls: [] };
+    let at = 0;
+    steps.forEach((s) => {
+      at += s[0] === "tool" ? 2 : Math.max(3, Math.round(String(s[1]).length / 14));
+      if (s[0] === "tool") c.toolCalls.push({ name: s[1], args: s[2], result: s[3], ts: ago(min, at) });
+      else c.transcript.push({ role: s[0], text: s[1], ts: ago(min, at) });
+    });
+    C.push(c); return c;
+  }
+  const A = "agent", K = "caller", CHECK = "Hold on, let me check.";
+  call("CA1f02a9", "+14155550134", 2760, 64, 2, [[A, G], [K, "Hi, do you guys clean leather jackets?"], [A, "We do, but staff like to look at leather first. Can I take your name so they can call you with a quote?"], [K, "Sure, it's Hannah Cole."], [A, "Thanks, Hannah. And the best number to reach you?"], [K, "This one's fine. 415-555-0134."], ["tool", "take_message", { name: "Hannah Cole", phone: "4155550134", message: "Leather jacket cleaning, wants a quote." }, { saved: true }], [A, "Got it. Someone will call you back with a quote soon."]]);
+  call("CA2b77c1", "+14155550142", 2520, 48, 2, [[A, G], [K, "Checking on an order for Daniel Kim."], [A, CHECK], ["tool", "get_order", { customerName: "Daniel Kim" }, { found: true, orders: [ord("ORD-0007")] }], [A, "Your suit is being cleaned now, on expedited service."], [K, "Great, thanks."]]);
+  call("CA3c1d55", "+14155550126", 1640, 41, 2, [[A, G], [K, "Can I drop stuff off on Sunday, or are you totally closed?"], [A, "We're closed on Sunday. I don't have anything on file about Sunday drop-off."], [K, "So I just drive over there and find out?"], [A, "I can take a message and have staff call you back."], [K, "Never mind."]]);
+  call("CA4e90b2", "+14155550153", 1320, 37, 3, [[A, G], [K, "Are you open Sundays? I work all week."], [A, "The shop's closed Sunday, but our 24-hour drop box by the front door takes garments any time."], [K, "Oh perfect, I'll do that."]]);
+  call("CA5a3318", "+14155550177", 1090, 52, 3, [[A, G], [K, "How much is it to clean a wedding dress, and faster?"], [A, CHECK], ["tool", "lookup_price", { item: "Wedding Dress", speed: "Expedited" }, price("Wedding Dress", "Expedited")], [A, "Expedited is $140, regular is $95. If it's heavily beaded, staff will quote it first."], [K, "Okay, that's helpful."]]);
+  call("CA6d4407", "+14155550142", 310, 88, 3, [[A, G], [K, "When will my suit be ready?"], [A, CHECK], ["tool", "get_order", { phone: "+14155550142" }, { found: true, orders: [ord("ORD-0007")] }], [A, "Your suit is being cleaned right now."], [K, "But when? I need it for Monday."], [A, "I don't have a date on file, sorry."], [K, "It's literally on the ticket. Can you just hold it till Tuesday then?"], [A, "I can take a message for staff about that."], [K, "Fine, yes. Daniel, same number."], ["tool", "take_message", { name: "Daniel Kim", phone: "+14155550142", message: "Wants to know suit ready date; may need it held till Tuesday." }, { saved: true }], [A, "Done. Staff will call you back."]]);
+  call("CA7c2f18", "+14155550111", 205, 46, 3, [[A, G], [K, "Hi, it's Devon. I've got a wine stain on a silk shirt, can someone call me?"], [A, "Of course, Devon. Is this the best number?"], [K, "Yep."], ["tool", "take_message", { name: "Devon", phone: "+14155550111", message: "Wine stain on a silk shirt, wants advice before drop-off." }, { saved: true }], [A, "Done. Staff will call you back about the stain."]]);
+  call("CA8b9e03", "+14155550165", 128, 71, 3, [[A, G], [K, "What are your prices?"], [A, CHECK], ["tool", "list_prices", {}, { prices }], [A, "Casual shirts are $3.50, dress shirts $4.50, casual pants $9, dress pants $10.50, two-piece suits $24, three-piece $28, wool coats $32, down coats $38, cocktail dresses $18, wedding dresses $95, and queen comforters $30."], [K, "Uh, okay. Just the shirts really."], [A, "Dress shirts are $4.50 each."]]);
+  call("CA9a0c7d", "+14155550177", 34, 39, 4, [[A, G], [K, "Hi, when will my wedding dress be ready? Priya Shah."], [A, CHECK], ["tool", "get_order", { customerName: "Priya Shah" }, { found: true, orders: [ord("ORD-0008")] }], [A, "It's being pressed now and should be ready " + day(iso(5)) + "."], [K, "Perfect, thank you!"]]);
+  call("CAa41e5f", "+14155550161", 19, 44, 4, [[A, G], [K, "Can you add a note to my shirts? No starch on the blue one."], [A, CHECK], ["tool", "get_order", { phone: "+14155550161" }, { found: true, orders: [ord("ORD-0009"), ord("ORD-0011")] }], ["tool", "add_order_note", { orderId: "ORD-0009", note: "No starch on the blue shirt." }, { saved: true, orderId: "ORD-0009", notes: "Light starch on all three shirts. No starch on the blue shirt." }], [A, "Done, I noted no starch on the blue shirt."], [K, "Thanks!"]]);
+  call("CAb57d20", "+14155550190", 8, 26, 4, [[A, G], [K, "What time do you close today?"], [A, "We close at 6pm today."], [K, "Great, thanks."]]);
+  ord("ORD-0009").notes = "Light starch on all three shirts. [" + iso(0) + "] No starch on the blue shirt.";
+
+  const grade = (sid, outcome, score, fr, d, summary) => ({ callSid: sid, configVersion: C.find((c) => c.callSid === sid).configVersion, outcome, score, frustration: fr,
+    dims: { accuracy: d[0], tools: d[1], completion: d[2], tone: d[3], brevity: d[4] }, summary, createdAt: C.find((c) => c.callSid === sid).endedAt });
+  const grades = [
+    grade("CA1f02a9", "message_taken", 74, 0.1, [4, 4, 4, 4, 3], "Handled a special item correctly by taking a message. Asked for the number although caller ID had it."),
+    grade("CA2b77c1", "answered", 78, 0.05, [4, 5, 4, 4, 4], "Correct lookup. Didn't offer the expected date, which the caller would likely want."),
+    grade("CA3c1d55", "failed", 34, 0.72, [3, 3, 1, 3, 4], "The knowledge had nothing on Sunday drop-off. The caller hung up without an answer."),
+    grade("CA4e90b2", "answered", 90, 0.05, [5, 5, 5, 5, 5], "Answered the Sunday question in one sentence from the new knowledge."),
+    grade("CA5a3318", "answered", 86, 0.08, [5, 5, 4, 4, 4], "Gave both prices and the beading caveat. Could have asked one question at a time."),
+    grade("CA6d4407", "message_taken", 48, 0.61, [2, 3, 2, 3, 4], "The order lookup returned a ready date, but the assistant said it had none. The caller also wanted to hold the order, which no tool can do."),
+    grade("CA7c2f18", "message_taken", 82, 0.12, [5, 4, 5, 5, 4], "Clean message with name and caller ID number confirmed."),
+    grade("CA8b9e03", "answered", 63, 0.34, [5, 4, 4, 3, 1], "Read the whole price list aloud. The caller only wanted shirts."),
+    grade("CA9a0c7d", "answered", 94, 0.03, [5, 5, 5, 5, 5], "Gave the stage and ready date in one sentence."),
+    grade("CAa41e5f", "answered", 91, 0.04, [5, 5, 5, 5, 4], "Picked the open order of two and saved the note."),
+    grade("CAb57d20", "answered", 92, 0.02, [5, 5, 5, 5, 5], "Answered from knowledge in one sentence."),
+  ];
+
+  const imps = [
+    { id: "imp-4", type: "prompt", status: "proposed", title: "Ask which item before reading prices", rationale: "The assistant read all 11 prices when the caller only wanted shirts. Ask what they're bringing in first, then quote that item.", change: "When a caller asks about prices in general, ask what item they have in mind before listing anything.", evidence: [{ callSid: "CA8b9e03", quote: "Uh, okay. Just the shirts really." }], fromVersion: null, toVersion: null, createdAt: ago(126) },
+    { id: "imp-3", type: "tool", status: "proposed", title: "Let callers move a pickup date", rationale: "A caller asked to hold an order until Tuesday. The assistant can only take a message for that. A tool that updates the expected date would settle it during the call.", change: "reschedule_pickup(orderId, newDate)", evidence: [{ callSid: "CA6d4407", quote: "Can you just hold it till Tuesday then?" }], fromVersion: null, toVersion: null, createdAt: ago(306) },
+    { id: "imp-2", type: "context", status: "applied", title: "Give the ready date when asked", rationale: "The lookup returned an expected date, but the assistant told the caller it had none. Frustration went up from there.", change: READY, evidence: [{ callSid: "CA6d4407", quote: "But when? I need it for Monday." }], fromVersion: 3, toVersion: 4, createdAt: ago(46) },
+    { id: "imp-1", type: "context", status: "applied", title: "Answer Sunday drop-off questions", rationale: "The knowledge only said the shop is closed Sunday. The caller asked about dropping off and hung up when the assistant had no answer.", change: SUN, evidence: [{ callSid: "CA3c1d55", quote: "Can I drop stuff off on Sunday, or are you totally closed?" }], fromVersion: 2, toVersion: 3, createdAt: ago(1560) },
+  ];
+  const customers = [
+    { phone: "+14155550142", name: "Daniel Kim", email: "daniel.kim@example.com", preferences: "Express service on suits when possible. Folded shirts, no hangers.", notes: "Regular since 2024. Usually needs things by Monday.", vip: true, firstSeenAt: ago(60 * 24 * 200), lastCallAt: ago(88), callCount: 9 },
+    { phone: "+14155550118", name: "Angela Torres", preferences: "Remove lint from linings. Text before delivery.", notes: "Brings a wool coat every fall.", firstSeenAt: ago(60 * 24 * 90), lastCallAt: ago(19), callCount: 3 },
+    { phone: "+14155550177", name: "Priya Shah", email: "priya.shah@example.com", preferences: "Handle beaded garments by hand.", notes: "Wedding dress drop-off.", firstSeenAt: ago(60 * 24 * 12), lastCallAt: ago(34), callCount: 2 },
+    { phone: "+14155550161", name: "Marcus Johnson", preferences: "Light starch on shirts.", notes: "Asked for no starch on the blue shirt.", firstSeenAt: ago(60 * 24 * 45), lastCallAt: ago(19), callCount: 4 },
+    { phone: "+14155550199", name: "Lucia Ramirez", preferences: "", notes: "", firstSeenAt: ago(60 * 24 * 3), lastCallAt: ago(60), callCount: 1 },
+    { phone: "+14155550134", name: "Hannah Cole", notes: "Asked about leather jacket cleaning; waiting on a quote.", firstSeenAt: ago(2760), lastCallAt: ago(2759), callCount: 1 },
+    { phone: "+14155550111", name: "Devon", notes: "Silk shirt stain, wants advice before drop-off.", firstSeenAt: ago(204), lastCallAt: ago(204), callCount: 1 },
+  ];
+  const messages = [
+    { name: "Daniel Kim", phone: "+14155550142", message: "Wants to know suit ready date; may need it held till Tuesday.", createdAt: ago(309) },
+    { name: "Devon", phone: "+14155550111", message: "Wine stain on a silk shirt, wants advice before drop-off.", createdAt: ago(204) },
+    { name: "Hannah Cole", phone: "+14155550134", message: "Leather jacket cleaning, wants a quote.", createdAt: ago(2759) },
+  ];
+
+  /* a scripted live call that plays out on a loop */
+  const SCRIPTS = [
+    { from: "+14155550199", grade: ["answered", 95, 0.03, [5, 5, 5, 5, 5], "Found the order from caller ID, gave the ready date, and quoted expedited correctly."], steps: [
+      [K, "Hi, I'm calling to check on my comforter."], [A, CHECK],
+      ["tool", "get_order", { phone: "+14155550199" }, () => ({ found: true, orders: [ord("ORD-0010")] })],
+      [A, "Found it, Lucia. Your queen comforter is being sorted and should be ready " + day(iso(4)) + "."],
+      [K, "Great. Oh, and how much to rush a two-piece suit?"], [A, CHECK],
+      ["tool", "lookup_price", { item: "Suit (2-piece)", speed: "Expedited" }, () => price("Suit (2-piece)", "Expedited")],
+      [A, "An expedited two-piece suit is $36, ready the next day."],
+      [K, "Perfect, thanks so much."], [A, "Anytime, Lucia. Have a good one!"]] },
+    { from: "+14155550118", grade: ["answered", 93, 0.02, [5, 5, 5, 5, 4], "Confirmed the coat is ready and answered closing time from knowledge."], steps: [
+      [K, "Hey, is my coat ready? Angela Torres."], [A, CHECK],
+      ["tool", "get_order", { customerName: "Angela Torres" }, () => ({ found: true, orders: [ord("ORD-0006")] })],
+      [A, "It is. Your wool coat is ready for pickup, and it's $32."],
+      [K, "Nice. How late are you open?"], [A, "Until 6pm today."], [K, "See you soon."], [A, "See you, Angela!"]] },
+  ];
+  let live = null, scriptIx = 0, queue = [], words = null, n = 0, ticker = null;
+  function startLive() {
+    if (live) return;
+    const sc = SCRIPTS[scriptIx++ % SCRIPTS.length];
+    live = { sc, c: { callSid: "CAlive" + (++n).toString(16).padStart(4, "0"), from: sc.from, startedAt: new Date().toISOString(), status: "active", configVersion: active, transcript: [{ role: "agent", text: G, ts: new Date().toISOString() }], toolCalls: [] } };
+    queue = sc.steps.slice(); words = null; C.push(live.c);
+    ticker = setInterval(tick, 1300);
+  }
+  function tick() {
+    const now = Date.now();
+    if (!live) return;
+    const c = live.c;
+    if (words) {   // stream the agent's words like Gemini's transcription fragments
+      const last = c.transcript[c.transcript.length - 1];
+      last.text += (last.text ? " " : "") + words.splice(0, 4).join(" ");
+      if (!words.length) words = null;
+      return;
+    }
+    const s = queue.shift();
+    if (!s) {
+      c.status = "completed"; c.endedAt = new Date().toISOString(); c.durationSec = Math.round((now - Date.parse(c.startedAt)) / 1000);
+      const g = live.sc.grade, done = c;
+      setTimeout(() => { grades.push({ callSid: done.callSid, configVersion: done.configVersion, outcome: g[0], score: g[1], frustration: g[2], dims: { accuracy: g[3][0], tools: g[3][1], completion: g[3][2], tone: g[3][3], brevity: g[3][4] }, summary: g[4], createdAt: new Date().toISOString() }); }, 6000);
+      live = null; clearInterval(ticker); ticker = null; return;
+    }
+    const ts = new Date().toISOString();
+    if (s[0] === "tool") c.toolCalls.push({ name: s[1], args: s[2], result: s[3](), ts });
+    else if (s[0] === A) { c.transcript.push({ role: A, text: "", ts }); words = s[1].split(" "); }
+    else c.transcript.push({ role: K, text: s[1], ts });
+  }
+
+  function snapCfg() { const vs = configs.slice().sort((a, b) => b.version - a.version); return { active: vs.find((v) => v.version === active), versions: vs }; }
+  function newVersion(base, extra) {
+    const v = Object.assign({}, base, extra, { version: Math.max.apply(null, configs.map((x) => x.version)) + 1, createdAt: new Date().toISOString() });
+    configs.push(v); active = v.version; return v;
+  }
+  function route(method, path, body) {
+    const p = path.split("?")[0], fail = (st, msg) => { const e = new Error(msg); e.status = st; throw e; };
+    body = body || {};
+    if (method === "GET") {
+      if (p === "/api/health") return { status: "ok" };
+      if (p === "/api/calls") return C.slice().sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+      if (p === "/api/orders") return orders;
+      if (p === "/api/messages") return messages;
+      if (p === "/api/customers") return customers;
+      if (p === "/api/config") return snapCfg();
+      if (p === "/api/grades") return grades;
+      if (p === "/api/improvements") return imps;
+      return fail(404, "Not found");
+    }
+    if (method === "PUT" && p === "/api/config") {
+      const nm = String(body.companyName || "").trim(), g = String(body.greeting || "").trim(), cx = String(body.context == null ? "" : body.context);
+      if (nm.length < 1 || nm.length > 80) fail(400, "companyName: must be 1 to 80 characters");
+      if (g.length < 1 || g.length > 300) fail(400, "greeting: must be 1 to 300 characters");
+      if (cx.length > 8000) fail(400, "context: must be at most 8000 characters");
+      const v = newVersion({}, { companyName: nm, greeting: g, context: cx.trim(), author: "manager" });
+      if (body.note) v.note = String(body.note).trim(); else delete v.note;
+      return v;
+    }
+    if (method === "POST" && p === "/api/config/activate") {
+      const f = configs.find((x) => x.version === body.version);
+      if (!f) fail(404, "version not found");
+      active = f.version; return f;
+    }
+    if (method === "PUT") {
+      const cm = /^\/api\/customers\/([^/]+)$/.exec(p);
+      if (cm) {
+        const c = customers.find((x) => x.phone === decodeURIComponent(cm[1]));
+        if (!c) fail(404, "customer not found");
+        ["name", "email", "preferences", "notes"].forEach((k) => { if (typeof body[k] === "string") { if (body[k].trim()) c[k] = body[k].trim(); else delete c[k]; } });
+        if (typeof body.vip === "boolean") c.vip = body.vip;
+        return c;
+      }
+    }
+    const m = /^\/api\/improvements\/([^/]+)$/.exec(p);
+    if (method === "POST" && m) {
+      const imp = imps.find((x) => x.id === decodeURIComponent(m[1]));
+      if (!imp) fail(404, "improvement not found");
+      if (body.action === "dismiss") imp.status = "dismissed";
+      else if (body.action === "rolled_back") imp.status = "rolled_back";
+      else if (body.action === "approve") {
+        if (imp.type === "tool" || imp.type === "schema") imp.status = "approved";
+        else {
+          const cur = snapCfg().active;
+          const v = newVersion(cur, { context: cur.context + "\n" + imp.change, author: "teacher", note: imp.title });
+          imp.status = "applied"; imp.fromVersion = cur.version; imp.toVersion = v.version;
+        }
+      }
+      return imp;
+    }
+    return fail(404, "Not found");
+  }
+  return {
+    playCall: startLive,
+    call(method, path, body) {
+      return new Promise((res, rej) => setTimeout(() => { try { res(clone(route(method, path, body))); } catch (e) { rej(e); } }, method === "GET" ? 30 : 180));
+    },
+  };
+})();
+
+/* ── navigation ───────────────────────────────────────────────────────── */
+const VIEWS = [["line", "Line"], ["calls", "Calls"], ["learning", "Learning"], ["knowledge", "Knowledge"], ["customers", "Customers"], ["orders", "Orders"], ["messages", "Messages"]];
+$("nav-top").innerHTML = VIEWS.map((v) => '<a href="#/' + v[0] + '" data-v="' + v[0] + '">' + (v[0] === "line" ? '<span class="live-dot" hidden></span>' : "") + v[1] + "</a>").join("");
+$("nav-bottom").innerHTML = VIEWS.map((v) => '<a href="#/' + v[0] + '" data-v="' + v[0] + '">' + svg(v[0]) + (v[0] === "line" ? '<span class="live-dot" hidden></span>' : "") + "<span>" + v[1] + "</span></a>").join("");
+
+function route() {
+  const parts = (location.hash.replace(/^#\/?/, "") || "line").split("/");
+  const v = VIEWS.some((x) => x[0] === parts[0]) ? parts[0] : "line";
+  const prev = S.view;
+  S.view = v;
+  S.sel = v === "calls" && parts[1] ? decodeURIComponent(parts[1]) : (v === "calls" ? null : S.sel);
+  document.querySelectorAll("[data-v]").forEach((a) => { if (a.getAttribute("data-v") === v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+  document.querySelectorAll(".view").forEach((s) => s.classList.toggle("on", s.id === "v-" + v));
+  if (prev !== v) { window.scrollTo(0, 0); $("main").focus({ preventScroll: true }); }
+  renderAll();
+  if (v === "learning") requestAnimationFrame(renderChart);
+}
+window.addEventListener("hashchange", route);
+const go = (h) => { if (location.hash === h) route(); else location.hash = h; };
+
+/* ── the script (one transcript renderer for every view) ──────────────── */
+function scriptHtml(c) {
+  const ev = [];
+  arr(c.transcript).forEach((m, i) => ev.push({ t: tms(m.ts) || 0, k: 0, i, m }));
+  arr(c.toolCalls).forEach((tc, i) => ev.push({ t: tms(tc.ts) || 0, k: 1, i, tc }));
+  ev.sort((a, b) => (a.t - b.t) || (a.k - b.k) || (a.i - b.i));
+  let out = "";
+  ev.forEach((e) => {
+    if (e.m) {
+      const ag = e.m.role === "agent";
+      out += '<div class="who ' + (ag ? "agent" : "") + '">' + (ag ? esc(BRAND) : "Caller") + (e.m.ts ? '<time datetime="' + esc(e.m.ts) + '">' + esc(clockS(e.m.ts)) + "</time>" : "") + "</div>" +
+        '<div class="say ' + (ag ? "agent" : "caller") + '">' + (esc(e.m.text) || "&nbsp;") + "</div>";
+    } else {
+      const d = describeTool(e.tc), k = "t" + e.i;
+      out += '<details class="dir' + (d.bad ? " err" : "") + '" data-k="' + k + '"><summary><span class="arr" aria-hidden="true">↳</span><span class="what">' + esc(d.what) +
+        (d.res ? ' <span class="res">→ ' + esc(d.res) + "</span>" : "") + '</span><span class="tog">Details</span></summary>' +
+        '<div class="raw"><b>' + esc(e.tc.name) + " arguments</b><pre>" + esc(pj(e.tc.args)) + "</pre><b>Result</b><pre>" + esc(pj(e.tc.result)) + "</pre></div></details>";
+    }
+  });
+  if (isLive(c)) out += '<div class="listening"><span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>On the line</div>';
+  return out ? '<div class="script">' + out + "</div>" : '<p class="muted">Nothing said yet.</p>';
+}
+// Re-render a transcript without losing scroll position or open details
+function paintScript(scroller, host, c) {
+  const html = scriptHtml(c), key = host.id;
+  if (S.h[key] === html && host.getAttribute("data-sid") === c.callSid) return;
+  const same = host.getAttribute("data-sid") === c.callSid;
+  const open = {}; let stick = true, top = 0;
+  if (same) {
+    top = scroller.scrollTop; stick = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 80;
+    host.querySelectorAll("details[open]").forEach((d) => { open[d.getAttribute("data-k")] = 1; });
+  }
+  S.h[key] = html; host.innerHTML = html; host.setAttribute("data-sid", c.callSid);
+  host.querySelectorAll("details").forEach((d) => { if (open[d.getAttribute("data-k")]) d.open = true; });
+  if (!same) scroller.scrollTop = c.status === "active" ? scroller.scrollHeight : 0;
+  else scroller.scrollTop = stick && c.status === "active" ? scroller.scrollHeight : top;
+}
+
+/* ── shared bits ──────────────────────────────────────────────────────── */
+const configured = () => S.demo || !!S.api;
+const sortedCalls = () => arr(S.calls).slice().sort((a, b) => (tms(b.startedAt) || 0) - (tms(a.startedAt) || 0));
+// A call is live only if the server says active AND something happened on it recently.
+// A server crash mid-call can leave a stored call "active" forever; this keeps it off the line.
+const STALE_MS = 3 * 60 * 1000;
+function lastActivity(c) {
+  return Math.max(tms(c.startedAt) || 0, ...arr(c.transcript).map((m) => tms(m.ts) || 0), ...arr(c.toolCalls).map((t) => tms(t.ts) || 0));
+}
+const isLive = (c) => c.status === "active" && Date.now() - lastActivity(c) < STALE_MS;
+const liveCalls = () => sortedCalls().filter(isLive);
+function outcomeOf(c) {
+  const g = gradeFor(c.callSid);
+  if (g) return { label: OUTCOME[g.outcome] || g.outcome, miss: !RESOLVED[g.outcome], g };
+  const names = arr(c.toolCalls).map((t) => t.name);
+  if (names.includes("take_message")) return { label: "Message taken" };
+  if (names.includes("add_order_note")) return { label: "Note added" };
+  if (names.length) return { label: "Answered" };
+  return { label: "" };
+}
+function setupEmpty(what) {
+  return '<div class="card empty"><h3>Connect your line</h3><p>' + esc(what || "Add the backend URL in Settings to see your calls, or turn on demo data to look around.") +
+    '</p><button class="btn primary" type="button" data-open-settings>Open Settings</button></div>';
+}
+const activeCfg = () => (S.cfg && S.cfg.active) || null;
+
+/* ── Line ─────────────────────────────────────────────────────────────── */
+function renderLine() {
+  const cfg = activeCfg();
+  setH("line-eyebrow", cfg ? "Answering for " + esc(cfg.companyName) + ' <span aria-hidden="true">·</span> <a href="#/knowledge">Knowledge v' + esc(cfg.version) + "</a>" : "");
+  if (!configured()) { setH("now", setupEmpty()); setH("line-aside", ""); setH("strip", ""); $("t-line").textContent = "The line"; return; }
+  const lives = liveCalls();
+  if (S.liveSel && !lives.some((c) => c.callSid === S.liveSel)) S.liveSel = null;
+  const c = lives.find((x) => x.callSid === S.liveSel) || lives[0];
+  $("t-line").textContent = c ? (lives.length > 1 ? lives.length + " calls on the line" : "On a call") : "The line is quiet";
+  const nowEl = $("now");
+  if (c) {
+    const head = '<div class="now-h"><div class="avatar live" aria-hidden="true">' + initials(c) + '</div><div class="now-who"><div class="now-name">' + esc(callerName(c)) + "</div>" +
+      '<div class="now-sub"><span class="chip live"><span class="live-dot"></span>Live</span><span class="num" data-elapsed="' + esc(c.callSid) + '">' + dur(elapsed(c)) + "</span>" +
+      (customerFor(c.from) ? "<span>" + esc(phone(c.from)) + "</span>" : "") + '</div></div><a class="btn sm" href="#/calls/' + encodeURIComponent(c.callSid) + '">Open</a></div>' +
+      (lives.length > 1 ? '<div class="switch-live" role="group" aria-label="Live calls">' + lives.map((l) => '<button type="button" class="chip' + (l === c ? " accent" : "") + '" data-live="' + esc(l.callSid) + '">' + esc(callerName(l)) + "</button>").join("") + "</div>" : "");
+    if (nowEl.getAttribute("data-mode") !== "live:" + c.callSid || S.h["now-head"] !== head) {
+      if (nowEl.getAttribute("data-mode") !== "live:" + c.callSid) { nowEl.innerHTML = '<div id="now-head"></div><div class="now-body" id="now-scroll"><div id="now-script"></div></div>'; S.h["now-script"] = null; }
+      nowEl.setAttribute("data-mode", "live:" + c.callSid); S.h.now = null;
+      $("now-head").innerHTML = head; S.h["now-head"] = head;
+    }
+    paintScript($("now-scroll"), $("now-script"), c);
+  } else {
+    const last = sortedCalls()[0];
+    let html = '<div class="quiet"><svg class="flat" viewBox="0 0 180 40" aria-hidden="true"><path d="M0 20h66l6-8 6 16 6-8h96" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+      "<h3>No one is on the line</h3><p>" + esc(BRAND) + " picks up and answers from Knowledge" + (cfg ? " v" + esc(cfg.version) : "") + ". This page updates as soon as someone calls.</p>" +
+      (S.demo ? '<button class="btn" type="button" data-play style="margin-top:12px">Play a sample call</button><p class="hint" style="margin-top:4px">Demo data only. Nothing is really calling.</p>' : "");
+    if (last) {
+      const o = outcomeOf(last);
+      html += '<div class="group last"><a class="row" href="#/calls/' + encodeURIComponent(last.callSid) + '"><div class="avatar" aria-hidden="true">' + initials(last) + '</div><div class="row-l"><div style="font-weight:600">' + esc(callerName(last)) +
+        '</div><div class="row-sub">Last call ' + esc(rel(last.startedAt)) + (last.durationSec != null ? " · " + dur(last.durationSec) : "") + (o.label ? " · " + esc(o.label) : "") + "</div></div>" + CHEV + "</a></div>";
+    }
+    nowEl.setAttribute("data-mode", "quiet");
+    setH(nowEl, html + "</div>");
+  }
+
+  // today, as a list
+  const calls = arr(S.calls), today = calls.filter((x) => isToday(x.startedAt));
+  const msgsToday = arr(S.messages).filter((m) => isToday(m.createdAt)).length;
+  const open = arr(S.orders).filter((o) => stageIx(o.stage) < 5).length;
+  const ready = arr(S.orders).filter((o) => /ready/i.test(o.stage || "")).length;
+  const gv = cfg && S.grades ? arr(S.grades).filter((g) => g.configVersion === cfg.version) : [];
+  const avg = gv.length ? Math.round(gv.reduce((s, g) => s + g.score, 0) / gv.length) : null;
+  let aside = '<div><div class="group-t">Today</div><div class="group">' +
+    '<a class="row" href="#/calls"><div class="row-l">Calls</div><span class="row-v num">' + today.length + "</span>" + CHEV + "</a>" +
+    '<a class="row" href="#/messages"><div class="row-l">Messages<div class="row-sub">' + arr(S.messages).length + " waiting" + '</div></div><span class="row-v num">' + msgsToday + "</span>" + CHEV + "</a>" +
+    '<a class="row" href="#/orders"><div class="row-l">Open orders<div class="row-sub">' + ready + " ready for pickup</div></div><span class=\"row-v num\">" + open + "</span>" + CHEV + "</a></div></div>";
+  if (cfg) {
+    aside += '<div><div class="group-t">Answering with</div><div class="group">' +
+      '<a class="row" href="#/knowledge"><div class="row-l"><div style="font-weight:600">Knowledge v' + esc(cfg.version) + '</div><div class="row-sub">' + esc(authorName(cfg.author)) + " · " + esc(rel(cfg.createdAt) || "at setup") + (cfg.note ? " · " + esc(cfg.note) : "") + "</div></div>" + CHEV + "</a>" +
+      (avg != null ? '<a class="row" href="#/learning"><div class="row-l">Quality on this version<div class="row-sub">' + plural(gv.length, "graded call") + '</div></div><span class="row-v num">' + avg + "</span>" + CHEV + "</a>" : "") + "</div></div>";
+  }
+  setH("line-aside", aside);
+  renderStrip();
+}
+
+function renderStrip() {
+  const calls = arr(S.calls).slice().sort((a, b) => (tms(a.startedAt) || 0) - (tms(b.startedAt) || 0)).slice(-40);
+  if (!calls.length) { setH("strip", '<div class="empty" style="padding:36px"><p style="margin:0">No calls yet. Each one shows up here, grouped by the knowledge version that answered it.</p></div>'); return; }
+  const vers = arr(S.cfg && S.cfg.versions);
+  const groups = [];
+  calls.forEach((c) => { const v = c.configVersion != null ? c.configVersion : "?"; const g = groups[groups.length - 1]; if (g && g.v === v) g.calls.push(c); else groups.push({ v, calls: [c] }); });
+  const html = '<div class="strip-wrap"><div class="strip">' + groups.map((g) => {
+    const ver = vers.find((x) => x.version === g.v);
+    return '<div class="strip-v"><div class="strip-l"><b>v' + esc(g.v) + "</b>" + (ver ? esc(authorName(ver.author)) + (ver.note ? " · " + esc(ver.note) : "") : "") + '</div><div class="dots">' + g.calls.map((c) => {
+      const o = outcomeOf(c), gr = o.g;
+      const cls = isLive(c) ? "live" : !gr ? "ungraded" : o.miss ? "miss" : "";
+      const tip = callerName(c) + "  ·  " + clock(c.startedAt) + "\n" + (isLive(c) ? "Live now" : (o.label || "Not graded yet") + (gr ? "  ·  quality " + gr.score : ""));
+      return '<a class="dot tip ' + cls + '" href="#/calls/' + encodeURIComponent(c.callSid) + '" data-tip="' + esc(tip) + '" aria-label="' + esc(tip.replace(/\n/g, ", ")) + '"></a>';
+    }).join("") + "</div></div>";
+  }).join("") + "</div></div>" +
+    '<div class="legend"><span><i class="dot" aria-hidden="true"></i>Resolved</span><span><i class="dot miss" aria-hidden="true"></i>Not resolved</span><span><i class="dot ungraded" aria-hidden="true"></i>Not graded</span><span><i class="dot live" aria-hidden="true"></i>Live</span></div>';
+  setH("strip", html);
+}
+
+/* ── Calls ────────────────────────────────────────────────────────────── */
+function filteredCalls() {
+  const q = S.callQ.trim().toLowerCase();
+  return sortedCalls().filter((c) => {
+    if (S.callF === "live" && !isLive(c)) return false;
+    if (S.callF === "miss" && !outcomeOf(c).miss) return false;
+    if (!q) return true;
+    const hay = [callerName(c), c.from, digits(c.from)].concat(arr(c.transcript).map((m) => m.text)).join(" ").toLowerCase();
+    return hay.includes(q);
+  });
+}
+function renderCalls() {
+  const split = $("split");
+  if (!configured()) { split.hidden = true; if (!$("calls-setup")) split.insertAdjacentHTML("beforebegin", '<div id="calls-setup">' + setupEmpty() + "</div>"); return; }
+  split.hidden = false; const su = $("calls-setup"); if (su) su.remove();
+  split.classList.toggle("has-sel", !!S.sel);
+  const list = filteredCalls();
+  const html = list.length ? list.map((c) => {
+    const o = outcomeOf(c), last = arr(c.transcript).slice(-1)[0];
+    const sub = isLive(c) ? '<span class="chip live"><span class="live-dot"></span>Live</span><span class="num">' + dur(elapsed(c)) + "</span>" :
+      (o.label ? '<span class="chip' + (o.miss ? " bad" : "") + '">' + esc(o.label) + "</span>" : "") + "<span>" + esc(last ? last.text : "") + "</span>";
+    return '<a class="call-row" href="#/calls/' + encodeURIComponent(c.callSid) + '"' + (c.callSid === S.sel ? ' aria-current="true"' : "") + '><div class="avatar' + (isLive(c) ? " live" : "") + '" aria-hidden="true">' + initials(c) + "</div>" +
+      '<div class="cr-name">' + esc(callerName(c)) + '</div><div class="cr-time">' + esc(isLive(c) ? "Now" : rel(c.startedAt)) + '</div><div class="cr-sub">' + sub + "</div></a>";
+  }).join("") : '<div class="empty" style="padding:40px 16px"><p style="margin:0">' + (S.calls && S.calls.length ? "No calls match." : "No calls yet. They show up here the moment the phone rings.") + "</p></div>";
+  setH("call-list", html);
+  renderDetail();
+}
+function renderDetail() {
+  const el = $("detail");
+  const c = S.sel && arr(S.calls).find((x) => x.callSid === S.sel);
+  if (!c) {
+    el.removeAttribute("data-sid");
+    setH(el, S.sel && S.calls ? '<div class="empty"><h3>Call not found</h3><p>It may be older than the 50 most recent calls.</p><a class="btn" href="#/calls">Back to calls</a></div>' :
+      '<div class="empty"><h3>Pick a call</h3><p>Read the conversation, what ' + esc(BRAND) + " looked up, and how the teacher graded it.</p></div>");
+    return;
+  }
+  if (el.getAttribute("data-sid") !== c.callSid) {
+    el.innerHTML = '<div id="d-head"></div><div class="detail-b" id="d-scroll"><div id="d-read"></div><div id="d-script"></div></div>';
+    el.setAttribute("data-sid", c.callSid); S.h.detail = null; S.h["d-head"] = S.h["d-read"] = S.h["d-script"] = null;
+  }
+  const cust = customerFor(c.from);
+  setH("d-head", '<div class="detail-h"><a class="btn sm back" href="#/calls" aria-label="Back to calls">‹ Calls</a><div class="avatar' + (isLive(c) ? " live" : "") + '" aria-hidden="true">' + initials(c) + '</div><div style="flex:1;min-width:0">' +
+    '<h2 class="now-name" style="font-size:22px">' + esc(callerName(c)) + '</h2><div class="meta">' + (cust ? "<span>" + esc(phone(c.from)) + "</span>" : "") + "<span>" + esc(dateTime(c.startedAt)) + "</span>" +
+    '<span class="num" data-elapsed="' + esc(c.callSid) + '">' + (isLive(c) ? dur(elapsed(c)) : dur(c.durationSec)) + "</span>" +
+    (c.configVersion != null ? '<a href="#/knowledge" data-ver="' + esc(c.configVersion) + '">Knowledge v' + esc(c.configVersion) + "</a>" : "") + "</div></div>" +
+    (isLive(c) ? '<span class="chip live"><span class="live-dot"></span>Live</span>' : "") + "</div>");
+  setH("d-read", readHtml(c));
+  paintScript($(window.matchMedia("(max-width:860px)").matches ? "main" : "d-scroll"), $("d-script"), c);
+}
+function readHtml(c) {
+  if (c.status === "active") return "";
+  const g = gradeFor(c.callSid);
+  if (!g) {
+    if (S.grades && c.endedAt && Date.now() - (tms(c.endedAt) || 0) < 120000) return '<div class="read"><div class="grading"><span class="spin" aria-hidden="true"></span>The teacher is grading this call…</div></div>';
+    return "";
+  }
+  const led = arr(S.imps).filter((i) => arr(i.evidence).some((e) => e.callSid === c.callSid) && i.status !== "dismissed");
+  return '<div class="read"><div class="read-top"><span class="t">' + SPARK + "Teacher’s read</span>" + '<span class="chip' + (RESOLVED[g.outcome] ? "" : " bad") + '">' + esc(OUTCOME[g.outcome] || g.outcome) + "</span>" +
+    '<span class="chip">' + esc(feel(g.frustration)) + "</span></div>" +
+    '<div class="read-grid"><div class="score">' + esc(g.score) + "<small>quality, out of 100</small></div>" +
+    '<div class="dims">' + DIMS.map((d) => { const v = (g.dims || {})[d[0]] | 0; return '<div class="dim"><span>' + d[1] + '</span><span class="pips" role="img" aria-label="' + v + ' of 5">' + [1, 2, 3, 4, 5].map((i) => "<i" + (i <= v ? ' class="on"' : "") + "></i>").join("") + "</span></div>"; }).join("") + "</div></div>" +
+    (g.summary ? "<p>" + esc(g.summary) + "</p>" : "") +
+    led.map((i) => '<div class="led">' + (i.status === "applied" && i.toVersion ? "Led to <a href=\"#/learning\">Knowledge v" + esc(i.toVersion) + "</a>: " : i.status === "proposed" ? "Led to a proposal: <a href=\"#/learning\">" : "Led to <a href=\"#/learning\">") + esc(i.title) + (i.status === "applied" && i.toVersion ? "" : "</a>") + "</div>").join("") + "</div>";
+}
+
+/* ── Learning ─────────────────────────────────────────────────────────── */
+function gradedSeries() {
+  const byId = {}; arr(S.calls).forEach((c) => { byId[c.callSid] = c; });
+  return arr(S.grades).map((g) => ({ g, c: byId[g.callSid], t: tms((byId[g.callSid] || {}).startedAt || g.createdAt) || 0 })).sort((a, b) => a.t - b.t).slice(-60);
+}
+function renderLearning() {
+  if (!configured()) { setH("learning", setupEmpty()); return; }
+  if (S.grades === null) {
+    setH("learning", '<div class="card empty"><h3>The teacher isn’t connected yet</h3><p>Once the backend serves <span class="mono">/api/grades</span> and <span class="mono">/api/improvements</span>, every graded call and every edit the teacher makes shows up here.</p><button class="btn" type="button" data-demo>See it with demo data</button></div>');
+    return;
+  }
+  const pts = gradedSeries();
+  const cfg = activeCfg();
+  const byV = {}; pts.forEach((p) => { (byV[p.g.configVersion] = byV[p.g.configVersion] || []).push(p.g.score); });
+  const avgOf = (v) => byV[v] ? Math.round(byV[v].reduce((a, b) => a + b, 0) / byV[v].length) : null;
+  const vs = Object.keys(byV).map(Number).sort((a, b) => a - b);
+  const cur = cfg && byV[cfg.version] ? cfg.version : vs[vs.length - 1];
+  const prevV = vs.filter((v) => v < cur).pop();
+  let hero = "";
+  if (cur != null) {
+    const a = avgOf(cur), b = prevV != null ? avgOf(prevV) : null, d = b != null ? a - b : null;
+    hero = '<div class="hero"><span class="hero-n">' + a + '</span><span class="hero-t">average quality on <b>Knowledge v' + esc(cur) + "</b> across " + plural((byV[cur] || []).length, "call") +
+      (d != null ? '. <span class="delta' + (d < 0 ? " down" : "") + '">' + (d >= 0 ? "Up " : "Down ") + Math.abs(d) + "</span> from v" + esc(prevV) + "." : ".") + "</span></div>";
+  }
+  const imps = arr(S.imps);
+  const pending = imps.filter((i) => i.status === "proposed");
+  const rest = imps.filter((i) => i.status !== "proposed");
+  const html = (pts.length ? '<div class="card">' + hero + '<div class="chart" id="chart" tabindex="0" role="img"></div>' +
+    '<div class="chart-foot"><div class="legend"><span><svg width="22" height="10" aria-hidden="true"><path d="M1 5h20" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/></svg>Average of the last 3 calls</span><span><i class="dot" style="background:var(--accent);opacity:.7" aria-hidden="true"></i>One call</span><span><i class="dot miss" aria-hidden="true"></i>Not resolved</span></div>' +
+    '<details class="tbl-wrap"><summary>Show as table</summary><table class="tbl"><thead><tr><th>Call</th><th>Version</th><th>Quality</th><th>Frustration</th><th>Outcome</th></tr></thead><tbody>' +
+    pts.slice().reverse().map((p) => "<tr><td>" + esc(p.c ? callerName(p.c) : p.g.callSid) + " · " + esc(clock(p.t)) + "</td><td>v" + esc(p.g.configVersion) + "</td><td>" + esc(p.g.score) + "</td><td>" + esc(feel(p.g.frustration)) + "</td><td>" + esc(OUTCOME[p.g.outcome] || p.g.outcome) + "</td></tr>").join("") +
+    "</tbody></table></details></div></div>" : '<div class="card empty"><h3>No graded calls yet</h3><p>Grades show up here a few seconds after each call ends.</p></div>') +
+    (pending.length ? '<h2 class="section-t">Waiting for you</h2><div class="changes">' + pending.map(changeHtml).join("") + "</div>" : "") +
+    '<h2 class="section-t">What changed</h2>' + (rest.length ? '<div class="changes">' + rest.map(changeHtml).join("") + "</div>" : '<div class="card empty"><p style="margin:0">No edits yet.</p></div>');
+  if (setH("learning", html)) renderChart();
+}
+function changeHtml(i) {
+  const cfg = activeCfg();
+  const st = { applied: '<span class="chip live">' + (i.toVersion != null ? "Live in v" + esc(i.toVersion) : "Live now") + "</span>", proposed: '<span class="chip accent">Needs approval</span>', approved: '<span class="chip">Approved, needs building</span>', dismissed: '<span class="chip">Dismissed</span>', rolled_back: '<span class="chip bad">Undone</span>' }[i.status] || '<span class="chip">' + esc(i.status) + "</span>";
+  const isLive = i.status === "applied" && (i.toVersion == null || (cfg && cfg.version === i.toVersion));
+  const superseded = i.status === "applied" && !isLive;
+  let act = "";
+  if (i.status === "proposed") act = '<button class="btn primary sm" type="button" data-imp="approve" data-id="' + esc(i.id) + '">' + (i.type === "tool" || i.type === "schema" ? "Approve" : i.type === "context" ? "Answer" : "Apply") + '</button><button class="btn sm" type="button" data-imp="dismiss" data-id="' + esc(i.id) + '">Dismiss</button>';
+  else if (i.status === "applied") act = (i.toVersion ? '<button class="btn sm" type="button" data-sheet="' + esc(i.toVersion) + '">See the change</button>' : "") + (isLive && i.fromVersion ? '<button class="btn sm danger" type="button" data-imp="undo" data-id="' + esc(i.id) + '">Undo</button>' : "");
+  return '<article class="card change"><div class="change-top">' + (i.type === "tool" || i.type === "schema" ? '<span class="chip">' : '<span class="chip teacher">' + SPARK) + esc(TYPE[i.type] || i.type) + "</span>" + st + (superseded ? '<span class="chip">Not the live version</span>' : "") + "</div>" +
+    "<div><h4>" + esc(i.title) + "</h4><p>" + esc(i.rationale) + "</p>" +
+    (i.change ? '<div class="diffline' + (i.type === "tool" ? " mono" : "") + '">' + (i.type === "tool" || i.type === "schema" ? "" : "+ ") + esc(i.change) + "</div>" : "") +
+    arr(i.evidence).map((e) => { const c = arr(S.calls).find((x) => x.callSid === e.callSid); return '<div class="quote">“' + esc(e.quote) + '”<br><a href="#/calls/' + encodeURIComponent(e.callSid) + '">' + esc(c ? callerName(c) + ", " + rel(c.startedAt) : "Open the call") + "</a></div>"; }).join("") +
+    '</div><div class="change-act"><span class="when">' + esc(rel(i.createdAt)) + "</span>" + act + "</div></article>";
+}
+function renderChart() {
+  const el = $("chart"); if (!el || S.view !== "learning") return;
+  const pts = gradedSeries(); if (!pts.length) return;
+  const W = Math.max(300, el.clientWidth - 24), n = pts.length;
+  const L = 34, R = 10, T = 30, QH = 170, GAP = 34, FH = 54, H = T + QH + GAP + FH + 6;
+  const step = (W - L - R) / n, x = (i) => L + (i + 0.5) * step;
+  const yq = (s) => T + QH - (Math.max(0, Math.min(100, s)) / 100) * QH;
+  const fy0 = T + QH + GAP + FH;
+  let s = '<svg viewBox="0 0 ' + W + " " + H + '" height="' + H + '" aria-hidden="true">';
+  // version bands
+  let start = 0;
+  for (let i = 1; i <= n; i++) {
+    if (i === n || pts[i].g.configVersion !== pts[start].g.configVersion) {
+      const x0 = L + start * step, x1 = L + i * step, v = pts[start].g.configVersion;
+      const ver = arr(S.cfg && S.cfg.versions).find((q) => q.version === v);
+      s += '<rect x="' + x0 + '" y="' + (T - 22) + '" width="' + (x1 - x0) + '" height="' + (H - T + 16) + '" fill="' + ((v % 2) ? "var(--band)" : "transparent") + '"/>';
+      if (start > 0) s += '<line x1="' + x0 + '" x2="' + x0 + '" y1="' + (T - 22) + '" y2="' + (H - 6) + '" stroke="var(--hairline-2)" stroke-dasharray="3 4"/>';
+      if (x1 - x0 > 34) s += '<text x="' + (x0 + 8) + '" y="' + (T - 8) + '"><tspan class="vl">v' + esc(v) + "</tspan>" + (ver && x1 - x0 > 110 ? "  " + esc(authorName(ver.author)) : "") + "</text>";
+      start = i;
+    }
+  }
+  [50, 75, 100].forEach((g) => { s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yq(g) + '" y2="' + yq(g) + '" stroke="var(--hairline)"/><text x="' + (L - 8) + '" y="' + (yq(g) + 4) + '" text-anchor="end">' + g + "</text>"; });
+  s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yq(25) + '" y2="' + yq(25) + '" stroke="var(--hairline)"/><text x="' + (L - 8) + '" y="' + (yq(25) + 4) + '" text-anchor="end">25</text>';
+  // rolling average line
+  const avg = pts.map((p, i) => { const w = pts.slice(Math.max(0, i - 2), i + 1); return w.reduce((a, q) => a + q.g.score, 0) / w.length; });
+  s += '<path d="' + avg.map((a, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + yq(a).toFixed(1)).join("") + '" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+  // calls
+  pts.forEach((p, i) => {
+    const miss = !RESOLVED[p.g.outcome];
+    s += miss ? '<circle cx="' + x(i) + '" cy="' + yq(p.g.score) + '" r="5" fill="var(--surface)" stroke="var(--bad)" stroke-width="2"/>'
+      : '<circle cx="' + x(i) + '" cy="' + yq(p.g.score) + '" r="5" fill="var(--accent)" fill-opacity=".7" stroke="var(--surface)" stroke-width="2"/>';
+  });
+  // frustration panel (its own axis)
+  s += '<text x="' + L + '" y="' + (T + QH + GAP - 10) + '"><tspan class="vl">Frustration</tspan></text>';
+  s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + fy0 + '" y2="' + fy0 + '" stroke="var(--hairline-2)"/>';
+  const bw = Math.max(3, Math.min(16, step * 0.5));
+  pts.forEach((p, i) => {
+    const h = Math.max(2, (p.g.frustration || 0) * FH);
+    s += '<rect x="' + (x(i) - bw / 2) + '" y="' + (fy0 - h) + '" width="' + bw + '" height="' + h + '" rx="' + Math.min(4, bw / 2) + '" fill="' + ((p.g.frustration || 0) >= 0.5 ? "var(--warn)" : "var(--faint)") + '" fill-opacity="' + ((p.g.frustration || 0) >= 0.5 ? ".8" : ".6") + '"/>';
+  });
+  s += '<line id="xh" x1="0" x2="0" y1="' + (T - 22) + '" y2="' + fy0 + '" stroke="var(--ink-2)" stroke-width="1" visibility="hidden"/>';
+  s += '<circle id="xd" r="7" fill="none" stroke="var(--ink)" stroke-width="2" visibility="hidden"/></svg><div class="ctip" id="ctip" hidden></div>';
+  el.innerHTML = s;
+  const first = pts[0].g.score, lastP = pts[n - 1].g.score;
+  el.setAttribute("aria-label", "Quality per call, " + n + " graded calls, from " + first + " to " + lastP + ". Use arrow keys to step through calls and Enter to open one.");
+  el._pts = pts; el._x = x; el._yq = yq; el._step = step; el._L = L; el._W = W;
+  if (el._i != null && el._i < n) showPoint(el._i);
+}
+function showPoint(i) {
+  const el = $("chart"); if (!el || !el._pts) return;
+  const p = el._pts[i]; if (!p) return;
+  el._i = i;
+  const scale = el.querySelector("svg").getBoundingClientRect().width / el._W;
+  const cx = el._x(i), cy = el._yq(p.g.score);
+  const xh = $("xh"), xd = $("xd"), tip = $("ctip");
+  xh.setAttribute("x1", cx); xh.setAttribute("x2", cx); xh.setAttribute("visibility", "visible");
+  xd.setAttribute("cx", cx); xd.setAttribute("cy", cy); xd.setAttribute("visibility", "visible");
+  tip.hidden = false;
+  tip.innerHTML = "<b>" + esc(p.c ? callerName(p.c) : "Call") + " · " + esc(clock(p.t)) + " · v" + esc(p.g.configVersion) + "</b>" +
+    '<div class="kv"><span>Quality</span><span>' + esc(p.g.score) + '</span></div><div class="kv"><span>Frustration</span><span>' + esc(feel(p.g.frustration)) + '</span></div><div class="kv"><span>Outcome</span><span>' + esc(OUTCOME[p.g.outcome] || p.g.outcome) + "</span></div>";
+  const left = 12 + cx * scale, w = el.clientWidth;
+  tip.style.left = Math.max(100, Math.min(w - 100, left)) + "px";
+  tip.style.top = (8 + cy * scale) + "px";
+}
+function hidePoint() { const el = $("chart"); if (!el || !$("ctip")) return; el._i = null; $("ctip").hidden = true; $("xh").setAttribute("visibility", "hidden"); $("xd").setAttribute("visibility", "hidden"); }
+document.addEventListener("pointermove", (e) => {
+  const el = e.target.closest && e.target.closest("#chart"); if (!el || !el._pts) return;
+  const svgEl = el.querySelector("svg"), r = svgEl.getBoundingClientRect(), sc = r.width / el._W;
+  const i = Math.floor(((e.clientX - r.left) / sc - el._L) / el._step);
+  if (i >= 0 && i < el._pts.length) showPoint(i); else hidePoint();
+});
+document.addEventListener("pointerout", (e) => { if (e.target.closest && e.target.closest("#chart") && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest("#chart"))) hidePoint(); });
+document.addEventListener("click", (e) => { const el = e.target.closest && e.target.closest("#chart"); if (el && el._i != null && el._pts[el._i].c) go("#/calls/" + encodeURIComponent(el._pts[el._i].g.callSid)); });
+document.addEventListener("keydown", (e) => {
+  const el = document.activeElement; if (!el || el.id !== "chart" || !el._pts) return;
+  const n = el._pts.length, i = el._i == null ? n - 1 : el._i;
+  if (e.key === "ArrowRight") { showPoint(Math.min(n - 1, el._i == null ? n - 1 : i + 1)); e.preventDefault(); }
+  else if (e.key === "ArrowLeft") { showPoint(Math.max(0, el._i == null ? n - 1 : i - 1)); e.preventDefault(); }
+  else if (e.key === "Home") { showPoint(0); e.preventDefault(); }
+  else if (e.key === "End") { showPoint(n - 1); e.preventDefault(); }
+  else if (e.key === "Enter" && el._i != null) go("#/calls/" + encodeURIComponent(el._pts[el._i].g.callSid));
+  else if (e.key === "Escape") hidePoint();
+});
+document.addEventListener("focusout", (e) => { if (e.target.id === "chart") hidePoint(); });
+let rsz; window.addEventListener("resize", () => { clearTimeout(rsz); rsz = setTimeout(renderChart, 120); });
+
+async function impAction(kind, id) {
+  const i = arr(S.imps).find((x) => x.id === id); if (!i) return;
+  try {
+    if (kind === "undo") {
+      if (!(await ask("Undo “" + i.title + "”?", "Knowledge v" + i.fromVersion + " goes back to answering calls, starting with the next one. You can redo this from History.", "Undo"))) return;
+      await api("/api/config/activate", { method: "POST", body: { version: i.fromVersion } });
+      await api("/api/improvements/" + encodeURIComponent(id), { method: "POST", body: { action: "rolled_back" } }).catch(() => {});
+      toast("Undone. v" + i.fromVersion + " answers the next call.");
+    } else if (kind === "approve" && i.type === "context") {
+      // A context item is a question for the owner: the answer is what gets saved
+      const answer = (window.prompt(i.title + "\n\nYour answer (it is added to what the assistant knows):") || "").trim();
+      if (!answer) return;
+      await api("/api/improvements/" + encodeURIComponent(id) + "/answer", { method: "POST", body: { answer } });
+      toast("Added to what the assistant knows. It answers the next call.");
+    } else {
+      await api("/api/improvements/" + encodeURIComponent(id), { method: "POST", body: { action: kind } });
+      toast(kind === "dismiss" ? "Dismissed." : i.type === "tool" ? "Enabled. The assistant can use it from the next call." : "Applied. It answers the next call.");
+    }
+    await refresh();
+  } catch (e) { toast(errText(e)); }
+}
+
+/* ── Knowledge (versioned editor) ─────────────────────────────────────── */
+const K = { base: null, seen: null, gen: 0, busy: false, saving: false, msg: null, err: "", missing: false, view: null, mode: "diff", dc: {} };
+const LIM = { name: 80, greet: 300, ctx: 8000 };
+const kVals = () => ({ companyName: $("k-name").value, greeting: $("k-greet").value, context: $("k-ctx").value });
+const kFind = (n) => arr(S.cfg && S.cfg.versions).find((v) => v.version === n) || null;
+function kPrev(v) { let best = null; arr(S.cfg && S.cfg.versions).forEach((x) => { if (x.version < v.version && (!best || x.version > best.version)) best = x; }); return best; }
+function kDirty() { if (!K.base) return false; const v = kVals(); return v.companyName !== K.base.companyName || v.greeting !== K.base.greeting || v.context !== K.base.context; }
+function kValidate(v) {
+  const n = v.companyName.trim().length, g = v.greeting.trim().length;
+  if (n < 1) return "Add the business name.";
+  if (n > LIM.name) return "The business name can be up to " + LIM.name + " characters.";
+  if (g < 1) return "Add a greeting.";
+  if (g > LIM.greet) return "The greeting can be up to " + LIM.greet + " characters.";
+  if (v.context.length > LIM.ctx) return "Knowledge can be up to " + LIM.ctx.toLocaleString() + " characters.";
+  return "";
+}
+function verLines(v) { return v ? ["Business name: " + v.companyName, "Greeting: " + v.greeting, ""].concat(String(v.context || "").split("\n")) : []; }
+function lineDiff(a, b) {
+  const n = a.length, m = b.length, ops = []; let i, j;
+  if (n * m > 300000) { a.forEach((s) => ops.push({ t: "-", s })); b.forEach((s) => ops.push({ t: "+", s })); return ops; }
+  const w = m + 1, Lc = new Uint16Array((n + 1) * w);
+  for (i = n - 1; i >= 0; i--) for (j = m - 1; j >= 0; j--) Lc[i * w + j] = a[i] === b[j] ? Lc[(i + 1) * w + j + 1] + 1 : Math.max(Lc[(i + 1) * w + j], Lc[i * w + j + 1]);
+  i = 0; j = 0;
+  while (i < n && j < m) {
+    if (a[i] === b[j]) { ops.push({ t: "=", s: a[i] }); i++; j++; }
+    else if (Lc[(i + 1) * w + j] >= Lc[i * w + j + 1]) { ops.push({ t: "-", s: a[i] }); i++; }
+    else { ops.push({ t: "+", s: b[j] }); j++; }
+  }
+  while (i < n) ops.push({ t: "-", s: a[i++] });
+  while (j < m) ops.push({ t: "+", s: b[j++] });
+  return ops;
+}
+function kDiff(v) {
+  const p = kPrev(v), k = (p ? p.version : 0) + ">" + v.version;
+  if (!K.dc[k]) { const ops = lineDiff(verLines(p), verLines(v)); K.dc[k] = { ops, add: ops.filter((o) => o.t === "+").length, del: ops.filter((o) => o.t === "-").length, prev: p }; }
+  return K.dc[k];
+}
+function diffHtml(ops) {
+  const keep = []; let changes = 0;
+  ops.forEach((o, ix) => { if (o.t !== "=") { changes++; for (let k = Math.max(0, ix - 2); k <= Math.min(ops.length - 1, ix + 2); k++) keep[k] = 1; } });
+  if (!changes) return '<p class="muted" style="padding:10px 14px">Same as the version before.</p>';
+  const out = []; let skipped = 0;
+  const flush = () => { if (skipped) { out.push('<div class="df-skip">' + plural(skipped, "unchanged line") + "</div>"); skipped = 0; } };
+  ops.forEach((o, ix) => {
+    if (o.t === "=" && !keep[ix]) { skipped++; return; }
+    flush();
+    out.push('<div class="df' + (o.t === "+" ? " df-add" : o.t === "-" ? " df-del" : "") + '"><span class="df-m" aria-label="' + (o.t === "+" ? "added" : o.t === "-" ? "removed" : "") + '">' + (o.t === "=" ? "" : o.t === "+" ? "+" : "−") + '</span><span class="df-t">' + (esc(o.s) || "&nbsp;") + "</span></div>");
+  });
+  flush();
+  return out.join("");
+}
+function kSetEditor(v) {
+  $("k-name").value = v.companyName || ""; $("k-greet").value = v.greeting || ""; $("k-ctx").value = v.context || ""; $("k-note").value = "";
+  K.base = { version: v.version, companyName: v.companyName || "", greeting: v.greeting || "", context: v.context || "" };
+  const a = activeCfg(); K.seen = a ? a.version : v.version; K.msg = null;
+}
+function kSync() {
+  const a = activeCfg(); if (!a) return;
+  if (!K.base) { kSetEditor(a); return; }
+  if (a.version !== K.seen && !kDirty()) kSetEditor(a);   // never clobber unsaved edits
+}
+async function kSave() {
+  if (K.saving) return;
+  const v = kVals(); if (!kDirty() || kValidate(v)) return;
+  const body = { companyName: v.companyName.trim(), greeting: v.greeting.trim(), context: v.context }, note = $("k-note").value.trim();
+  if (note) body.note = note;
+  K.saving = true; K.msg = null; renderKnowledge();
+  try {
+    const saved = await api("/api/config", { method: "PUT", body });
+    K.gen++;
+    S.cfg = { active: saved, versions: [saved].concat(arr(S.cfg && S.cfg.versions).filter((x) => x.version !== saved.version)) };
+    const cur = kVals();
+    if (cur.companyName === v.companyName && cur.greeting === v.greeting && cur.context === v.context && $("k-note").value.trim() === note) kSetEditor(saved);
+    else { K.base = { version: saved.version, companyName: saved.companyName, greeting: saved.greeting, context: saved.context }; K.seen = saved.version; }
+    K.msg = { ok: true, text: "Saved as v" + saved.version + ". It answers the next call." };
+    toast("v" + saved.version + " is live");
+  } catch (e) { K.msg = { ok: false, text: errText(e) }; }
+  K.saving = false; renderAll();
+}
+async function kActivate(n) {
+  const v = kFind(n), a = activeCfg(); if (!v || (a && a.version === n)) return;
+  if (!(await ask("Make v" + n + " live?", esc(BRAND) + " will answer with v" + n + " starting with the next call. The current version stays in History.", "Make live"))) return;
+  try {
+    const r = await api("/api/config/activate", { method: "POST", body: { version: n } });
+    K.gen++; S.cfg.active = r; kSync(); closeDlg($("sheet")); toast("v" + n + " is live"); renderAll(); refresh();
+  } catch (e) { toast(errText(e)); }
+}
+async function kEditFrom(n) {
+  const v = kFind(n); if (!v) return;
+  if (kDirty() && !(await ask("Replace your unsaved edits?", "The editor will load v" + n + ". Your unsaved changes will be lost.", "Replace"))) return;
+  kSetEditor(v); closeDlg($("sheet")); go("#/knowledge"); renderKnowledge(); $("k-ctx").focus();
+}
+async function kRevert() {
+  const a = activeCfg(); if (!a) return;
+  if (kDirty() && !(await ask("Discard your edits?", "The editor goes back to the live version, v" + a.version + ".", "Discard"))) return;
+  kSetEditor(a); renderKnowledge();
+}
+function renderKnowledge() {
+  const a = activeCfg();
+  let msg = "";
+  if (!configured()) msg = setupEmpty("Connect to a backend, or turn on demo data, to edit what the assistant knows.");
+  else if (K.missing) msg = '<div class="card empty"><h3>This backend can’t edit knowledge yet</h3><p>Update and restart the voice server, then come back.</p></div>';
+  else if (!a) msg = K.err ? '<div class="banner">Couldn’t load knowledge: ' + esc(K.err) + "</div>" : '<div class="card empty"><p style="margin:0">Loading…</p></div>';
+  setH("k-status", msg);
+  const show = configured() && !K.missing && !!a;
+  $("k-main").hidden = !show;
+  if (!show) return;
+  kSync();
+  const v = kVals(), dirty = kDirty(), err = kValidate(v), b = K.base;
+  [["k-name-n", v.companyName.length, LIM.name], ["k-greet-n", v.greeting.length, LIM.greet], ["k-ctx-n", v.context.length, LIM.ctx]].forEach((c) => {
+    const el = $(c[0]); el.textContent = c[1].toLocaleString() + " / " + c[2].toLocaleString(); el.classList.toggle("over", c[1] > c[2]);
+  });
+  $("k-hears").innerHTML = v.greeting.trim() ? "Callers hear <q>" + esc(v.greeting.trim()) + "</q>" : "";
+  $("k-base").textContent = b ? "From v" + b.version + (a.version === b.version ? ", the live version" : "") + (dirty ? " · edited" : "") : "";
+  setH("k-notice", dirty && a.version !== K.seen ? '<div style="padding:0 24px"><div class="notice"><span>v' + esc(a.version) + ' went live while you were editing. Your edits are kept.</span><button class="btn sm" type="button" id="k-reload">Load v' + esc(a.version) + "</button></div></div>" : "");
+  const next = Math.max.apply(null, arr(S.cfg.versions).map((x) => x.version).concat([0])) + 1;
+  $("k-save").disabled = K.saving || !dirty || !!err;
+  $("k-save").textContent = K.saving ? "Saving…" : "Save as v" + next;
+  $("k-revert").hidden = !dirty;
+  const m = $("k-msg");
+  if (K.msg) { m.textContent = K.msg.text; m.className = "msg " + (K.msg.ok ? "ok" : "bad"); }
+  else if (dirty && err) { m.textContent = err; m.className = "msg bad"; }
+  else if (dirty) { m.textContent = "Unsaved changes"; m.className = "msg"; }
+  else { m.textContent = "Up to date"; m.className = "msg"; }
+  const vs = arr(S.cfg.versions);
+  $("k-hist-n").textContent = plural(vs.length, "version");
+  setH("k-hist", vs.map((x) => {
+    const d = kDiff(x), live = a.version === x.version;
+    return '<button type="button" class="ver' + (live ? " active" : "") + '" data-sheet="' + esc(x.version) + '"><span class="node" aria-hidden="true"></span><span style="min-width:0">' +
+      '<span class="ver-top"><span class="ver-n">v' + esc(x.version) + "</span>" + authorChip(x.author) + (live ? '<span class="chip live">Live</span>' : "") + '<span class="ver-time">' + esc(rel(x.createdAt) || "at setup") + "</span></span>" +
+      (x.note ? '<span class="ver-note" style="display:block">' + esc(x.note) + "</span>" : "") +
+      '<span class="ver-d" style="display:block">' + (d.prev ? '<span class="p">+' + d.add + '</span> <span class="m">−' + d.del + "</span> lines" : "First version") + "</span></span></button>";
+  }).join(""));
+}
+function openSheet(n) {
+  K.view = n; const v = kFind(n); if (!v) return;
+  const d = kDiff(v); if (!d.prev) K.mode = "full";
+  renderSheet(); openDlg($("sheet"));
+}
+function renderSheet() {
+  const v = kFind(K.view); if (!v) return;
+  const a = activeCfg(), live = a && a.version === v.version, d = kDiff(v);
+  const body = K.mode === "diff" && d.prev ? '<div class="diff">' + diffHtml(d.ops) + "</div>"
+    : '<dl class="full"><dt>Business name</dt><dd>' + esc(v.companyName) + "</dd><dt>Greeting</dt><dd>" + esc(v.greeting) + "</dd><dt>What " + esc(BRAND) + " knows</dt><dd>" + (esc(v.context) || '<span class="muted">Empty</span>') + "</dd></dl>";
+  $("sheet-body").innerHTML = '<div class="dlg-h"><h2 id="sheet-t">Version ' + esc(v.version) + '</h2><button class="icon-btn" type="button" data-close aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
+    '<div class="dlg-b"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' + authorChip(v.author) + (live ? '<span class="chip live">Live</span>' : "") + '<span class="card-s">' + esc(dateTime(v.createdAt)) + "</span>" +
+    (d.prev ? '<span style="flex:1"></span><div class="seg" role="group" aria-label="Show"><button type="button" data-mode="diff" aria-pressed="' + (K.mode === "diff") + '">Changes from v' + esc(d.prev.version) + '</button><button type="button" data-mode="full" aria-pressed="' + (K.mode === "full") + '">Full text</button></div>' : "") + "</div>" +
+    (v.note ? '<p style="font-size:17px">' + esc(v.note) + "</p>" : "") + body + "</div>" +
+    '<div class="dlg-f"><button class="btn" type="button" data-edit="' + esc(v.version) + '">Edit from this version</button>' + (live ? "" : '<button class="btn primary" type="button" data-activate="' + esc(v.version) + '">Make live</button>') + "</div>";
+}
+["k-name", "k-greet", "k-ctx", "k-note"].forEach((i) => $(i).addEventListener("input", () => { K.msg = null; renderKnowledge(); }));
+$("k-save").addEventListener("click", kSave);
+$("k-revert").addEventListener("click", kRevert);
+document.addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "s" && S.view === "knowledge") { e.preventDefault(); kSave(); } });
+window.addEventListener("beforeunload", (e) => { if (kDirty()) { e.preventDefault(); e.returnValue = ""; } });
+
+/* ── Customers ────────────────────────────────────────────────────────── */
+const custInitials = (c) => esc(String(c.name || "?").split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase());
+function custMatches(c, q) { return !q || [c.name, c.phone, digits(c.phone), c.email, c.preferences, c.notes].join(" ").toLowerCase().includes(q); }
+function renderCustomers() {
+  if (!configured()) { setH("customers", setupEmpty()); return; }
+  if (S.customers === null) { setH("customers", '<div class="card empty"><h3>Customers aren’t available yet</h3><p>This backend doesn’t serve <span class="mono">/api/customers</span>. Update and restart it, then come back.</p></div>'); return; }
+  const q = S.custQ.trim().toLowerCase();
+  const list = arr(S.customers).filter((c) => custMatches(c, q)).sort((a, b) => (tms(b.lastCallAt) || 0) - (tms(a.lastCallAt) || 0));
+  if (!list.length) { setH("customers", '<div class="card empty"><h3>' + (S.customers.length ? "No customers match" : "No customers yet") + "</h3><p>" + (S.customers.length ? "Try a different name or number." : "A profile is created the first time someone calls.") + "</p></div>"); return; }
+  setH("customers", '<div class="group-t">' + plural(list.length, "customer") + '</div><div class="group">' + list.map((c) =>
+    '<button type="button" class="row cust" data-cust="' + esc(c.phone) + '"><div class="avatar" aria-hidden="true">' + custInitials(c) + "</div>" +
+    '<div style="min-width:0"><div class="cust-n">' + esc(c.name || phone(c.phone)) + (c.vip ? ' <span class="chip vip">VIP</span>' : "") + '</div><div class="cust-sub">' + esc(c.name ? phone(c.phone) : "No name on file") + "</div></div>" +
+    '<div class="cust-pref">' + (esc(c.preferences || c.notes) || '<span class="muted">Nothing noted yet</span>') + "</div>" +
+    '<div class="cust-stat hide-sm"><b>' + esc(plural(c.callCount || 0, "call")) + "</b>" + (c.lastCallAt ? "last " + esc(rel(c.lastCallAt)) : "") + "</div>" + CHEV + "</button>").join("") + "</div>");
+}
+function callGist(c) {
+  const t = arr(c.transcript).filter((m) => m.role === "caller");
+  const first = t.length ? t[0].text : "";
+  return (first.length > 70 ? first.slice(0, 67) + "…" : first) || "No transcript";
+}
+function openCustomer(ph, edit) {
+  const c = arr(S.customers).find((x) => x.phone === ph); if (!c) return;
+  S.custSel = ph; S.custEdit = !!edit;
+  const orders = arr(S.orders).filter((o) => samePhone(o.phone, c.phone));
+  const calls = sortedCalls().filter((x) => samePhone(x.from, c.phone));
+  const msgs = arr(S.messages).filter((m) => samePhone(m.phone, c.phone));
+  const sec = (t, inner) => inner ? '<div class="cd-h">' + t + '</div><div class="cd-list">' + inner + "</div>" : "";
+  const head = (t) => '<div class="dlg-h"><h2 id="cust-t">' + t + '</h2><button class="icon-btn" type="button" data-close aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>';
+  if (edit) {
+    const f = (id, label, val, tag, max) => '<div style="margin-bottom:14px"><div class="frow"><label class="lbl" for="' + id + '">' + label + "</label></div>" +
+      (tag === "ta" ? '<textarea class="field" id="' + id + '" maxlength="' + max + '" style="min-height:84px">' + esc(val || "") + "</textarea>" : '<input class="field" id="' + id + '" maxlength="' + max + '" value="' + esc(val || "") + '" autocomplete="off" />') + "</div>";
+    $("cust-body").innerHTML = head("Edit customer") +
+      '<div class="dlg-b"><p class="cust-sub" style="margin-bottom:14px">' + esc(phone(c.phone)) + " · changes apply the next time they call.</p>" +
+      f("ce-name", "Name", c.name, "in", 80) + f("ce-email", "Email", c.email, "in", 120) + f("ce-pref", "Preferences", c.preferences, "ta", 500) + f("ce-notes", "Notes", c.notes, "ta", 1000) +
+      '<label style="display:flex;gap:8px;align-items:center;font-size:15px"><input type="checkbox" id="ce-vip"' + (c.vip ? " checked" : "") + " /> VIP customer</label>" +
+      '<p class="cust-sub" id="ce-msg" role="status" style="margin-top:12px;color:var(--bad)">' + esc(S.custMsg || "") + "</p></div>" +
+      '<div class="dlg-f"><button class="btn" type="button" data-cust-cancel>Cancel</button><button class="btn primary" type="button" data-cust-save>Save</button></div>';
+  } else {
+    $("cust-body").innerHTML = head("Customer") +
+      '<div class="dlg-b"><div class="cd-top"><div class="avatar" aria-hidden="true">' + custInitials(c) + '</div><div><div style="font-size:20px;font-weight:600;letter-spacing:-.02em">' + esc(c.name || "Unknown name") + (c.vip ? ' <span class="chip vip">VIP</span>' : "") + '</div><div class="cust-sub">' + esc(phone(c.phone)) + (c.email ? " · " + esc(c.email) : "") + "</div></div></div>" +
+      '<div class="cd-grid" style="margin-top:16px"><div class="cd-stat"><b>' + (c.callCount || 0) + "</b><span>Calls</span></div><div class=\"cd-stat\"><b>" + orders.length + "</b><span>Orders</span></div><div class=\"cd-stat\"><b>" + (c.firstSeenAt ? esc(rel(c.firstSeenAt)) : "–") + "</b><span>First seen</span></div></div>" +
+      '<div class="cd-h">Preferences</div><div class="cd-note">' + (esc(c.preferences) || '<span class="muted">None noted</span>') + "</div>" +
+      '<div class="cd-h">Notes</div><div class="cd-note">' + (esc(c.notes) || '<span class="muted">None</span>') + "</div>" +
+      sec("Orders", orders.map((o) => '<div class="cd-item"><div><span class="o-id">' + esc(o.orderId) + "</span> " + esc(o.garment) + "<small>" + esc(o.stage) + (stageIx(o.stage) < 5 ? " · due " + esc(day(o.expectedDate)) : "") + '</small></div><div style="font-weight:600">' + esc(money(o.price)) + "</div></div>").join("")) +
+      sec("Calls", calls.slice(0, 6).map((x) => '<button type="button" class="cd-item" data-cust-call="' + esc(x.callSid) + '"><div>' + esc(dateTime(x.startedAt)) + "<small>" + esc(callGist(x)) + "</small></div>" + CHEV + "</button>").join("")) +
+      sec("Messages", msgs.map((m) => '<div class="cd-item"><div>' + esc(m.message) + "<small>" + esc(rel(m.createdAt)) + "</small></div></div>").join("")) + "</div>" +
+      '<div class="dlg-f"><button class="btn primary" type="button" data-cust-edit>Edit</button></div>';
+  }
+  openDlg($("cust-dlg"));
+}
+async function saveCustomer() {
+  const ph = S.custSel, v = (id) => $(id).value;
+  const body = { name: v("ce-name"), email: v("ce-email"), preferences: v("ce-pref"), notes: v("ce-notes"), vip: $("ce-vip").checked };
+  const btn = document.querySelector("[data-cust-save]"); btn.disabled = true;
+  try {
+    const saved = await api("/api/customers/" + encodeURIComponent(ph), { method: "PUT", body });
+    S.customers = arr(S.customers).map((c) => (c.phone === ph ? saved : c));
+    S.custMsg = ""; S.h.customers = null; renderCustomers(); openCustomer(ph, false); toast("Saved");
+  } catch (e) { S.custMsg = errText(e); btn.disabled = false; $("ce-msg").textContent = S.custMsg; }
+}
+$("cust-q").addEventListener("input", (e) => { S.custQ = e.target.value; renderCustomers(); });
+
+/* ── Orders ───────────────────────────────────────────────────────────── */
+const STAGES = ["Received", "Sorting", "Cleaning", "Pressing", "Ready for Pickup"];
+function stageIx(st) { const l = String(st || "").toLowerCase(); if (/pick(ed)? ?up$|deliver|complete/.test(l) && !/ready/.test(l)) return 5; const i = STAGES.findIndex((s) => s.toLowerCase() === l); return i < 0 ? (/ready/.test(l) ? 4 : 0) : i; }
+function renderOrders() {
+  if (!configured()) { setH("orders", setupEmpty()); return; }
+  if (!S.orders) return;
+  const q = S.orderQ.trim().toLowerCase();
+  const list = S.orders.filter((o) => !q || [o.orderId, o.customerName, o.garment, o.phone, digits(o.phone), o.notes].join(" ").toLowerCase().includes(q));
+  const open = list.filter((o) => stageIx(o.stage) < 5).sort((a, b) => String(a.expectedDate).localeCompare(String(b.expectedDate)));
+  const done = list.filter((o) => stageIx(o.stage) >= 5);
+  const row = (o) => {
+    const ix = stageIx(o.stage), fin = ix >= 5;
+    return '<div class="row"><div><div class="o-id">' + esc(o.orderId) + '</div><div class="o-name">' + esc(o.customerName) + '</div><div class="o-note">' + esc(phone(o.phone)) + "</div></div>" +
+      '<div class="o-garment"><div>' + esc(o.garment) + (o.orderType === "Expedited" ? ' <span class="chip accent">Expedited</span>' : "") + "</div>" + (o.notes ? '<div class="o-note">' + esc(o.notes) + "</div>" : "") + "</div>" +
+      '<div class="o-track"><div class="track' + (fin ? " done" : "") + '" role="img" aria-label="' + esc(o.stage) + ", step " + Math.min(ix + 1, 5) + ' of 5">' + STAGES.map((_, i) => "<i" + (i <= ix ? ' class="on"' : "") + "></i>").join("") + "</div>" +
+      '<div class="track-l"><span' + (ix === 4 ? ' class="ready"' : "") + ">" + esc(o.stage) + "</span></div></div>" +
+      '<div class="o-right"><div class="o-price">' + esc(money(o.price)) + '</div><div class="o-due">' + (fin ? esc(o.payment || "") : "Due " + esc(day(o.expectedDate))) + "</div></div></div>";
+  };
+  setH("orders", !list.length ? '<div class="card empty"><p style="margin:0">' + (S.orders.length ? "No orders match." : "No orders yet.") + "</p></div>" :
+    (open.length ? '<div class="group-t">In progress · ' + open.length + '</div><div class="group orders">' + open.map(row).join("") + "</div>" : "") +
+    (done.length ? '<div class="group-t" style="margin-top:28px">Done · ' + done.length + '</div><div class="group orders">' + done.map(row).join("") + "</div>" : ""));
+}
+$("order-q").addEventListener("input", (e) => { S.orderQ = e.target.value; renderOrders(); });
+
+/* ── Messages ─────────────────────────────────────────────────────────── */
+function renderMessages() {
+  if (!configured()) { setH("messages", setupEmpty()); return; }
+  if (!S.messages) return;
+  setH("messages", !S.messages.length ? '<div class="card empty"><h3>No messages</h3><p>When a caller asks for a person, ' + esc(BRAND) + " takes a message and it lands here.</p></div>" :
+    '<div class="msgs">' + S.messages.map((m) => {
+      const c = sortedCalls().find((c) => samePhone(c.from, m.phone) && Math.abs((tms(c.startedAt) || 0) - (tms(m.createdAt) || 0)) < 3600e3);
+      const ini = String(m.name || "?").split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+      return '<article class="card msg"><div class="msg-h"><div class="avatar" aria-hidden="true">' + esc(ini) + '</div><div style="flex:1;min-width:0"><div style="font-weight:600">' + esc(m.name) + '</div><div class="row-sub">' + esc(rel(m.createdAt)) + "</div></div></div>" +
+        '<div class="msg-b">' + esc(m.message) + '</div><div class="msg-f"><a href="tel:' + esc(m.phone) + '">Call ' + esc(phone(m.phone)) + "</a>" + (c ? '<a href="#/calls/' + encodeURIComponent(c.callSid) + '">Read the call</a>' : "") + "</div></article>";
+    }).join("") + "</div>");
+}
+
+/* ── chrome ───────────────────────────────────────────────────────────── */
+function renderChrome() {
+  const p = $("conn"), t = p.querySelector(".txt");
+  p.className = "pill";
+  if (S.demo) { p.classList.add("demo"); t.textContent = "Demo data"; }
+  else if (!S.api) t.textContent = "Not connected";
+  else if (S.health === true) { p.classList.add("ok"); t.textContent = "Connected"; }
+  else if (S.health === false) { p.classList.add("bad"); t.textContent = "Can’t reach backend"; }
+  else t.textContent = "Connecting…";
+  const lives = liveCalls().length;
+  document.querySelectorAll(".seg .live-dot, .tabbar .live-dot").forEach((d) => { d.hidden = !lives; });
+  document.title = lives ? "● " + BRAND + " · On a call" : BRAND;
+  const b = $("banner");
+  if (configured() && !S.demo && S.health === false) { b.hidden = false; setH(b, "<span>Can’t reach <span class=\"mono\">" + esc(S.api) + "</span>. Check that the server and ngrok are running. Retrying every few seconds.</span>"); }
+  else b.hidden = true;
+}
+function renderAll() {
+  renderChrome();
+  if (S.view === "line") renderLine();
+  else if (S.view === "calls") renderCalls();
+  else if (S.view === "learning") renderLearning();
+  else if (S.view === "knowledge") renderKnowledge();
+  else if (S.view === "customers") renderCustomers();
+  else if (S.view === "orders") renderOrders();
+  else if (S.view === "messages") renderMessages();
+}
+// live timers tick every second without a full render
+setInterval(() => { document.querySelectorAll("[data-elapsed]").forEach((el) => { const c = arr(S.calls).find((x) => x.callSid === el.getAttribute("data-elapsed")); if (c && isLive(c)) el.textContent = dur(elapsed(c)); }); }, 1000);
+
+/* ── data ─────────────────────────────────────────────────────────────── */
+let busy = false;
+async function refresh() {
+  if (busy) return;
+  if (!configured()) { renderAll(); return; }
+  busy = true; const gen = K.gen;
+  try {
+    const h = await api("/api/health");
+    S.health = !!(h && h.status === "ok");
+    if (!S.health) throw new Error("bad health");
+    const keep = (p, prev) => p.catch(() => prev);
+    const teacher = (p) => p.then(arr, (e) => (e && e.status === 404 ? null : undefined));
+    const [calls, orders, messages, cfg, grades, imps, custs] = await Promise.all([
+      keep(api("/api/calls?limit=50"), S.calls), keep(api("/api/orders"), S.orders), keep(api("/api/messages"), S.messages),
+      api("/api/config").catch((e) => { if (e && e.status === 404) K.missing = true; else K.err = errText(e); return undefined; }),
+      teacher(api("/api/grades?shape=ui")), teacher(api("/api/improvements?shape=ui")), teacher(api("/api/customers")),
+    ]);
+    if (custs !== undefined) S.customers = custs;
+    S.calls = calls ? arr(calls) : S.calls; S.orders = orders ? arr(orders) : S.orders; S.messages = messages ? arr(messages) : S.messages;
+    if (cfg && gen === K.gen) { K.missing = false; K.err = ""; const vs = arr(cfg.versions).slice().sort((a, b) => b.version - a.version); S.cfg = { active: cfg.active || vs[0] || null, versions: vs }; }
+    if (grades !== undefined) S.grades = grades;
+    if (imps !== undefined) S.imps = imps;
+    // announce new live calls for screen readers
+    liveCalls().forEach((c) => { if (!S.seenLive[c.callSid]) { S.seenLive[c.callSid] = 1; announce("New call from " + callerName(c)); } });
+  } catch (e) { S.health = false; }
+  busy = false; renderAll();
+}
+let timer = null;
+function schedule() { clearInterval(timer); timer = setInterval(() => { if (!document.hidden) refresh(); }, POLL_MS); }
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+function resetData() {
+  S.health = null; S.calls = S.orders = S.messages = S.customers = S.grades = S.imps = null; S.custSel = null; S.cfg = null; S.h = {}; S.seenLive = {};
+  K.gen++; K.base = null; K.seen = null; K.msg = null; K.err = ""; K.missing = false; K.dc = {};
+  ["k-name", "k-greet", "k-ctx", "k-note"].forEach((i) => { $(i).value = ""; });
+  ["now", "strip", "line-aside", "call-list", "detail", "learning", "customers", "orders", "messages", "k-hist"].forEach((i) => { $(i).innerHTML = ""; });
+  $("now").removeAttribute("data-mode"); $("detail").removeAttribute("data-sid");
+}
+
+/* ── dialogs ──────────────────────────────────────────────────────────── */
+let lastFocus = null;
+function openDlg(d) { if (!d.open) { lastFocus = document.activeElement; d.showModal(); } }
+function closeDlg(d) { if (d.open) { d.close(); if (lastFocus && lastFocus.focus) lastFocus.focus(); } }
+document.querySelectorAll("dialog").forEach((d) => d.addEventListener("click", (e) => { if (e.target === d || e.target.closest("[data-close]")) closeDlg(d); }));
+function ask(title, body, yes) {
+  return new Promise((resolve) => {
+    const d = $("ask"); $("ask-t").textContent = title; $("ask-b").textContent = body; $("ask-yes").textContent = yes || "OK";
+    const done = (v) => { $("ask-yes").onclick = $("ask-no").onclick = null; d.onclose = null; closeDlg(d); resolve(v); };
+    $("ask-yes").onclick = () => done(true); $("ask-no").onclick = () => done(false); d.onclose = () => resolve(false);
+    openDlg(d); $("ask-yes").focus();
+  });
+}
+function applyTheme() { if (S.theme === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", S.theme); }
+function syncSettings() {
+  $("conn-fields").style.opacity = $("in-demo").checked ? ".45" : "1";
+  document.querySelectorAll("#theme-seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.getAttribute("data-theme") === S.theme)));
+}
+function openSettings() { $("in-api").value = S.api; $("in-token").value = S.token; $("in-demo").checked = S.demo; $("test-res").textContent = ""; syncSettings(); openDlg($("settings")); }
+$("in-demo").addEventListener("change", syncSettings);
+$("theme-seg").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; S.theme = b.getAttribute("data-theme"); sset("snoopy_theme", S.theme); applyTheme(); syncSettings(); if (S.view === "learning") renderChart(); });
+$("settings-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  S.api = $("in-api").value.trim().replace(/\/+$/, ""); S.token = $("in-token").value.trim(); S.demo = $("in-demo").checked;
+  sset("snoopy_api", S.api); sset("snoopy_token", S.token); sset("snoopy_demo", S.demo ? "1" : "0");
+  closeDlg($("settings")); resetData(); renderAll(); refresh();
+});
+$("btn-test").addEventListener("click", () => {
+  const base = $("in-api").value.trim().replace(/\/+$/, ""), tok = $("in-token").value.trim(), out = $("test-res");
+  if (!base) { out.textContent = "Enter the backend URL first."; return; }
+  out.textContent = "Testing…";
+  const h = { "ngrok-skip-browser-warning": "1" }; if (tok) h["x-dashboard-token"] = tok;
+  fetch(base + "/api/calls?limit=1", { headers: h }).then((r) => { if (r.status === 401) throw new Error("the token is wrong"); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(() => { out.textContent = "Connected."; }).catch((e) => { out.textContent = "Couldn’t connect: " + (e.message || "network error"); });
+});
+$("open-settings").addEventListener("click", openSettings);
+$("conn").addEventListener("click", openSettings);
+
+/* ── clicks ───────────────────────────────────────────────────────────── */
+document.addEventListener("click", (e) => {
+  const t = e.target;
+  let el;
+  if (t.closest("[data-open-settings]")) { openSettings(); return; }
+  if (t.closest("[data-demo]")) { S.demo = true; sset("snoopy_demo", "1"); resetData(); renderAll(); refresh(); return; }
+  if (t.closest("[data-play]")) { Demo.playCall(); refresh(); return; }
+  if ((el = t.closest("[data-live]"))) { S.liveSel = el.getAttribute("data-live"); S.h["now-head"] = null; renderLine(); return; }
+  if ((el = t.closest("[data-cust]"))) { openCustomer(el.getAttribute("data-cust")); return; }
+  if (t.closest("[data-cust-edit]")) { S.custMsg = ""; openCustomer(S.custSel, true); return; }
+  if (t.closest("[data-cust-cancel]")) { S.custMsg = ""; openCustomer(S.custSel, false); return; }
+  if (t.closest("[data-cust-save]")) { saveCustomer(); return; }
+  if ((el = t.closest("[data-cust-call]"))) { closeDlg($("cust-dlg")); go("#/calls/" + encodeURIComponent(el.getAttribute("data-cust-call"))); return; }
+  if ((el = t.closest("[data-sheet]"))) { openSheet(Number(el.getAttribute("data-sheet"))); return; }
+  if ((el = t.closest("[data-mode]"))) { K.mode = el.getAttribute("data-mode"); renderSheet(); return; }
+  if ((el = t.closest("[data-edit]"))) { kEditFrom(Number(el.getAttribute("data-edit"))); return; }
+  if ((el = t.closest("[data-activate]"))) { kActivate(Number(el.getAttribute("data-activate"))); return; }
+  if ((el = t.closest("[data-imp]"))) { impAction(el.getAttribute("data-imp"), el.getAttribute("data-id")); return; }
+  if ((el = t.closest("[data-ver]"))) { e.preventDefault(); go("#/knowledge"); openSheet(Number(el.getAttribute("data-ver"))); return; }
+  if (t.closest("#k-reload")) { const a = activeCfg(); if (a) { kSetEditor(a); renderKnowledge(); } return; }
+});
+$("call-q").addEventListener("input", (e) => { S.callQ = e.target.value; renderCalls(); });
+$("call-filter").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  S.callF = b.getAttribute("data-f");
+  $("call-filter").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  renderCalls();
+});
+
+route();
+refresh();
+schedule();
+})();
+</script>
+</body>
+</html>
