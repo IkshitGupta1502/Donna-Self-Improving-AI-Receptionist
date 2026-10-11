@@ -19,6 +19,12 @@ export const JudgeOutput = z.object({
     explanation: z.string(),
     owner_question: z.string().optional(),
   })).default([]),
+  // Every time the receptionist had to hand a business question to staff: the owner still has to answer it.
+  deferrals: z.array(z.object({
+    turn: z.coerce.number().int(),
+    quote: z.string(),
+    owner_question: z.string(),
+  })).default([]),
   improvements: z.array(z.object({
     type: z.enum(["prompt", "context", "tool", "schema"]),
     op: z.enum(["add", "modify", "remove"]).optional(),
@@ -141,10 +147,12 @@ Three worked examples (shortened):
 {"steps":[{"do":"require","when":{"ref":"confirmed"},"else":"Please confirm the details with the caller first."},{"do":"require","when":{"op":"lte","args":[{"ref":"amount"},200]},"else":"Claims over $200 need the owner; offer to take a message."},{"do":"save","fields":{"order_id":{"ref":"order_id"},"description":{"ref":"description"},"amount":{"ref":"amount"}}}],"response":{"filed":true,"claim_id":{"ref":"record_id"}}}
 ${EXAMPLE3}
 
+DEFERRALS (the "deferrals" list): list EVERY turn where the receptionist could not answer a question about the business and handed it to staff or avoided it: it took a message or offered a callback because it did not know something, said "I don't have that", "I don't know", "I'm not sure", "staff will get back to you", or "someone from the team can tell you". Examples: whether PFAS or certain chemicals are used in cleaning, what a service costs, whether an exception is possible, whether a stain can come out, delivery area, opening on a holiday. Do this EVEN WHEN THE AGENT DID THE RIGHT THING by not guessing, and even when the call was cut off: the deferral is correct, but the owner has not yet told the receptionist the answer, so next time it will defer again. A correct deferral does not lower any score (do not penalise accuracy or judgment for it); it only gets recorded. Each deferral needs the turn, an EXACT quote of the caller's question (or of the agent's deferral if the question is not clear), and one short owner_question (under 160 characters) asking for the FACT or POLICY, never suggesting it, e.g. "Do you use PFAS chemicals in your cleaning process?". Skip deferrals that are not about the business (the caller only wanted to leave a personal message or speak to a person, with no question asked) and anything BUSINESS KNOWLEDGE already answers.
+
 GROUNDING (read before judging):
 - The RULES and BUSINESS KNOWLEDGE you are shown are the version the call actually ran with. Judge the call against them, not against any newer wording or a different business name.
 - The receptionist is given the CALLER PROFILE before it picks up, from the caller's phone number. Greeting a caller by the name in the profile, and stating order details listed in the profile, is CORRECT and is NOT an invented fact or a tone problem. Never write a rule that tells the receptionist to ignore or avoid using its caller profile. If the profile says the number was not recognised, then using a name the caller never gave IS a problem.
-- A call that was cut off by a technical failure (a very short call, a turn that stops mid-sentence, no real exchange) teaches nothing about the receptionist's behaviour. Grade what happened, but propose NO improvements, tool or playbook entry for it.
+- A call that was cut off by a technical failure (a very short call, a turn that stops mid-sentence, no real exchange) teaches nothing about the receptionist's behaviour. Grade what happened, but propose NO rule, tool or playbook entry for it. Still record every DEFERRAL (below): a business question the caller asked that the receptionist could not answer is a gap the owner must fill, however the call ended.
 
 PLAYBOOK_ENTRY (optional, at most ONE per call, null when nothing is worth recording): a short "when this specific situation happens, do this" note for an EDGE CASE the transcript shows. Record one only when the caller's situation was unusual and repeatable, or the agent handled it badly or only took a message because it had no guidance.
 It is NOT a rule (a rule is an always-on principle that applies to every call), NOT a context question (a missing business fact) and NOT a tool proposal (a missing capability). Do not record routine calls that went well.
@@ -155,6 +163,7 @@ Example: the caller asks to hold a finished order until next Tuesday and the age
 Reply with ONLY a JSON object:
 {"scores":{"accuracy":0,"tool_use":0,"task_completion":0,"tone":0,"brevity":0,"judgment":0},"frustration":0,"rationale":"2-3 sentences",
  "issues":[{"type":"invented_fact|missed_question|rule_violation|tool_error|tone|verbosity|blind_agreement|unflagged_risk|missed_clarification|knowledge_gap|other","turn":0,"quote":"","explanation":"","owner_question":"only for the four judgment types"}],
+ "deferrals":[{"turn":0,"quote":"","owner_question":""}],
  "improvements":[{"type":"prompt","op":"add","rule_kind":"guardrail","text":"","evidence_turns":[0],"reason":""},
                  {"type":"prompt","op":"modify","rule_id":"r0","text":"","evidence_turns":[0],"reason":""},
                  {"type":"context","question":"","evidence_turns":[0],"reason":""}],

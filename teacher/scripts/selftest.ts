@@ -418,4 +418,31 @@ const p4 = jPlan(jOut([
   jIssue("unflagged_risk", "Do you ever waive the rush fee for regular customers?"),
 ]));
 assert.deepEqual(ctxOf(p4).map((i) => i.status), ["proposed", "proposed", "rejected"]);
+// ---- Deferrals: a question handed to staff is a gap for the owner, even when the agent did the right thing ----
+const dOut = (deferrals: Record<string, unknown>[], extra: Record<string, unknown> = {}) =>
+  JudgeOutput.parse({ ...out, scores: { accuracy: 9, tool_use: 9, task_completion: 6, tone: 9, brevity: 9, judgment: 9 }, issues: [], improvements: [], tool_proposal: null, deferrals, ...extra });
+const dPlan = (o: ReturnType<typeof dOut>, existing: string[] = []) =>
+  buildPlan(o, call, configV1, "mock", new Date(), undefined, { existingQuestions: existing });
+const defer = (owner_question: string, quote = jQuote) => ({ turn: 2, quote, owner_question });
+// The PFAS case: correct deferral, no issues, no improvements from the judge, still an owner question
+const d1 = dPlan(dOut([defer("Do you use PFAS chemicals in your cleaning process?")]));
+assert.equal(ctxOf(d1).length, 1, "a correct deferral still produces an owner question");
+assert.equal(ctxOf(d1)[0]!.status, "proposed");
+assert.match(ctxOf(d1)[0]!.payload.question!, /PFAS/);
+assert.equal(d1.grade.issues.length, 1);
+assert.equal(d1.grade.issues[0]!.type, "knowledge_gap");
+assert.equal(d1.grade.scores.judgment, 9, "a correct deferral is recorded, not penalised");
+assert.equal(d1.nextConfig, null, "no rule or version is created for a deferral");
+// A fabricated quote is dropped, so nothing is invented
+assert.equal(ctxOf(dPlan(dOut([defer("Do you use PFAS chemicals?", "the caller never said this")]))).length, 0);
+// Same gap reported both as an issue and as a deferral: one question
+const d2 = dPlan(dOut([defer("Do you use PFAS chemicals in your cleaning process?")], { issues: [{ type: "knowledge_gap", turn: 2, quote: jQuote, explanation: "x", owner_question: "Do you use PFAS chemicals in your cleaning process?" }] }));
+assert.equal(ctxOf(d2).length, 1, "a deferral that repeats a knowledge_gap issue is not asked twice");
+// Already asked or answered earlier: rejected as a repeat
+assert.equal(ctxOf(dPlan(dOut([defer("Do you use PFAS chemicals in your cleaning process?")]), ["Do you use PFAS chemicals in your cleaning process?"]))[0]!.status, "rejected");
+// More than two deferrals: the cap still holds
+const d3 = dPlan(dOut([defer("Do you use PFAS chemicals in your cleaning process?"), defer("What do you charge to hem pants?"), defer("Do you deliver outside the city?")]));
+assert.deepEqual(ctxOf(d3).map((i) => i.status), ["proposed", "proposed", "rejected"]);
+// A judge output with no "deferrals" field at all (older prompt or model) still works
+assert.equal(ctxOf(dPlan(JudgeOutput.parse({ ...out, improvements: [], issues: [], tool_proposal: null }))).length, 0);
 console.log("selftest passed");

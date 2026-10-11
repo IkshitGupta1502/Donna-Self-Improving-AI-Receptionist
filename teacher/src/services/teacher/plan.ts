@@ -87,8 +87,24 @@ export function buildPlan(
 ): Plan {
   const turns = new Map(call.transcript.map((t) => [t.turn, t]));
 
+  // A deferral (the receptionist handed a business question to staff) is a knowledge gap the owner has to fill, even
+  // when the agent behaved correctly. It is recorded as a knowledge_gap issue carrying the owner question, and goes
+  // through the same quote check, question cap and de-duplication as every other owner question.
+  const deferralIssues = (out.deferrals ?? []).map((d) => ({
+    type: "knowledge_gap",
+    turn: d.turn,
+    quote: d.quote,
+    explanation: "The receptionist could not answer this and handed it to staff. The owner has not told it the answer yet.",
+    owner_question: d.owner_question,
+  }));
+  const knownGapQuestions = out.issues.filter((i) => i.type === "knowledge_gap").map((i) => i.owner_question ?? "");
+  const allIssues = [
+    ...out.issues,
+    ...deferralIssues.filter((d) => !knownGapQuestions.some((q) => q && similarQuestion(q, d.owner_question))),
+  ];
+
   // Issues need a real quote from the transcript, otherwise they are dropped.
-  const issues: Issue[] = out.issues.filter((i) => {
+  const issues: Issue[] = allIssues.filter((i) => {
     const q = norm(i.quote);
     return q.length > 0 && call.transcript.some((t) => norm(t.text).includes(q));
   });
