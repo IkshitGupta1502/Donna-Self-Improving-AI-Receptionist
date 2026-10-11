@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "live": "tsx scripts/live.ts",
+    "doctor": "tsx scripts/doctor.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "check": "tsc --noEmit"

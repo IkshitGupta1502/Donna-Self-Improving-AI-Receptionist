@@ -11,7 +11,7 @@ import { TOOLS, executeTool } from "./tools";
 import { buildSystemPrompt } from "./systemPrompt";
 import { twilioToGemini, geminiToTwilio } from "../audio/converter";
 
-const MODEL = "gemini-3.1-flash-live-preview";
+export const MODEL = "gemini-3.1-flash-live-preview";
 
 let storePromise: Promise<DataStore> | null = null;
 export function getStore(): Promise<DataStore> {
@@ -115,7 +115,10 @@ export async function openGeminiSession(opts: GeminiSessionOptions): Promise<Gem
         }
       },
       onerror: (err: unknown) => onError(err instanceof Error ? err : new Error(String(err))),
-      onclose: () => onClose(),
+      onclose: (e?: { code?: number; reason?: string }) => {
+        console.log(`[gemini] session closed code=${e?.code ?? "?"} reason=${e?.reason || "(none)"}`);
+        onClose();
+      },
     },
   });
 
