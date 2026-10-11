@@ -1,5 +1,5 @@
 import { FunctionDeclaration, Type } from "@google/genai";
-import type { DataStore, Speed } from "../data/store";
+import type { CustomTool, DataStore, Speed } from "../data/store";
 
 export const TOOLS: FunctionDeclaration[] = [
   {
@@ -136,5 +136,56 @@ export async function executeTool(
 
     default:
       return { error: `Unknown tool: ${name}` };
+  }
+}
+
+// ---- Custom tools -----------------------------------------------------------------------------
+// Requested by the teacher, built by the CRM owner, enabled by the owner with an https endpoint.
+// The bridge only forwards declared arguments to that endpoint and never lets a custom tool shadow a built-in.
+
+const BUILT_IN = new Set(TOOLS.map((t) => t.name));
+const TYPE_MAP = { string: Type.STRING, number: Type.NUMBER, integer: Type.INTEGER, boolean: Type.BOOLEAN } as const;
+const CUSTOM_TIMEOUT_MS = 5000;
+const MAX_RESPONSE_CHARS = 8000;
+
+export function usableCustomTools(tools: CustomTool[]): CustomTool[] {
+  return tools.filter((t) => !BUILT_IN.has(t.name));
+}
+
+export function customDeclarations(tools: CustomTool[]): FunctionDeclaration[] {
+  return tools.map((t) => ({
+    name: t.name,
+    description: t.description,
+    parameters: {
+      type: Type.OBJECT,
+      properties: Object.fromEntries(t.parameters.map((p) => [p.name, { type: TYPE_MAP[p.type], description: p.description }])),
+      required: t.parameters.filter((p) => p.required).map((p) => p.name),
+    },
+  }));
+}
+
+export async function executeCustomTool(tool: CustomTool, args: Args): Promise<Record<string, unknown>> {
+  const declared = new Set(tool.parameters.map((p) => p.name));
+  const clean = Object.fromEntries(Object.entries(args).filter(([k]) => declared.has(k)));
+  const missing = tool.parameters.filter((p) => p.required && clean[p.name] === undefined).map((p) => p.name);
+  if (missing.length) return { error: `Missing: ${missing.join(", ")}` };
+  const secret = process.env.CUSTOM_TOOL_SECRET;
+  try {
+    const res = await fetch(tool.endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...(secret ? { "x-tool-secret": secret } : {}) },
+      body: JSON.stringify({ tool: tool.name, args: clean }),
+      signal: AbortSignal.timeout(CUSTOM_TIMEOUT_MS),
+    });
+    const text = (await res.text()).slice(0, MAX_RESPONSE_CHARS);
+    if (!res.ok) return { error: `${tool.name} failed with HTTP ${res.status}` };
+    try {
+      const parsed = JSON.parse(text);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : { result: parsed };
+    } catch {
+      return { result: text };
+    }
+  } catch (err) {
+    return { error: `${tool.name} unavailable: ${err instanceof Error ? err.message : String(err)}` };
   }
 }

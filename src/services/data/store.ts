@@ -83,7 +83,17 @@ export interface ConfigInput {
   note?: string;
 }
 
+/** A tool the teacher requested and an owner built and enabled (collection `tool_requests`). */
+export interface CustomTool {
+  name: string;
+  description: string;
+  parameters: { name: string; type: "string" | "number" | "integer" | "boolean"; description: string; required: boolean }[];
+  side_effect: "read" | "write";
+  endpoint: string;
+}
+
 export interface DataStore {
+  getEnabledTools(): Promise<CustomTool[]>;
   getActiveConfig(): Promise<ConfigVersion>;
   listConfigVersions(): Promise<ConfigVersion[]>;
   saveConfigVersion(input: ConfigInput): Promise<ConfigVersion>;
@@ -151,6 +161,9 @@ export function createMemoryStore(): DataStore {
   };
 
   return {
+    async getEnabledTools() {
+      return [];
+    },
     async getActiveConfig() {
       return structuredClone(configs.find((c) => c.version === activeVersion) ?? configs[0]);
     },
@@ -238,6 +251,7 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
   const db = client.db(dbName);
   const orders = db.collection<Order>("orders");
   const pricing = db.collection<PriceRow>("pricing");
+  const toolRequests = db.collection<CustomTool & { status: string }>("tool_requests");
   const messages = db.collection<Message>("messages");
   const calls = db.collection<CallRecord>("calls");
 
@@ -256,6 +270,10 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
   const proj = { projection: { _id: 0 } } as const;
 
   return {
+    async getEnabledTools() {
+      const rows = await toolRequests.find({ status: "enabled", endpoint: { $type: "string" } }).toArray();
+      return rows.map(({ name, description, parameters, side_effect, endpoint }) => ({ name, description, parameters, side_effect, endpoint }));
+    },
     async getActiveConfig() {
       const state = await configState.findOne({ _id: "active" });
       const active = state ? await configVersions.findOne({ version: state.version }, proj) : null;
