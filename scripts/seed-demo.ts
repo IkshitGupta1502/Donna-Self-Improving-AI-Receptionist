@@ -1,4 +1,4 @@
-// Seeds demo data for the Charlie's Cleaners demo: `npm run seed` (uses MONGODB_URI if set, else a dry run in memory).
+// Seeds demo data for the CJ's Cleaners demo: `npm run seed` (uses MONGODB_URI if set, else a dry run in memory).
 // Safe to re-run: orders are upserted by orderId, and the demo context version is added only once.
 import dotenv from "dotenv";
 import { createDataStore, normalizePhone } from "../src/services/data/store";
@@ -8,9 +8,11 @@ dotenv.config();
 const phoneArg = process.argv.find((a) => a.startsWith("--phone="))?.split("=")[1];
 const PHONE = normalizePhone(phoneArg ?? "925-551-1546");
 const NAME = "Aayush Gandhi";
+const COMPANY = "CJ's Cleaners";
+const GREETING = `Hey, this is ${COMPANY}.`;
 
 const DEMO_CONTEXT = [
-  "Charlie's Cleaners is a friendly neighborhood dry cleaner.",
+  "CJ's Cleaners is a friendly neighborhood dry cleaner.",
   "Services: dry cleaning, laundry and press, alterations and repairs, wedding gown and leather care, and household items like comforters and curtains.",
   "Turnaround: regular service takes 3 days. Expedited service is ready the next day for an extra fee.",
   "Pickup hours: Monday to Saturday, 8am to 6pm. Closed on Sunday and major holidays.",
@@ -37,19 +39,18 @@ async function main(): Promise<void> {
   for (const o of orders) await store.upsertOrder(o);
   console.log(`✓ Upserted ${orders.length} demo orders for ${PHONE} (${NAME})`);
 
-  const versions = await store.listConfigVersions();
-  if (versions.some((v) => v.note === "Demo context")) {
-    console.log("✓ Demo context version already present, skipping");
+  const active = await store.getActiveConfig();
+  if (active.companyName === COMPANY && active.greeting === GREETING && active.context === DEMO_CONTEXT) {
+    console.log(`✓ Active config already matches the demo (v${active.version}), skipping`);
   } else {
-    const active = await store.getActiveConfig();
     const saved = await store.saveConfigVersion({
-      companyName: active.companyName,
-      greeting: active.greeting,
+      companyName: COMPANY,
+      greeting: GREETING,
       context: DEMO_CONTEXT,
       author: "system",
       note: "Demo context",
     });
-    console.log(`✓ Added demo company context as v${saved.version} (now active; roll back from the dashboard if needed)`);
+    console.log(`✓ Added demo company config as v${saved.version} for ${COMPANY} (now active; roll back from the dashboard if needed)`);
   }
 
   const all = await store.listOrders();

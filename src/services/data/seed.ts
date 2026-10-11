@@ -97,10 +97,10 @@ export const SEED_PRICING: PriceRow[] = [
 
 export const SEED_CONFIG: ConfigVersion = {
   version: 1,
-  companyName: "Charlie's Cleaners",
-  greeting: "Hey, this is Charlie's Cleaners.",
+  companyName: "CJ's Cleaners",
+  greeting: "Hey, this is CJ's Cleaners.",
   context: [
-    "Charlie's Cleaners is a friendly neighborhood dry cleaner.",
+    "CJ's Cleaners is a friendly neighborhood dry cleaner.",
     "Services: dry cleaning, laundry and press, alterations and repairs, wedding gown and leather care, and household items like comforters and curtains.",
     "Turnaround: regular service takes 3 days. Expedited service is ready the next day for an extra fee.",
     "Pickup hours: Monday to Saturday, 8am to 6pm. Closed on Sunday.",

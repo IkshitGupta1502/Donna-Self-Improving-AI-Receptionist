@@ -1,7 +1,7 @@
 # Snoopy Voice Receptionist
 
 Customers call a Twilio number and talk to a Gemini Live voice agent for a dry cleaner
-("Charlie's Cleaners"). The agent looks up orders and prices and takes messages or order
+("CJ's Cleaners"). The agent looks up orders and prices and takes messages or order
 notes through tools backed by MongoDB Atlas. A teaching agent (planned) grades each call
 and improves the voice agent over time. See [docs/PLAN.md](docs/PLAN.md).
 

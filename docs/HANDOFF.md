@@ -13,7 +13,7 @@ Plan and rationale: [PLAN.md](PLAN.md). Run instructions: [../README.md](../READ
 
 ## What it is
 
-A phone number that answers as a dry cleaner ("Charlie's Cleaners"). Customers call; a Gemini
+A phone number that answers as a dry cleaner ("CJ's Cleaners"). Customers call; a Gemini
 Live voice agent looks up orders and prices, adds order notes, and takes messages. The end goal
 is a teaching agent that grades each call and improves the voice agent over time (RSI).
 Decisions already made: callers are customers, English only, 3-hour build, success judged by
