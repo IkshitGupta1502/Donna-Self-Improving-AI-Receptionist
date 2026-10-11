@@ -1,5 +1,16 @@
 import { FunctionDeclaration, Type } from "@google/genai";
-import type { CustomerPatch, DataStore, Speed } from "../data/store";
+import {
+  CANCELLABLE_STAGES,
+  computeExpectedDate,
+  priceGarment,
+  weekdayName,
+  type AppointmentKind,
+  type CustomerPatch,
+  type DataStore,
+  type Speed,
+} from "../data/store";
+
+const CONFIRM_ERROR = "Read the details back to the caller and get a yes first.";
 
 export const TOOLS: FunctionDeclaration[] = [
   {
@@ -66,6 +77,83 @@ export const TOOLS: FunctionDeclaration[] = [
         message: { type: Type.STRING, description: "What the caller needs staff to know" },
       },
       required: ["name", "phone", "message"],
+    },
+  },
+  {
+    name: "create_order",
+    description:
+      "Place a NEW order for the caller. Use when the caller wants to drop off or send in items and have us clean them. First collect the items (with quantities) and the speed (Regular or Expedited), call quote_turnaround to get the price and ready date, then read back the items, speed, price and ready date and get a yes. Only then call with confirmed=true. Name and phone default to the caller's profile and caller ID. If the price comes back unconfirmed, tell the caller staff will confirm it.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        garment: { type: Type.STRING, description: "Items with quantities, e.g. 'Suit (2-piece), Shirt (dress) x3'. Use names from the price list when possible." },
+        speed: { type: Type.STRING, enum: ["Regular", "Expedited"], description: "Regular (3 days) or Expedited (next day)" },
+        customerName: { type: Type.STRING, description: "Caller's name; defaults to the caller profile" },
+        phone: { type: Type.STRING, description: "Phone number; defaults to the caller ID" },
+        notes: { type: Type.STRING, description: "Special handling, e.g. light starch, stain on left sleeve" },
+        confirmed: { type: Type.BOOLEAN, description: "Must be true, and only after the caller said yes to your readback" },
+      },
+      required: ["garment", "speed", "confirmed"],
+    },
+  },
+  {
+    name: "set_order_type",
+    description:
+      "Change an existing order to Expedited (rush) or back to Regular. Use when the caller wants it faster or sooner. First look up the order, then use quote_turnaround or lookup_price to tell the caller the price difference and the new ready date, and get a yes. Only works on orders that are not yet ready or delivered. The price and ready date are recomputed.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        orderId: { type: Type.STRING, description: "Order number, e.g. ORD-0010" },
+        speed: { type: Type.STRING, enum: ["Regular", "Expedited"], description: "The new speed" },
+      },
+      required: ["orderId", "speed"],
+    },
+  },
+  {
+    name: "cancel_order",
+    description:
+      "Cancel an order. Use only when the caller clearly asks to cancel. Look up the order first, confirm the caller's name, read back which order (id and items) and get a yes, then call with confirmed=true. Only orders still Received or Sorting can be cancelled; if work has started the tool refuses, and you should offer to take a message for staff.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        orderId: { type: Type.STRING, description: "Order number, e.g. ORD-0010" },
+        reason: { type: Type.STRING, description: "Why the caller is cancelling, if they said" },
+        confirmed: { type: Type.BOOLEAN, description: "Must be true, and only after the caller said yes to your readback" },
+      },
+      required: ["orderId", "confirmed"],
+    },
+  },
+  {
+    name: "schedule_appointment",
+    description:
+      "Book a pickup (we collect from the caller), a delivery (we bring items to the caller), or a drop-off time (the caller brings items to the shop). Collect the kind, date, time window, and for pickup or delivery the street address, plus an order number if it relates to one. We are closed Sundays and cannot book past dates; the tool rejects them, so offer another day. Read back kind, date, window and address and get a yes, then call with confirmed=true. Fees for pickup and delivery come from the company information; do not promise free service unless it says so.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        kind: { type: Type.STRING, enum: ["pickup", "delivery", "dropoff"], description: "pickup, delivery, or dropoff" },
+        date: { type: Type.STRING, description: "Date as YYYY-MM-DD; work it out from today's date" },
+        window: { type: Type.STRING, description: "Time window, e.g. 10am-12pm" },
+        address: { type: Type.STRING, description: "Street address; required for pickup and delivery" },
+        orderId: { type: Type.STRING, description: "Related order number, if any" },
+        notes: { type: Type.STRING, description: "Gate code, leave with doorman, etc." },
+        name: { type: Type.STRING, description: "Caller's name; defaults to the caller profile" },
+        phone: { type: Type.STRING, description: "Phone number; defaults to the caller ID" },
+        confirmed: { type: Type.BOOLEAN, description: "Must be true, and only after the caller said yes to your readback" },
+      },
+      required: ["kind", "date", "window", "confirmed"],
+    },
+  },
+  {
+    name: "quote_turnaround",
+    description:
+      "Quote when an order would be ready if placed or rushed today, and the price. Use before create_order, before set_order_type, and when the caller asks how long something takes or how fast we can do it. Pass the speed; add the items to also get the price (and the regular vs expedited difference). Does not change anything.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        speed: { type: Type.STRING, enum: ["Regular", "Expedited"], description: "Regular or Expedited" },
+        item: { type: Type.STRING, description: "Optional item(s) with quantities, e.g. 'Suit (2-piece) x2'" },
+      },
+      required: ["speed"],
     },
   },
   {
@@ -147,6 +235,107 @@ export async function executeTool(
       }
       const saved = await store.takeMessage({ name: callerName, phone, message });
       return { saved: true, message: saved };
+    }
+
+    case "create_order": {
+      if (args.confirmed !== true) return { error: CONFIRM_ERROR };
+      const garment = str(args, "garment");
+      if (!garment) return { error: "Provide the items to be cleaned." };
+      const phone = str(args, "phone") || ctx.callerPhone || "";
+      if (!phone) return { error: "Ask for a phone number for the order." };
+      const profile = ctx.callerPhone ? await store.getCustomerByPhone(ctx.callerPhone) : null;
+      const customerName = str(args, "customerName") || profile?.name || "";
+      if (!customerName) return { error: "Ask for the caller's name first." };
+      const speed: Speed = str(args, "speed") === "Expedited" ? "Expedited" : "Regular";
+      const order = await store.createOrder({ customerName, phone, garment, orderType: speed, notes: str(args, "notes") });
+      if (ctx.callerPhone && !profile?.name) await store.upsertCustomer(ctx.callerPhone, { name: customerName });
+      return {
+        created: true,
+        order,
+        priceConfirmed: order.price > 0,
+        ...(order.price > 0 ? {} : { note: "Price is not in the price list; staff will confirm it." }),
+      };
+    }
+
+    case "set_order_type": {
+      const orderId = str(args, "orderId");
+      if (!orderId) return { error: "Provide the order number." };
+      const speed: Speed = str(args, "speed") === "Expedited" ? "Expedited" : "Regular";
+      const existing = await store.getOrderById(orderId);
+      if (!existing) return { error: `No order ${orderId}.` };
+      if (["ready for pickup", "delivered", "cancelled", "picked up", "complete", "completed"].includes(existing.stage.trim().toLowerCase())) {
+        return { error: `Order ${existing.orderId} is ${existing.stage}, so its speed cannot be changed.` };
+      }
+      const order = await store.setOrderType(orderId, speed);
+      if (!order) return { error: `No order ${orderId}.` };
+      return {
+        updated: true,
+        order,
+        previous: { orderType: existing.orderType, price: existing.price, expectedDate: existing.expectedDate },
+      };
+    }
+
+    case "cancel_order": {
+      if (args.confirmed !== true) return { error: CONFIRM_ERROR };
+      const orderId = str(args, "orderId");
+      if (!orderId) return { error: "Provide the order number." };
+      const res = await store.cancelOrder(orderId, str(args, "reason") || undefined);
+      if (!res.ok) {
+        return {
+          cancelled: false,
+          error: res.reason ?? "Could not cancel.",
+          cancellableStages: CANCELLABLE_STAGES,
+          ...(res.order ? { stage: res.order.stage } : {}),
+        };
+      }
+      return { cancelled: true, order: res.order };
+    }
+
+    case "schedule_appointment": {
+      if (args.confirmed !== true) return { error: CONFIRM_ERROR };
+      const kind = str(args, "kind") as AppointmentKind;
+      const address = str(args, "address");
+      if ((kind === "pickup" || kind === "delivery") && !address) return { error: "Ask for the street address." };
+      const phone = str(args, "phone") || ctx.callerPhone || "";
+      if (!phone) return { error: "Ask for a phone number for the booking." };
+      const profile = ctx.callerPhone ? await store.getCustomerByPhone(ctx.callerPhone) : null;
+      const apptName = str(args, "name") || profile?.name || "";
+      if (!apptName) return { error: "Ask for the caller's name first." };
+      const res = await store.scheduleAppointment({
+        phone,
+        name: apptName,
+        kind,
+        date: str(args, "date"),
+        window: str(args, "window"),
+        address,
+        orderId: str(args, "orderId"),
+        notes: str(args, "notes"),
+      });
+      if (!res.ok || !res.appointment) return { scheduled: false, error: res.reason ?? "Could not book that." };
+      return { scheduled: true, appointment: res.appointment, weekday: weekdayName(res.appointment.date) };
+    }
+
+    case "quote_turnaround": {
+      const speed: Speed = str(args, "speed") === "Expedited" ? "Expedited" : "Regular";
+      const readyDate = computeExpectedDate(speed);
+      const out: Record<string, unknown> = { speed, readyDate, readyWeekday: weekdayName(readyDate) };
+      const item = str(args, "item");
+      if (item) {
+        const rows = await store.listPrices();
+        const regular = priceGarment(item, "Regular", rows);
+        const expedited = priceGarment(item, "Expedited", rows);
+        if (regular.matched) {
+          out.item = item;
+          out.price = speed === "Expedited" ? expedited.price : regular.price;
+          out.regularPrice = regular.price;
+          out.expeditedPrice = expedited.price;
+          out.expediteExtra = Math.round((expedited.price - regular.price) * 100) / 100;
+        } else {
+          out.priceFound = false;
+          out.note = "Item not in the price list; call list_prices or offer a message for a quote.";
+        }
+      }
+      return out;
     }
 
     case "update_customer_profile": {

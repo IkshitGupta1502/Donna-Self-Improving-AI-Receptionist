@@ -1,4 +1,4 @@
-import type { ConfigVersion, Customer, Order, PriceRow } from "./store";
+import type { Appointment, ConfigVersion, Customer, Order, PriceRow } from "./store";
 
 export const SEED_ORDERS: Order[] = [
   {
@@ -103,6 +103,8 @@ export const SEED_CONFIG: ConfigVersion = {
     "CJ's Cleaning Company is a friendly neighborhood dry cleaner.",
     "Services: dry cleaning, laundry and press, alterations and repairs, wedding gown and leather care, and household items like comforters and curtains.",
     "Turnaround: regular service takes 3 days. Expedited service is ready the next day for an extra fee.",
+    "By phone, customers can place a new order, check an order's status and ready date, get prices, upgrade an order to expedited, and cancel an order that has not been started.",
+    "Pickup and delivery: customers can schedule a pickup, a delivery, or a drop-off time by phone, Monday to Saturday. Pickup and delivery are free for orders over $40 within 5 miles, otherwise there is a fee; staff confirm the fee.",
     "Pickup hours: Monday to Saturday, 8am to 6pm. Closed on Sunday.",
     "Payment: we accept cash, credit and debit cards, and Apple Pay. Payment is due at pickup.",
     "Special items such as leather, suede, beaded or vintage garments need staff to inspect them. Take a message and staff will call back with a quote.",
@@ -123,3 +125,50 @@ export const SEED_CUSTOMERS: Customer[] = [...new Map(SEED_ORDERS.map((o) => [o.
   firstSeenAt: "2026-09-01T00:00:00.000Z",
   callCount: 0,
 }));
+
+const apptBase = { status: "scheduled" as const, createdAt: "2026-10-09T15:00:00.000Z" };
+
+export const SEED_APPOINTMENTS: Appointment[] = [
+  {
+    id: "APT-0001",
+    phone: "+14155550118",
+    name: "Angela Torres",
+    kind: "delivery",
+    date: "2026-10-12",
+    window: "10am-12pm",
+    address: "412 Maple Street",
+    orderId: "ORD-0006",
+    ...apptBase,
+  },
+  {
+    id: "APT-0002",
+    phone: "+14155550161",
+    name: "Marcus Johnson",
+    kind: "dropoff",
+    date: "2026-10-12",
+    window: "2pm-4pm",
+    notes: "Bringing two more shirts.",
+    ...apptBase,
+  },
+  {
+    id: "APT-0003",
+    phone: "+14155550142",
+    name: "Daniel Kim",
+    kind: "pickup",
+    date: "2026-10-13",
+    window: "8am-10am",
+    address: "88 Oak Avenue, Apt 3",
+    ...apptBase,
+  },
+  {
+    id: "APT-0004",
+    phone: "+14155550177",
+    name: "Priya Shah",
+    kind: "delivery",
+    date: "2026-10-16",
+    window: "4pm-6pm",
+    address: "230 Pine Road",
+    orderId: "ORD-0008",
+    ...apptBase,
+  },
+];
