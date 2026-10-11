@@ -40,6 +40,30 @@ export interface Message {
   createdAt: string;
 }
 
+export interface CallTranscriptEntry {
+  role: "caller" | "agent";
+  text: string;
+  ts: string;
+}
+
+export interface CallToolCall {
+  name: string;
+  args: Record<string, unknown>;
+  result: unknown;
+  ts: string;
+}
+
+export interface CallRecord {
+  callSid: string;
+  from?: string;
+  startedAt: string;
+  endedAt?: string;
+  durationSec?: number;
+  transcript: CallTranscriptEntry[];
+  toolCalls: CallToolCall[];
+  status: "active" | "completed";
+}
+
 export interface DataStore {
   getOrderById(orderId: string): Promise<Order | null>;
   searchOrdersByName(name: string): Promise<Order[]>;
@@ -48,6 +72,10 @@ export interface DataStore {
   lookupPrice(item: string, speed: Speed): Promise<PriceLookup>;
   appendOrderNote(orderId: string, note: string): Promise<Order | null>;
   takeMessage(input: { name: string; phone: string; message: string }): Promise<Message>;
+  saveCall(record: CallRecord): Promise<void>;
+  listCalls(limit: number): Promise<CallRecord[]>;
+  listOrders(): Promise<Order[]>;
+  listMessages(): Promise<Message[]>;
 }
 
 export function normalizePhone(input: string): string {
@@ -79,6 +107,7 @@ export function createMemoryStore(): DataStore {
   const orders: Order[] = structuredClone(SEED_ORDERS);
   const pricing: PriceRow[] = structuredClone(SEED_PRICING);
   const messages: Message[] = [];
+  const calls = new Map<string, CallRecord>();
   const findOrder = (orderId: string) => {
     const id = orderId.trim().toUpperCase();
     return orders.find((o) => o.orderId.toUpperCase() === id) ?? null;
@@ -123,6 +152,21 @@ export function createMemoryStore(): DataStore {
       messages.push(msg);
       return { ...msg };
     },
+    async saveCall(record) {
+      calls.set(record.callSid, structuredClone(record));
+    },
+    async listCalls(limit) {
+      return [...calls.values()]
+        .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+        .slice(0, limit)
+        .map((c) => structuredClone(c));
+    },
+    async listOrders() {
+      return structuredClone(orders);
+    },
+    async listMessages() {
+      return [...messages].reverse().map((m) => ({ ...m }));
+    },
   };
 }
 
@@ -140,9 +184,11 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
   const orders = db.collection<Order>("orders");
   const pricing = db.collection<PriceRow>("pricing");
   const messages = db.collection<Message>("messages");
+  const calls = db.collection<CallRecord>("calls");
 
   await orders.createIndex({ orderId: 1 }, { unique: true });
   await pricing.createIndex({ item: 1 }, { unique: true });
+  await calls.createIndex({ callSid: 1 }, { unique: true });
   await seedIfEmpty(orders, SEED_ORDERS);
   await seedIfEmpty(pricing, SEED_PRICING);
   console.log(`[data] MongoDB connected: db=${dbName}`);
@@ -203,6 +249,18 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Dat
       };
       await messages.insertOne({ ...doc });
       return doc;
+    },
+    async saveCall(record) {
+      await calls.replaceOne({ callSid: record.callSid }, structuredClone(record), { upsert: true });
+    },
+    async listCalls(limit) {
+      return calls.find({}, proj).sort({ startedAt: -1 }).limit(limit).toArray();
+    },
+    async listOrders() {
+      return orders.find({}, proj).sort({ orderId: 1 }).toArray();
+    },
+    async listMessages() {
+      return messages.find({}, proj).sort({ createdAt: -1 }).toArray();
     },
   };
 }

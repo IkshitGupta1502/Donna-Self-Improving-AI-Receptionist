@@ -31,6 +31,21 @@ and prices. With it, the same data is seeded into Atlas on first connect.
 
 `get_order`, `lookup_price`, `list_prices`, `add_order_note`, `take_message`
 
+## Dashboard API
+
+JSON endpoints under `/api` for the dashboard UI (calls are recorded with transcripts and tool calls):
+
+- `GET /api/health` -> `{status:"ok"}`
+- `GET /api/stats` -> `{calls, activeCalls, orders, openOrders, messages}`
+- `GET /api/calls?limit=50` -> call records, newest first (live calls included)
+- `GET /api/calls/:callSid` -> one call record
+- `GET /api/orders`, `GET /api/messages` -> arrays
+
+Set `DASHBOARD_TOKEN` to require an `x-dashboard-token` header (except on `/api/health` and
+OPTIONS). `ALLOWED_ORIGINS` (comma-separated, default `*`) controls CORS. When the server is
+behind a free ngrok URL, browser fetches must send `ngrok-skip-browser-warning: 1` or ngrok
+returns an HTML interstitial; the CORS config allows this header.
+
 ## Deployment note
 
 Twilio Media Streams needs a long-lived WebSocket (`/media-stream`). Vercel serverless

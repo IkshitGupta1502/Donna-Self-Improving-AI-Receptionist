@@ -14,6 +14,8 @@ const schema = z.object({
   GEMINI_API_KEY: z.string().min(1),
   TWILIO_AUTH_TOKEN: optionalString,
   PUBLIC_HOST: optionalString,
+  DASHBOARD_TOKEN: optionalString,
+  ALLOWED_ORIGINS: optionalString,
 });
 
 const parsed = schema.safeParse(process.env);

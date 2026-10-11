@@ -1,5 +1,6 @@
 import WebSocket from "ws";
-import { openGeminiSession } from "../services/gemini/liveSession";
+import { openGeminiSession, getStore } from "../services/gemini/liveSession";
+import { CallRecorder } from "../services/calls/recorder";
 
 interface TwilioFrame {
   event: string;
@@ -13,6 +14,7 @@ export function handleMediaStream(ws: WebSocket): void {
   let callSid: string | null = null;
   let streamSid: string | null = null;
   let gemini: GeminiHandle | null = null;
+  let recorder: CallRecorder | null = null;
   let closed = false;
   // Caller audio that arrives while Gemini is still connecting (capped at ~10s of 20ms frames)
   const pending: string[] = [];
@@ -24,6 +26,7 @@ export function handleMediaStream(ws: WebSocket): void {
     const handle = gemini;
     gemini = null;
     handle?.close();
+    void recorder?.end();
   }
 
   ws.on("message", async (raw: WebSocket.RawData) => {
@@ -41,8 +44,22 @@ export function handleMediaStream(ws: WebSocket): void {
         streamSid = frame.start.streamSid;
         console.log(`[${callSid}] media stream started`);
 
+        const callerPhone = frame.start.customParameters?.from;
+        const startedRecorder = await getStore()
+          .then((store) => new CallRecorder(store, callSid!, callerPhone))
+          .catch((err) => {
+            console.error(`[${callSid}] Call recording unavailable:`, err);
+            return null;
+          });
+        if (startedRecorder) {
+          recorder = startedRecorder;
+          if (closed) void startedRecorder.end();
+          else await startedRecorder.start();
+        }
+
         const handle = await openGeminiSession({
-          callerPhone: frame.start.customParameters?.from,
+          callerPhone,
+          recorder: recorder ?? undefined,
           onAudio: (base64Mulaw: string) => {
             if (ws.readyState === WebSocket.OPEN && streamSid) {
               ws.send(JSON.stringify({ event: "media", streamSid, media: { payload: base64Mulaw } }));
