@@ -133,5 +133,6 @@ export const SEED_HOURS: StoreHours = {
     { day: "sat", open: "09:00", close: "15:00" },
     { day: "sun", closed: true },
   ],
+  slotCapacity: { morning: 4, afternoon: 4, evening: 3 },
   exceptions: [{ date: "2026-11-26", closed: true, reason: "Thanksgiving" }, { date: "2026-12-25", closed: true, reason: "Christmas Day" }],
 };
