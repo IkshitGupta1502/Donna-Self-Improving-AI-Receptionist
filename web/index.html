@@ -4,60 +4,63 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="color-scheme" content="light dark" />
-<title>Snoopy</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231d1d1f'/%3E%3Cpath d='M9 16v0M13 12v8M17 9v14M21 13v6' stroke='white' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E" />
+<title>CJ's Cleaning</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2300ed64'/%3E%3Cpath d='M16 11a2.6 2.6 0 1 0-2.6-2.6M16 11v2.4l-9 6.6a1.2 1.2 0 0 0 .7 2.2h16.6a1.2 1.2 0 0 0 .7-2.2L16 13.4' fill='none' stroke='%23001e2b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
 <script src="config.js"></script>
 <style>
 /* ── Tokens ─────────────────────────────────────────────────────────────── */
 :root{
-  --bg:#f5f5f7; --surface:#ffffff; --surface-2:#fbfbfd; --bar:rgba(245,245,247,.78);
-  --ink:#1d1d1f; --ink-2:#424245; --muted:#6e6e73; --faint:#aeaeb2;
-  --hairline:rgba(0,0,0,.08); --hairline-2:rgba(0,0,0,.14);
-  --fill:rgba(118,118,128,.12); --fill-2:rgba(118,118,128,.2); --hover:rgba(0,0,0,.035);
-  --seg-on:#ffffff; --seg-shadow:0 1px 3px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.04);
-  --accent:#0071e3; --accent-ink:#0066cc; --accent-soft:rgba(0,113,227,.1); --focus:rgba(0,113,227,.45);
-  --live:#34c759; --live-ink:#1f8a3d; --live-soft:rgba(52,199,89,.14);
-  --teacher:#6e4bd8; --teacher-soft:rgba(110,75,216,.1);
-  --bad:#d70015; --bad-soft:rgba(215,0,21,.08); --warn:#b25000;
-  --add:rgba(52,199,89,.16); --del:rgba(215,0,21,.09);
-  --card-shadow:0 0 0 .5px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04),0 8px 24px -12px rgba(0,0,0,.08);
-  --sheet-shadow:0 24px 80px -12px rgba(0,0,0,.35),0 0 0 .5px rgba(0,0,0,.08);
-  --band:rgba(118,118,128,.06);
+  --bg:#f9fbfa; --surface:#ffffff; --surface-2:#f4f8f6; --bar:rgba(249,251,250,.82);
+  --ink:#001e2b; --ink-2:#1c2d38; --muted:#5c6c75; --faint:#889397;
+  --hairline:rgba(0,30,43,.09); --hairline-2:rgba(0,30,43,.15);
+  --fill:rgba(0,30,43,.06); --fill-2:rgba(0,30,43,.1); --hover:rgba(0,30,43,.035);
+  --seg-on:#ffffff; --seg-shadow:0 1px 3px rgba(0,30,43,.14),0 0 0 .5px rgba(0,30,43,.05);
+  --accent:#00684a; --accent-ink:#00684a; --accent-soft:#e3fcf7; --focus:rgba(0,237,100,.55); --on-accent:#ffffff;
+  --brand-bg:#00ed64; --brand-fg:#001e2b;
+  --live:#00ed64; --live-ink:#00684a; --live-soft:rgba(0,237,100,.16);
+  --teacher:#016bf8; --teacher-soft:rgba(1,107,248,.1);
+  --bad:#cf2f28; --bad-soft:rgba(207,47,40,.08); --warn:#946b00;
+  --add:rgba(0,237,100,.2); --del:rgba(207,47,40,.09);
+  --card-shadow:0 0 0 .5px rgba(0,30,43,.07),0 1px 2px rgba(0,30,43,.05),0 8px 24px -12px rgba(0,30,43,.1);
+  --sheet-shadow:0 24px 80px -12px rgba(0,30,43,.4),0 0 0 .5px rgba(0,30,43,.1);
+  --band:rgba(0,30,43,.045);
   --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue","Segoe UI",Roboto,system-ui,sans-serif;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
   --r-lg:20px; --r:14px; --r-sm:10px;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#000000; --surface:#1c1c1e; --surface-2:#232325; --bar:rgba(22,22,23,.78);
-    --ink:#f5f5f7; --ink-2:#d1d1d6; --muted:#98989d; --faint:#636366;
-    --hairline:rgba(255,255,255,.09); --hairline-2:rgba(255,255,255,.16);
-    --fill:rgba(118,118,128,.24); --fill-2:rgba(118,118,128,.34); --hover:rgba(255,255,255,.05);
-    --seg-on:#636366; --seg-shadow:0 1px 3px rgba(0,0,0,.4);
-    --accent:#0a84ff; --accent-ink:#4ea4ff; --accent-soft:rgba(10,132,255,.18); --focus:rgba(10,132,255,.6);
-    --live:#30d158; --live-ink:#30d158; --live-soft:rgba(48,209,88,.16);
-    --teacher:#b79cff; --teacher-soft:rgba(183,156,255,.14);
-    --bad:#ff453a; --bad-soft:rgba(255,69,58,.14); --warn:#ff9f0a;
-    --add:rgba(48,209,88,.18); --del:rgba(255,69,58,.16);
-    --card-shadow:0 0 0 .5px rgba(255,255,255,.07);
-    --sheet-shadow:0 24px 80px -12px rgba(0,0,0,.8),0 0 0 .5px rgba(255,255,255,.1);
-    --band:rgba(118,118,128,.1);
+    --bg:#00141d; --surface:#0a2330; --surface-2:#0f2d3b; --bar:rgba(0,30,43,.82);
+    --ink:#e8edeb; --ink-2:#c1c7c6; --muted:#889397; --faint:#5c6c75;
+    --hairline:rgba(232,237,235,.1); --hairline-2:rgba(232,237,235,.18);
+    --fill:rgba(232,237,235,.1); --fill-2:rgba(232,237,235,.16); --hover:rgba(232,237,235,.05);
+    --seg-on:#1c3a49; --seg-shadow:0 1px 3px rgba(0,0,0,.45);
+    --accent:#00ed64; --accent-ink:#00ed64; --accent-soft:rgba(0,237,100,.14); --focus:rgba(0,237,100,.6); --on-accent:#001e2b;
+    --brand-bg:#00ed64; --brand-fg:#001e2b;
+    --live:#00ed64; --live-ink:#00ed64; --live-soft:rgba(0,237,100,.16);
+    --teacher:#5ca8ff; --teacher-soft:rgba(92,168,255,.14);
+    --bad:#ff7a70; --bad-soft:rgba(255,122,112,.14); --warn:#ffc010;
+    --add:rgba(0,237,100,.18); --del:rgba(255,122,112,.16);
+    --card-shadow:0 0 0 .5px rgba(232,237,235,.08);
+    --sheet-shadow:0 24px 80px -12px rgba(0,0,0,.8),0 0 0 .5px rgba(232,237,235,.12);
+    --band:rgba(232,237,235,.06);
   }
 }
 :root[data-theme="dark"]{
-  --bg:#000000; --surface:#1c1c1e; --surface-2:#232325; --bar:rgba(22,22,23,.78);
-  --ink:#f5f5f7; --ink-2:#d1d1d6; --muted:#98989d; --faint:#636366;
-  --hairline:rgba(255,255,255,.09); --hairline-2:rgba(255,255,255,.16);
-  --fill:rgba(118,118,128,.24); --fill-2:rgba(118,118,128,.34); --hover:rgba(255,255,255,.05);
-  --seg-on:#636366; --seg-shadow:0 1px 3px rgba(0,0,0,.4);
-  --accent:#0a84ff; --accent-ink:#4ea4ff; --accent-soft:rgba(10,132,255,.18); --focus:rgba(10,132,255,.6);
-  --live:#30d158; --live-ink:#30d158; --live-soft:rgba(48,209,88,.16);
-  --teacher:#b79cff; --teacher-soft:rgba(183,156,255,.14);
-  --bad:#ff453a; --bad-soft:rgba(255,69,58,.14); --warn:#ff9f0a;
-  --add:rgba(48,209,88,.18); --del:rgba(255,69,58,.16);
-  --card-shadow:0 0 0 .5px rgba(255,255,255,.07);
-  --sheet-shadow:0 24px 80px -12px rgba(0,0,0,.8),0 0 0 .5px rgba(255,255,255,.1);
-  --band:rgba(118,118,128,.1);
+  --bg:#00141d; --surface:#0a2330; --surface-2:#0f2d3b; --bar:rgba(0,30,43,.82);
+  --ink:#e8edeb; --ink-2:#c1c7c6; --muted:#889397; --faint:#5c6c75;
+  --hairline:rgba(232,237,235,.1); --hairline-2:rgba(232,237,235,.18);
+  --fill:rgba(232,237,235,.1); --fill-2:rgba(232,237,235,.16); --hover:rgba(232,237,235,.05);
+  --seg-on:#1c3a49; --seg-shadow:0 1px 3px rgba(0,0,0,.45);
+  --accent:#00ed64; --accent-ink:#00ed64; --accent-soft:rgba(0,237,100,.14); --focus:rgba(0,237,100,.6); --on-accent:#001e2b;
+  --brand-bg:#00ed64; --brand-fg:#001e2b;
+  --live:#00ed64; --live-ink:#00ed64; --live-soft:rgba(0,237,100,.16);
+  --teacher:#5ca8ff; --teacher-soft:rgba(92,168,255,.14);
+  --bad:#ff7a70; --bad-soft:rgba(255,122,112,.14); --warn:#ffc010;
+  --add:rgba(0,237,100,.18); --del:rgba(255,122,112,.16);
+  --card-shadow:0 0 0 .5px rgba(232,237,235,.08);
+  --sheet-shadow:0 24px 80px -12px rgba(0,0,0,.8),0 0 0 .5px rgba(232,237,235,.12);
+  --band:rgba(232,237,235,.06);
 }
 
 /* ── Base ───────────────────────────────────────────────────────────────── */
@@ -86,7 +89,7 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stro
   border-bottom:.5px solid var(--hairline-2)}
 .brand{display:inline-flex;align-items:center;gap:9px;font-weight:600;font-size:17px;color:var(--ink);letter-spacing:-.02em;justify-self:start}
 .brand:hover{text-decoration:none}
-.brand-mark{width:26px;height:26px;border-radius:7px;background:var(--ink);color:var(--bg);display:grid;place-items:center}
+.brand-mark{width:26px;height:26px;border-radius:7px;background:var(--brand-bg);color:var(--brand-fg);display:grid;place-items:center}
 .brand-mark svg{width:16px;height:16px;stroke-width:2.4}
 .seg{display:inline-flex;background:var(--fill);border-radius:9px;padding:2px;gap:2px}
 .seg a,.seg button{position:relative;display:inline-flex;align-items:center;gap:6px;padding:5px 14px;font-size:13px;font-weight:500;
@@ -94,7 +97,7 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .seg a:hover{text-decoration:none;background:var(--hover)}
 .seg [aria-current="page"],.seg [aria-pressed="true"]{background:var(--seg-on);box-shadow:var(--seg-shadow)}
 .live-dot{width:7px;height:7px;border-radius:50%;background:var(--live);box-shadow:0 0 0 0 var(--live);animation:ping 1.8s infinite}
-@keyframes ping{0%{box-shadow:0 0 0 0 rgba(52,199,89,.5)}80%,100%{box-shadow:0 0 0 7px rgba(52,199,89,0)}}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(0,237,100,.5)}80%,100%{box-shadow:0 0 0 7px rgba(0,237,100,0)}}
 .bar-end{justify-self:end;display:flex;align-items:center;gap:6px}
 .pill{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 12px;border-radius:999px;background:var(--fill);
   font-size:12px;font-weight:500;color:var(--ink-2);white-space:nowrap}
@@ -148,7 +151,7 @@ a.row:hover,button.row:hover{background:var(--hover);text-decoration:none}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 16px;border-radius:999px;
   font-size:14px;font-weight:500;background:var(--fill);color:var(--accent-ink);white-space:nowrap;transition:background .15s,opacity .15s}
 .btn:hover{background:var(--fill-2);text-decoration:none}
-.btn.primary{background:var(--accent);color:#fff}
+.btn.primary{background:var(--accent);color:var(--on-accent)}
 .btn.primary:hover{background:var(--accent);opacity:.88}
 .btn.plain{background:none;padding:0 4px;height:auto}
 .btn.plain:hover{text-decoration:underline}
@@ -456,9 +459,9 @@ dialog.wide{width:min(760px,calc(100vw - 32px))}
 <a class="skip" href="#main">Skip to content</a>
 
 <header class="bar">
-  <a class="brand" href="#/line" aria-label="Snoopy, go to the line">
-    <span class="brand-mark" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M5 12v0M9.5 8v8M14 5v14M18.5 9.5v5"/></svg></span>
-    <span class="brand-name">Snoopy</span>
+  <a class="brand" href="#/line" aria-label="CJ's Cleaning, go to the line">
+    <span class="brand-mark" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M12 8a2.4 2.4 0 1 0-2.4-2.4"/><path d="M12 8v2L3.6 16.3a1.1 1.1 0 0 0 .7 2h15.4a1.1 1.1 0 0 0 .7-2L12 10"/></svg></span>
+    <span class="brand-name">CJ's Cleaning</span>
   </a>
   <nav class="seg" aria-label="Sections" id="nav-top"></nav>
   <div class="bar-end">
@@ -510,7 +513,7 @@ dialog.wide{width:min(760px,calc(100vw - 32px))}
   <section class="view" id="v-learning" aria-labelledby="t-learning">
     <div class="head"><div>
       <h1 class="title" id="t-learning">Learning</h1>
-      <p class="lede">After every call a teacher model grades how it went and edits what Snoopy knows. Edits go live on the next call, and you can undo any of them.</p>
+      <p class="lede">After every call a teacher model grades how it went and edits what the assistant knows. Edits go live on the next call, and you can undo any of them.</p>
     </div></div>
     <div id="learning"></div>
   </section>
@@ -519,7 +522,7 @@ dialog.wide{width:min(760px,calc(100vw - 32px))}
   <section class="view" id="v-knowledge" aria-labelledby="t-knowledge">
     <div class="head"><div>
       <h1 class="title" id="t-knowledge">Knowledge</h1>
-      <p class="lede">Everything Snoopy knows about the business. Each save is a new version that answers the next call. Earlier versions are kept.</p>
+      <p class="lede">Everything the assistant knows about the business. Each save is a new version that answers the next call. Earlier versions are kept.</p>
     </div></div>
     <div id="k-status"></div>
     <div class="kgrid" id="k-main" hidden>
@@ -539,7 +542,7 @@ dialog.wide{width:min(760px,calc(100vw - 32px))}
             </div>
           </div>
           <div class="fgroup">
-            <div class="frow"><label class="lbl" for="k-ctx">What Snoopy knows</label><span class="count" id="k-ctx-n"></span></div>
+            <div class="frow"><label class="lbl" for="k-ctx">What the assistant knows</label><span class="count" id="k-ctx-n"></span></div>
             <textarea class="field" id="k-ctx" spellcheck="true" aria-describedby="k-tips"></textarea>
             <details class="tips" id="k-tips"><summary>What to write here</summary>
               <ul>
@@ -548,7 +551,7 @@ dialog.wide{width:min(760px,calc(100vw - 32px))}
                 <li>Prices and policies: turnaround, payment, damage, unclaimed items</li>
                 <li>Questions callers ask, with the answers you want given</li>
                 <li>Tone: friendly, formal, brief</li>
-                <li>When Snoopy should take a message instead of answering</li>
+                <li>When the assistant should take a message instead of answering</li>
               </ul>
             </details>
           </div>
@@ -586,7 +589,7 @@ dialog.wide{width:min(760px,calc(100vw - 32px))}
   <section class="view" id="v-messages" aria-labelledby="t-messages">
     <div class="head"><div>
       <h1 class="title" id="t-messages">Messages</h1>
-      <p class="lede">Callers who asked for a person. Snoopy took their name and number.</p>
+      <p class="lede">Callers who asked for a person. The assistant took their name and number.</p>
     </div></div>
     <div id="messages"></div>
   </section>
@@ -633,7 +636,7 @@ dialog.wide{width:min(760px,calc(100vw - 32px))}
 <script>
 (function(){
 "use strict";
-const BRAND = window.SNOOPY_BRAND || window.HANGER_BRAND || "Snoopy";
+const BRAND = window.SNOOPY_BRAND || window.HANGER_BRAND || "CJ's Cleaning";
 const POLL_MS = 3000;
 
 /* ── storage (always guarded) ─────────────────────────────────────────── */
@@ -800,7 +803,7 @@ const Demo = (function () {
     .map((p) => ({ category: p[0], item: p[1], regularPrice: p[2], expeditedPrice: p[3], notes: p[1] === "Wedding Dress" ? "Call for quote if heavily beaded." : "" }));
   const price = (item, speed) => { const r = prices.find((p) => p.item === item); return { found: true, item, orderType: speed, price: speed === "Expedited" ? r.expeditedPrice : r.regularPrice, category: r.category, notes: r.notes || null }; };
 
-  const BASE = ["Charlie's Cleaners is a friendly neighborhood dry cleaner.",
+  const BASE = ["CJ's Cleaning is a friendly neighborhood dry cleaner.",
     "Services: dry cleaning, laundry and press, alterations and repairs, wedding gown and leather care, and household items like comforters and curtains.",
     "Turnaround: regular service takes 3 days. Expedited service is ready the next day for an extra fee.",
     "Pickup hours: Monday to Saturday, 8am to 6pm. Closed on Sunday.",
@@ -814,12 +817,12 @@ const Demo = (function () {
   const SUN = "Sunday: the shop is closed, but the 24-hour drop box by the front door takes garments any time. Drop-box orders are logged Monday at 8am.";
   const READY = "When a caller asks when an order will be ready, give the expected date from the order lookup as a weekday and date, for example \"Wednesday, October 15th\". Never say you don't have a date if the lookup returned one.";
   const ctx = (extra) => BASE.slice(0, 4).concat(extra.filter((x) => x.at === 4).map((x) => x.s), BASE.slice(4, 8), extra.filter((x) => x.at === 8).map((x) => x.s), BASE.slice(8)).join("\n");
-  const G = "Hey, this is Charlie's Cleaners.";
+  const G = "Hey, this is CJ's Cleaning.";
   const configs = [
-    { version: 1, companyName: "Charlie's Cleaners", greeting: G, context: BASE.join("\n"), author: "system", note: "Default", createdAt: ago(4400) },
-    { version: 2, companyName: "Charlie's Cleaners", greeting: G, context: ctx([{ at: 8, s: ALT }]), author: "manager", note: "Added alterations", createdAt: ago(2900) },
-    { version: 3, companyName: "Charlie's Cleaners", greeting: G, context: ctx([{ at: 4, s: SUN }, { at: 8, s: ALT }]), author: "teacher", note: "Answer Sunday drop-off questions", createdAt: ago(1560) },
-    { version: 4, companyName: "Charlie's Cleaners", greeting: G, context: ctx([{ at: 4, s: SUN }, { at: 8, s: ALT }, { at: 8, s: READY }]), author: "teacher", note: "Give the ready date when asked", createdAt: ago(46) },
+    { version: 1, companyName: "CJ's Cleaning", greeting: G, context: BASE.join("\n"), author: "system", note: "Default", createdAt: ago(4400) },
+    { version: 2, companyName: "CJ's Cleaning", greeting: G, context: ctx([{ at: 8, s: ALT }]), author: "manager", note: "Added alterations", createdAt: ago(2900) },
+    { version: 3, companyName: "CJ's Cleaning", greeting: G, context: ctx([{ at: 4, s: SUN }, { at: 8, s: ALT }]), author: "teacher", note: "Answer Sunday drop-off questions", createdAt: ago(1560) },
+    { version: 4, companyName: "CJ's Cleaning", greeting: G, context: ctx([{ at: 4, s: SUN }, { at: 8, s: ALT }, { at: 8, s: READY }]), author: "teacher", note: "Give the ready date when asked", createdAt: ago(46) },
   ];
   let active = 4;
 
@@ -857,7 +860,7 @@ const Demo = (function () {
     grade("CA3c1d55", "failed", 34, 0.72, [3, 3, 1, 3, 4], "The knowledge had nothing on Sunday drop-off. The caller hung up without an answer."),
     grade("CA4e90b2", "answered", 90, 0.05, [5, 5, 5, 5, 5], "Answered the Sunday question in one sentence from the new knowledge."),
     grade("CA5a3318", "answered", 86, 0.08, [5, 5, 4, 4, 4], "Gave both prices and the beading caveat. Could have asked one question at a time."),
-    grade("CA6d4407", "message_taken", 48, 0.61, [2, 3, 2, 3, 4], "The order lookup returned a ready date, but Snoopy said it had none. The caller also wanted to hold the order, which no tool can do."),
+    grade("CA6d4407", "message_taken", 48, 0.61, [2, 3, 2, 3, 4], "The order lookup returned a ready date, but the assistant said it had none. The caller also wanted to hold the order, which no tool can do."),
     grade("CA7c2f18", "message_taken", 82, 0.12, [5, 4, 5, 5, 4], "Clean message with name and caller ID number confirmed."),
     grade("CA8b9e03", "answered", 63, 0.34, [5, 4, 4, 3, 1], "Read the whole price list aloud. The caller only wanted shirts."),
     grade("CA9a0c7d", "answered", 94, 0.03, [5, 5, 5, 5, 5], "Gave the stage and ready date in one sentence."),
@@ -866,10 +869,10 @@ const Demo = (function () {
   ];
 
   const imps = [
-    { id: "imp-4", type: "prompt", status: "proposed", title: "Ask which item before reading prices", rationale: "Snoopy read all 11 prices when the caller only wanted shirts. Ask what they're bringing in first, then quote that item.", change: "When a caller asks about prices in general, ask what item they have in mind before listing anything.", evidence: [{ callSid: "CA8b9e03", quote: "Uh, okay. Just the shirts really." }], fromVersion: null, toVersion: null, createdAt: ago(126) },
-    { id: "imp-3", type: "tool", status: "proposed", title: "Let callers move a pickup date", rationale: "A caller asked to hold an order until Tuesday. Snoopy can only take a message for that. A tool that updates the expected date would settle it during the call.", change: "reschedule_pickup(orderId, newDate)", evidence: [{ callSid: "CA6d4407", quote: "Can you just hold it till Tuesday then?" }], fromVersion: null, toVersion: null, createdAt: ago(306) },
-    { id: "imp-2", type: "context", status: "applied", title: "Give the ready date when asked", rationale: "The lookup returned an expected date, but Snoopy told the caller it had none. Frustration went up from there.", change: READY, evidence: [{ callSid: "CA6d4407", quote: "But when? I need it for Monday." }], fromVersion: 3, toVersion: 4, createdAt: ago(46) },
-    { id: "imp-1", type: "context", status: "applied", title: "Answer Sunday drop-off questions", rationale: "The knowledge only said the shop is closed Sunday. The caller asked about dropping off and hung up when Snoopy had no answer.", change: SUN, evidence: [{ callSid: "CA3c1d55", quote: "Can I drop stuff off on Sunday, or are you totally closed?" }], fromVersion: 2, toVersion: 3, createdAt: ago(1560) },
+    { id: "imp-4", type: "prompt", status: "proposed", title: "Ask which item before reading prices", rationale: "The assistant read all 11 prices when the caller only wanted shirts. Ask what they're bringing in first, then quote that item.", change: "When a caller asks about prices in general, ask what item they have in mind before listing anything.", evidence: [{ callSid: "CA8b9e03", quote: "Uh, okay. Just the shirts really." }], fromVersion: null, toVersion: null, createdAt: ago(126) },
+    { id: "imp-3", type: "tool", status: "proposed", title: "Let callers move a pickup date", rationale: "A caller asked to hold an order until Tuesday. The assistant can only take a message for that. A tool that updates the expected date would settle it during the call.", change: "reschedule_pickup(orderId, newDate)", evidence: [{ callSid: "CA6d4407", quote: "Can you just hold it till Tuesday then?" }], fromVersion: null, toVersion: null, createdAt: ago(306) },
+    { id: "imp-2", type: "context", status: "applied", title: "Give the ready date when asked", rationale: "The lookup returned an expected date, but the assistant told the caller it had none. Frustration went up from there.", change: READY, evidence: [{ callSid: "CA6d4407", quote: "But when? I need it for Monday." }], fromVersion: 3, toVersion: 4, createdAt: ago(46) },
+    { id: "imp-1", type: "context", status: "applied", title: "Answer Sunday drop-off questions", rationale: "The knowledge only said the shop is closed Sunday. The caller asked about dropping off and hung up when the assistant had no answer.", change: SUN, evidence: [{ callSid: "CA3c1d55", quote: "Can I drop stuff off on Sunday, or are you totally closed?" }], fromVersion: 2, toVersion: 3, createdAt: ago(1560) },
   ];
   const messages = [
     { name: "Daniel Kim", phone: "+14155550142", message: "Wants to know suit ready date; may need it held till Tuesday.", createdAt: ago(309) },
@@ -1457,7 +1460,7 @@ async function kRevert() {
 function renderKnowledge() {
   const a = activeCfg();
   let msg = "";
-  if (!configured()) msg = setupEmpty("Connect to a backend, or turn on demo data, to edit what Snoopy knows.");
+  if (!configured()) msg = setupEmpty("Connect to a backend, or turn on demo data, to edit what the assistant knows.");
   else if (K.missing) msg = '<div class="card empty"><h3>This backend can’t edit knowledge yet</h3><p>Update and restart the voice server, then come back.</p></div>';
   else if (!a) msg = K.err ? '<div class="banner">Couldn’t load knowledge: ' + esc(K.err) + "</div>" : '<div class="card empty"><p style="margin:0">Loading…</p></div>';
   setH("k-status", msg);
