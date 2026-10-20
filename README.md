@@ -4,7 +4,7 @@ Donna answers a small business's phone. After every call, a second AI agent grad
 rules, knowledge and tools, so the next caller gets a better receptionist. The demo business is a dry cleaner,
 CJ's Cleaning Company.
 
-**Demo video:** https://youtu.be/828BnKVhIm4
+**Demo video:** [Watch Donna on YouTube](https://youtu.be/828BnKVhIm4)
 
 Built at the Harness Engineering & Model Wrangling hackathon (October 2026) for the **Recursive Harnessing**
 problem statement: a self-improving agent harness that evolves its own rules, guardrails, context and tool access.
@@ -152,12 +152,6 @@ static and can be hosted anywhere.
 - Gemini's free tier allows a small number of requests per day per model, and the teacher makes one per call.
 - Google Calendar booking (PR #10, PR #5) and Stripe (PR #15) are in open pull requests, not in this branch.
 - See `docs/HANDOFF.md` for what has and has not been verified end to end.
-
-## Naming
-
-The project was first called Snoopy. The MongoDB database keeps that name (`MONGODB_DB=snoopy`) so existing data
-stays visible; using a new name means copying the data to a new database. The old `/snoopy/` dashboard address
-redirects to `/donna/`.
 
 ## Team
 
